@@ -1,3 +1,4 @@
+import * as React from "react";
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { AppData } from "@/types";
 import { initStore, getData, subscribe } from "@/lib/store";
