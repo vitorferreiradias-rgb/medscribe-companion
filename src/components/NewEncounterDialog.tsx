@@ -11,21 +11,24 @@ import { addEncounter, addTranscript, addNote, updateEncounter } from "@/lib/sto
 import { parseTranscriptToSections } from "@/lib/parser";
 import { formatTimer, formatDateTimeBR } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
-import { Play, Pause, Square, Mic } from "lucide-react";
+import { useSpeechRecognition, isSpeechRecognitionSupported } from "@/hooks/useSpeechRecognition";
+import { Play, Pause, Square, Mic, AlertTriangle } from "lucide-react";
+import { Utterance } from "@/types";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-const mockTranscriptContent = [
-  { speaker: "medico" as const, text: "Bom dia, qual a sua queixa principal?", tsSec: 0 },
-  { speaker: "paciente" as const, text: "Doutor, estou com dor de cabeça há 5 dias, piora à noite.", tsSec: 5 },
-  { speaker: "medico" as const, text: "Tem alergia a algum medicamento?", tsSec: 14 },
-  { speaker: "paciente" as const, text: "Não tenho alergia a nada.", tsSec: 19 },
-  { speaker: "medico" as const, text: "Está tomando algum medicamento?", tsSec: 25 },
-  { speaker: "paciente" as const, text: "Tomo paracetamol quando a dor é forte.", tsSec: 30 },
-  { speaker: "medico" as const, text: "Vou solicitar um exame de imagem. Orientei repouso e retorno em 10 dias.", tsSec: 40 },
+const mockTranscriptContent: Utterance[] = [
+  { speaker: "medico", text: "Bom dia, qual a sua queixa principal?", tsSec: 0 },
+  { speaker: "paciente", text: "Doutor, estou com dor de cabeça há 5 dias, piora à noite.", tsSec: 5 },
+  { speaker: "medico", text: "Tem alergia a algum medicamento?", tsSec: 14 },
+  { speaker: "paciente", text: "Não tenho alergia a nada.", tsSec: 19 },
+  { speaker: "medico", text: "Está tomando algum medicamento?", tsSec: 25 },
+  { speaker: "paciente", text: "Tomo paracetamol quando a dor é forte.", tsSec: 30 },
+  { speaker: "medico", text: "Vou solicitar um exame de imagem. Orientei repouso e retorno em 10 dias.", tsSec: 40 },
 ];
 
 export function NewEncounterDialog({ open, onOpenChange }: Props) {
@@ -44,6 +47,19 @@ export function NewEncounterDialog({ open, onOpenChange }: Props) {
   const [timer, setTimer] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [pastedText, setPastedText] = useState("");
+  const [useSpeech, setUseSpeech] = useState(true);
+  const transcriptEndRef = useRef<HTMLDivElement>(null);
+
+  const speechSupported = isSpeechRecognitionSupported();
+
+  const speech = useSpeechRecognition({
+    lang: "pt-BR",
+  });
+
+  // Auto-scroll transcript
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [speech.utterances.length, speech.interimText]);
 
   useEffect(() => {
     if (!open) {
@@ -55,6 +71,8 @@ export function NewEncounterDialog({ open, onOpenChange }: Props) {
       setRecording("idle");
       setTimer(0);
       setPastedText("");
+      setUseSpeech(true);
+      speech.reset();
       if (timerRef.current) clearInterval(timerRef.current);
     }
   }, [open]);
@@ -70,14 +88,35 @@ export function NewEncounterDialog({ open, onOpenChange }: Props) {
 
   const canContinue = patientId && clinicianId;
 
+  const handleStart = () => {
+    setRecording("recording");
+    if (useSpeech && speechSupported) {
+      speech.start();
+    }
+  };
+
+  const handlePause = () => {
+    setRecording("paused");
+    if (useSpeech && speechSupported) {
+      speech.pause();
+    }
+  };
+
+  const handleResume = () => {
+    setRecording("recording");
+    if (useSpeech && speechSupported) {
+      speech.resume();
+    }
+  };
+
   const handleFinish = () => {
     if (timerRef.current) clearInterval(timerRef.current);
+    speech.stop();
 
     const now = new Date();
     const startedAt = new Date(now.getTime() - timer * 1000).toISOString();
     const endedAt = now.toISOString();
 
-    // Create encounter
     const enc = addEncounter({
       patientId,
       clinicianId,
@@ -89,21 +128,27 @@ export function NewEncounterDialog({ open, onOpenChange }: Props) {
       location: location || undefined,
     });
 
-    // Create transcript
-    let utterances = mockTranscriptContent;
+    // Determine utterances source
+    let utterances: Utterance[];
     let source: "pasted" | "mock" = "mock";
-    if (pastedText.trim()) {
+
+    if (speech.utterances.length > 0) {
+      // Use speech recognition results
+      utterances = speech.utterances;
+      source = "pasted"; // treat as user-generated content
+    } else if (pastedText.trim()) {
       source = "pasted";
       utterances = pastedText.split("\n").filter(Boolean).map((line, i) => ({
         speaker: i % 2 === 0 ? "medico" as const : "paciente" as const,
         text: line.trim(),
         tsSec: i * 10,
       }));
+    } else {
+      utterances = mockTranscriptContent;
     }
 
     const tr = addTranscript({ encounterId: enc.id, source, content: utterances });
 
-    // Generate note
     const pat = data.patients.find((p) => p.id === patientId);
     const cli = data.clinicians.find((c) => c.id === clinicianId);
     const sections = parseTranscriptToSections(
@@ -114,11 +159,9 @@ export function NewEncounterDialog({ open, onOpenChange }: Props) {
       formatDateTimeBR(startedAt)
     );
     const note = addNote({ encounterId: enc.id, templateId: "template_soap_v1", sections });
-
-    // Link to encounter
     updateEncounter(enc.id, { transcriptId: tr.id, noteId: note.id });
 
-    toast({ title: "Consulta criada." });
+    toast({ title: "Consulta criada com transcrição." });
     onOpenChange(false);
     navigate(`/consultas/${enc.id}`);
   };
@@ -170,6 +213,14 @@ export function NewEncounterDialog({ open, onOpenChange }: Props) {
 
         {step === 2 && (
           <div className="space-y-4">
+            {/* Speech support warning */}
+            {!speechSupported && (
+              <div className="flex items-center gap-2 rounded-md bg-accent/50 p-3 text-sm text-muted-foreground">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>Reconhecimento de voz não suportado neste navegador. Use Chrome para transcrição automática, ou cole o texto abaixo.</span>
+              </div>
+            )}
+
             {/* Timer display */}
             <div className="flex flex-col items-center gap-4 py-4">
               <div className="relative">
@@ -179,18 +230,18 @@ export function NewEncounterDialog({ open, onOpenChange }: Props) {
               </div>
               <p className="text-3xl font-mono font-semibold tabular-nums">{formatTimer(timer)}</p>
               <p className="text-sm text-muted-foreground">
-                {recording === "idle" ? "Pronto para gravar" : recording === "recording" ? "Gravando…" : "Pausado"}
+                {recording === "idle" ? "Pronto para gravar" : recording === "recording" ? (speechSupported ? "Ouvindo e transcrevendo…" : "Gravando…") : "Pausado"}
               </p>
 
               <div className="flex gap-2">
                 {recording === "idle" && (
-                  <Button onClick={() => setRecording("recording")} variant="destructive">
+                  <Button onClick={handleStart} variant="destructive">
                     <Play className="mr-2 h-4 w-4" /> Iniciar
                   </Button>
                 )}
                 {recording === "recording" && (
                   <>
-                    <Button onClick={() => setRecording("paused")} variant="secondary">
+                    <Button onClick={handlePause} variant="secondary">
                       <Pause className="mr-2 h-4 w-4" /> Pausar
                     </Button>
                     <Button onClick={handleFinish} variant="default">
@@ -200,7 +251,7 @@ export function NewEncounterDialog({ open, onOpenChange }: Props) {
                 )}
                 {recording === "paused" && (
                   <>
-                    <Button onClick={() => setRecording("recording")} variant="destructive">
+                    <Button onClick={handleResume} variant="destructive">
                       <Play className="mr-2 h-4 w-4" /> Retomar
                     </Button>
                     <Button onClick={handleFinish} variant="default">
@@ -211,18 +262,41 @@ export function NewEncounterDialog({ open, onOpenChange }: Props) {
               </div>
             </div>
 
+            {/* Live transcript */}
+            {speechSupported && (recording !== "idle" || speech.utterances.length > 0) && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Transcrição ao vivo</Label>
+                <ScrollArea className="h-32 rounded-md border bg-muted/30 p-3">
+                  <div className="space-y-1 text-sm">
+                    {speech.utterances.map((u, i) => (
+                      <p key={i}>
+                        <span className={`font-medium ${u.speaker === "medico" ? "text-primary" : "text-accent-foreground"}`}>
+                          {u.speaker === "medico" ? "Médico" : "Paciente"}:
+                        </span>{" "}
+                        {u.text}
+                      </p>
+                    ))}
+                    {speech.interimText && (
+                      <p className="text-muted-foreground italic">…{speech.interimText}</p>
+                    )}
+                    <div ref={transcriptEndRef} />
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Colar transcrição (opcional)</Label>
               <Textarea
                 value={pastedText}
                 onChange={(e) => setPastedText(e.target.value)}
                 placeholder="Cole aqui a transcrição completa da consulta, uma frase por linha..."
-                rows={5}
+                rows={4}
               />
-              <p className="text-xs text-muted-foreground">Linhas ímpares = médico, pares = paciente.</p>
+              <p className="text-xs text-muted-foreground">Linhas ímpares = médico, pares = paciente. Usado somente se não houver transcrição por voz.</p>
             </div>
 
-            {(recording === "idle" && !pastedText) ? null : (
+            {(recording === "idle" && !pastedText && speech.utterances.length === 0) ? null : (
               <Button className="w-full" onClick={handleFinish}>
                 Finalizar e gerar prontuário
               </Button>
