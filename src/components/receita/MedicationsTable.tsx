@@ -323,8 +323,8 @@ export function MedicationsTable({ medications, onChange }: MedicationsTableProp
                   placeholder="Descreva a fórmula manipulada..."
                   value={compounded.compoundedFormula}
                   onChange={(e) => setCompounded({ ...compounded, compoundedFormula: e.target.value })}
-                  rows={3}
-                  className="text-sm resize-none"
+                  rows={5}
+                  className="text-sm resize-none bg-white border-border/40 shadow-sm focus-visible:ring-primary/30"
                 />
               </div>
               <div className="space-y-1.5">
@@ -333,8 +333,8 @@ export function MedicationsTable({ medications, onChange }: MedicationsTableProp
                   placeholder="Ex: Aplicar 2x ao dia na região afetada por 14 dias"
                   value={compounded.usageInstructions}
                   onChange={(e) => setCompounded({ ...compounded, usageInstructions: e.target.value })}
-                  rows={2}
-                  className="text-sm resize-none"
+                  rows={3}
+                  className="text-sm resize-none bg-white border-border/40 shadow-sm focus-visible:ring-primary/30"
                 />
               </div>
             </TabsContent>
