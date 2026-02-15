@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Apple, UtensilsCrossed } from "lucide-react";
+import { Apple, UtensilsCrossed, CalendarDays } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { formatDateLongBR } from "@/lib/format";
 
 export function DietaPlaceholder() {
   const [draft, setDraft] = useState("");
@@ -46,6 +47,12 @@ export function DietaPlaceholder() {
             rows={6}
             className="text-sm resize-y"
           />
+          {draft.trim().length > 0 && (
+            <div className="flex items-center gap-2 pt-2 border-t border-border/30">
+              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+              <p className="text-[11px] text-foreground font-medium">{formatDateLongBR()}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </motion.div>

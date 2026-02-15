@@ -23,3 +23,8 @@ export function formatTimer(sec: number): string {
   if (h > 0) return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
+
+export function formatDateLongBR(iso?: string): string {
+  const d = iso ? new Date(iso) : new Date();
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+}
