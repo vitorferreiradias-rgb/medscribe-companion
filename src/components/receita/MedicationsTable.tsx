@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { PrescriptionEditor } from "@/components/receita/PrescriptionEditor";
 
 export interface Medication {
   id: string;
@@ -248,7 +249,7 @@ export function MedicationsTable({ medications, onChange }: MedicationsTableProp
 
       {/* Add Medication Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base flex items-center gap-2">
               <Plus className="h-4 w-4 text-primary" /> Adicionar Medicamento
@@ -316,27 +317,23 @@ export function MedicationsTable({ medications, onChange }: MedicationsTableProp
               </div>
             </TabsContent>
 
-            <TabsContent value="compounded" className="space-y-3 pt-1">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Descrição / Nome da fórmula <span className="text-destructive">*</span></Label>
-                <Textarea
-                  placeholder="Descreva a fórmula manipulada..."
-                  value={compounded.compoundedFormula}
-                  onChange={(e) => setCompounded({ ...compounded, compoundedFormula: e.target.value })}
-                  rows={5}
-                  className="text-sm resize-none bg-white border-border/40 shadow-sm focus-visible:ring-primary/30"
-                />
+            <TabsContent value="compounded" className="pt-1">
+              <div className="space-y-1.5 mb-2">
+                <Label className="text-xs">Descrição da fórmula <span className="text-destructive">*</span></Label>
               </div>
-              <div className="space-y-1.5">
+              <PrescriptionEditor
+                value={compounded.compoundedFormula}
+                onChange={(v) => setCompounded({ ...compounded, compoundedFormula: v })}
+                placeholder="Descreva a fórmula manipulada..."
+              />
+              <div className="space-y-1.5 mt-3 mb-2">
                 <Label className="text-xs">Fórmula de uso (posologia)</Label>
-                <Textarea
-                  placeholder="Ex: Aplicar 2x ao dia na região afetada por 14 dias"
-                  value={compounded.usageInstructions}
-                  onChange={(e) => setCompounded({ ...compounded, usageInstructions: e.target.value })}
-                  rows={3}
-                  className="text-sm resize-none bg-white border-border/40 shadow-sm focus-visible:ring-primary/30"
-                />
               </div>
+              <PrescriptionEditor
+                value={compounded.usageInstructions}
+                onChange={(v) => setCompounded({ ...compounded, usageInstructions: v })}
+                placeholder="Ex: Aplicar 2x ao dia na região afetada por 14 dias"
+              />
             </TabsContent>
           </Tabs>
 
