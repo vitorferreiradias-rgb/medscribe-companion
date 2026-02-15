@@ -1,14 +1,15 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, FileText, CalendarClock, XCircle, CheckCircle2,
   Clock, CalendarDays, Stethoscope, StickyNote, ClipboardList,
+  TrendingUp, TrendingDown, User, Save,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import {
   addEncounter, addTranscript, addNote, updateEncounter,
-  updateScheduleEvent, deleteScheduleEvent,
+  updateScheduleEvent,
 } from "@/lib/store";
 import { parseTranscriptToSections } from "@/lib/parser";
 import { formatDateTimeBR } from "@/lib/format";
@@ -17,16 +18,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ScheduleEvent } from "@/types";
 import { SOAP_TEMPLATE_ID } from "@/lib/soap-template";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
-  scheduled: { label: "Aguardando", className: "bg-secondary text-secondary-foreground" },
-  in_progress: { label: "Em atendimento", className: "bg-primary/15 text-primary border border-primary/30" },
-  done: { label: "Concluída", className: "bg-success/15 text-success border border-success/30" },
-  no_show: { label: "Faltou", className: "bg-destructive/15 text-destructive border border-destructive/30" },
-  rescheduled: { label: "Remarcada", className: "bg-warning/15 text-warning border border-warning/30" },
+  scheduled: { label: "Aguardando", className: "status-scheduled" },
+  in_progress: { label: "Em atendimento", className: "status-in_progress" },
+  done: { label: "Concluída", className: "status-done" },
+  no_show: { label: "Faltou", className: "status-no_show" },
+  rescheduled: { label: "Remarcada", className: "status-rescheduled" },
 };
 
 const typeLabels: Record<string, string> = {
@@ -40,7 +43,6 @@ interface AgendaProps {
   onNewSchedule: () => void;
 }
 
-// Mock transcript for oneclick
 const mockTranscript = [
   { speaker: "medico" as const, text: "Bom dia, qual a sua queixa principal?", tsSec: 0 },
   { speaker: "paciente" as const, text: "Estou com dor de cabeça há 5 dias.", tsSec: 5 },
@@ -54,8 +56,23 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [quickNotes, setQuickNotes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [dayLoading, setDayLoading] = useState(false);
+  const [notesSaved, setNotesSaved] = useState(false);
+  const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const prevDateRef = useRef(currentDate.toISOString().slice(0, 10));
 
   const dateStr = currentDate.toISOString().slice(0, 10);
+
+  // Skeleton on day change
+  useEffect(() => {
+    if (prevDateRef.current !== dateStr) {
+      prevDateRef.current = dateStr;
+      setDayLoading(true);
+      setSelectedId(null);
+      const t = setTimeout(() => setDayLoading(false), 300);
+      return () => clearTimeout(t);
+    }
+  }, [dateStr]);
 
   const dayEvents = useMemo(() => {
     return (data.scheduleEvents ?? [])
@@ -70,7 +87,23 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
   // KPIs
   const totalDay = dayEvents.length;
   const pending = dayEvents.filter((e) => e.status === "scheduled").length;
+  const done = dayEvents.filter((e) => e.status === "done").length;
   const drafts = data.encounters.filter((e) => e.status === "draft").length;
+
+  // Current time for now-indicator
+  const [nowMinutes, setNowMinutes] = useState(() => {
+    const n = new Date();
+    return n.getHours() * 60 + n.getMinutes();
+  });
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const n = new Date();
+      setNowMinutes(n.getHours() * 60 + n.getMinutes());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const isToday = dateStr === new Date().toISOString().slice(0, 10);
 
   const calcAge = (birthDate?: string) => {
     if (!birthDate) return null;
@@ -78,7 +111,18 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
     return Math.floor(diff / 31557600000);
   };
 
-  // OneClick: Start consultation
+  const handleNotesChange = (evtId: string, value: string) => {
+    setQuickNotes((prev) => ({ ...prev, [evtId]: value }));
+    setNotesSaved(false);
+    if (saveTimeout.current) clearTimeout(saveTimeout.current);
+    saveTimeout.current = setTimeout(() => {
+      updateScheduleEvent(evtId, { notes: value });
+      setNotesSaved(true);
+      setTimeout(() => setNotesSaved(false), 2000);
+    }, 800);
+  };
+
+  // OneClick handlers (unchanged logic)
   const handleStart = useCallback((evt: ScheduleEvent) => {
     setLoading(true);
     setTimeout(() => {
@@ -98,12 +142,10 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
     }, 300);
   }, [navigate, toast]);
 
-  // OneClick: Open encounter
   const handleOpen = (evt: ScheduleEvent) => {
     if (evt.encounterId) navigate(`/consultas/${evt.encounterId}`);
   };
 
-  // OneClick: Generate note
   const handleGenerate = useCallback((evt: ScheduleEvent) => {
     const enc = evt.encounterId ? data.encounters.find((e) => e.id === evt.encounterId) : null;
     if (!enc) {
@@ -128,7 +170,6 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
     }, 400);
   }, [data, navigate, toast]);
 
-  // OneClick: Finalize
   const handleFinalize = useCallback((evt: ScheduleEvent) => {
     if (evt.encounterId) {
       updateEncounter(evt.encounterId, { status: "final" });
@@ -137,36 +178,93 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
     toast({ title: "Consulta finalizada e prontuário salvo." });
   }, [toast]);
 
-  // Mark no-show
   const handleNoShow = (evt: ScheduleEvent) => {
     updateScheduleEvent(evt.id, { status: "no_show" });
     toast({ title: "Paciente marcado como faltou." });
   };
 
-  // Reschedule placeholder
   const handleReschedule = (evt: ScheduleEvent) => {
     updateScheduleEvent(evt.id, { status: "rescheduled" });
     toast({ title: "Marcado como remarcado." });
   };
 
+  // Now indicator position helper
+  const getNowPosition = () => {
+    if (!isToday || dayEvents.length === 0) return null;
+    const firstMinutes = parseInt(dayEvents[0].startTime.slice(0, 2)) * 60 + parseInt(dayEvents[0].startTime.slice(3, 5));
+    const lastEvt = dayEvents[dayEvents.length - 1];
+    const lastEnd = lastEvt.endTime
+      ? parseInt(lastEvt.endTime.slice(0, 2)) * 60 + parseInt(lastEvt.endTime.slice(3, 5))
+      : firstMinutes + dayEvents.length * 30;
+    const range = lastEnd - firstMinutes;
+    if (range <= 0) return null;
+    const pct = ((nowMinutes - firstMinutes) / range) * 100;
+    if (pct < -5 || pct > 105) return null;
+    return Math.max(0, Math.min(100, pct));
+  };
+
+  const nowPct = getNowPosition();
+
+  if (dayLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-[88px] rounded-xl" />
+          ))}
+        </div>
+        <div className="grid gap-6 lg:grid-cols-12">
+          <div className="lg:col-span-7 space-y-2">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-20 rounded-xl" />
+            ))}
+          </div>
+          <div className="lg:col-span-5 space-y-4">
+            <Skeleton className="h-28 rounded-xl" />
+            <Skeleton className="h-40 rounded-xl" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* KPI strip */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
-          { label: "Consultas hoje", value: totalDay, icon: CalendarDays, accent: "text-primary" },
-          { label: "Aguardando", value: pending, icon: Clock, accent: "text-warning" },
-          { label: "Rascunhos pendentes", value: drafts, icon: FileText, accent: "text-muted-foreground" },
+          { label: "Consultas hoje", value: totalDay, icon: CalendarDays, accent: "text-primary", trend: "+2 vs ontem", trendUp: true },
+          { label: "Aguardando", value: pending, icon: Clock, accent: "text-warning", trend: null, trendUp: false },
+          { label: "Concluídas", value: done, icon: CheckCircle2, accent: "text-success", trend: null, trendUp: true },
+          { label: "Rascunhos", value: drafts, icon: FileText, accent: "text-muted-foreground", trend: null, trendUp: false },
         ].map((kpi, i) => (
-          <motion.div key={kpi.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-            <Card className="glass-card">
+          <motion.div
+            key={kpi.label}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06, duration: 0.3, ease: "easeOut" }}
+          >
+            <Card className="glass-card rounded-xl">
               <CardContent className="p-4 flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary/80">
                   <kpi.icon className={`h-5 w-5 ${kpi.accent}`} />
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{kpi.label}</p>
-                  <p className={`text-2xl font-bold ${kpi.accent}`}>{kpi.value}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-caption text-muted-foreground truncate">{kpi.label}</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className={`text-2xl font-bold leading-none ${kpi.accent}`}>{kpi.value}</p>
+                    {kpi.trend && (
+                      <motion.span
+                        className="flex items-center gap-0.5 text-[10px] font-medium text-success"
+                        initial={{ opacity: 0, x: -4 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.4 }}
+                      >
+                        <TrendingUp className="h-3 w-3" />
+                        {kpi.trend}
+                      </motion.span>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -174,282 +272,373 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
         ))}
       </div>
 
-      {/* Two-column layout */}
+      {/* Two-column layout: Timeline (7 cols) + OneClick (5 cols) */}
       <div className="grid gap-6 lg:grid-cols-12">
-        {/* Left column: Timeline */}
-        <div className="lg:col-span-4 space-y-1">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-            Agenda do dia
-          </h2>
+        {/* Timeline column */}
+        <div className="lg:col-span-7 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-caption font-semibold text-muted-foreground uppercase tracking-wider">
+              Agenda do dia
+            </h2>
+            <span className="text-caption text-muted-foreground">
+              {dayEvents.length} agendamento{dayEvents.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+
           {dayEvents.length === 0 ? (
-            <Card className="glass-card">
-              <CardContent className="py-12 text-center text-muted-foreground">
-                <CalendarDays className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                <p className="text-sm">Nenhum agendamento para este dia.</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={onNewSchedule}>
-                  Agendar consulta
-                </Button>
+            <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}>
+              <Card className="glass-card rounded-xl">
+                <CardContent className="py-16 text-center text-muted-foreground">
+                  <CalendarDays className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p className="text-sm font-medium mb-1">Nenhum agendamento</p>
+                  <p className="text-xs mb-4">Este dia está livre. Que tal agendar uma consulta?</p>
+                  <Button variant="default" size="sm" onClick={onNewSchedule}>
+                    Agendar consulta
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ) : (
+            <Card className="glass-card rounded-xl overflow-hidden">
+              <CardContent className="p-0">
+                <div className="relative">
+                  {/* Now indicator */}
+                  {nowPct !== null && (
+                    <motion.div
+                      className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
+                      style={{ top: `${nowPct}%` }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                    >
+                      <div className="h-2 w-2 rounded-full bg-primary shrink-0 -ml-1" />
+                      <div className="flex-1 h-px bg-primary/60" />
+                      <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full mr-2">
+                        AGORA
+                      </span>
+                    </motion.div>
+                  )}
+
+                  <AnimatePresence>
+                    {dayEvents.map((evt, i) => {
+                      const pat = data.patients.find((p) => p.id === evt.patientId);
+                      const isSelected = evt.id === (selected?.id);
+                      const sc = statusConfig[evt.status];
+                      return (
+                        <motion.div
+                          key={evt.id}
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.04, duration: 0.25, ease: "easeOut" }}
+                          onClick={() => setSelectedId(evt.id)}
+                          className={`relative flex gap-3 py-3 px-4 cursor-pointer transition-all duration-150 ease-out border-b border-border/50 last:border-b-0 ${
+                            isSelected
+                              ? "bg-primary/[0.06]"
+                              : "hover:bg-secondary/50"
+                          }`}
+                        >
+                          {/* Left: time column */}
+                          <div className="flex flex-col items-center shrink-0 w-14">
+                            <span className="text-sm font-semibold text-foreground">{evt.startTime}</span>
+                            <span className="text-[10px] text-muted-foreground">{evt.endTime ?? "—"}</span>
+                          </div>
+
+                          {/* Avatar */}
+                          <Avatar className="h-9 w-9 shrink-0 mt-0.5">
+                            <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                              {pat?.name?.charAt(0) ?? "?"}
+                            </AvatarFallback>
+                          </Avatar>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold truncate">{pat?.name ?? "—"}</span>
+                              <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 font-medium border ${sc.className}`}>
+                                {sc.label}
+                              </Badge>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[11px] text-muted-foreground bg-secondary/80 px-1.5 py-0.5 rounded">
+                                {typeLabels[evt.type]}
+                              </span>
+                              {evt.notes && (
+                                <span className="text-[11px] text-muted-foreground truncate max-w-[160px]">
+                                  {evt.notes}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Inline quick actions */}
+                            {isSelected && (
+                              <motion.div
+                                className="flex gap-1 mt-2"
+                                initial={{ opacity: 0, y: -4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.15 }}
+                              >
+                                {evt.status === "scheduled" && (
+                                  <>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleStart(evt); }}>
+                                          <Play className="h-3.5 w-3.5 text-primary" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Iniciar consulta</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleReschedule(evt); }}>
+                                          <CalendarClock className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Remarcar</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleNoShow(evt); }}>
+                                          <XCircle className="h-3.5 w-3.5 text-destructive" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Marcar falta</TooltipContent>
+                                    </Tooltip>
+                                  </>
+                                )}
+                                {evt.status === "in_progress" && evt.encounterId && (
+                                  <>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleOpen(evt); }}>
+                                          <FileText className="h-3.5 w-3.5 text-primary" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Abrir prontuário</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleFinalize(evt); }}>
+                                          <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Finalizar</TooltipContent>
+                                    </Tooltip>
+                                  </>
+                                )}
+                                {evt.status === "done" && evt.encounterId && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleOpen(evt); }}>
+                                        <FileText className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Ver prontuário</TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </motion.div>
+                            )}
+                          </div>
+
+                          {/* Selected indicator */}
+                          {isSelected && (
+                            <motion.div
+                              layoutId="timeline-indicator"
+                              className="absolute left-0 top-0 bottom-0 w-[3px] bg-primary rounded-r"
+                              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                            />
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
               </CardContent>
             </Card>
-          ) : (
-            <div className="relative">
-              {/* Timeline line */}
-              <div className="absolute left-[27px] top-2 bottom-2 w-px bg-border" />
-              <AnimatePresence>
-                {dayEvents.map((evt, i) => {
-                  const pat = data.patients.find((p) => p.id === evt.patientId);
-                  const isSelected = evt.id === (selected?.id);
-                  const sc = statusConfig[evt.status];
-                  return (
-                    <motion.div
-                      key={evt.id}
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                      onClick={() => setSelectedId(evt.id)}
-                      className={`relative flex gap-3 py-2 px-2 rounded-lg cursor-pointer transition-colors ${
-                        isSelected ? "bg-secondary/80" : "hover:bg-secondary/40"
-                      }`}
-                    >
-                      {/* Timeline dot */}
-                      <div className={`relative z-10 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 ${
-                        evt.status === "in_progress" ? "border-primary bg-primary/20" :
-                        evt.status === "done" ? "border-success bg-success/20" :
-                        evt.status === "no_show" ? "border-destructive bg-destructive/20" :
-                        "border-border bg-background"
-                      }`}>
-                        <span className="text-[9px] font-bold text-muted-foreground">
-                          {evt.startTime.slice(0, 2)}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold truncate">{pat?.name ?? "—"}</span>
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${sc.className}`}>
-                            {sc.label}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                          <span>{evt.startTime}–{evt.endTime ?? "?"}</span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary">{typeLabels[evt.type]}</span>
-                        </div>
-                        {/* Inline quick actions */}
-                        <div className="flex gap-1 mt-1.5">
-                          {evt.status === "scheduled" && (
-                            <>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleStart(evt); }}>
-                                    <Play className="h-3.5 w-3.5 text-primary" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Iniciar consulta</TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleReschedule(evt); }}>
-                                    <CalendarClock className="h-3.5 w-3.5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Remarcar</TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleNoShow(evt); }}>
-                                    <XCircle className="h-3.5 w-3.5 text-destructive" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Marcar falta</TooltipContent>
-                              </Tooltip>
-                            </>
-                          )}
-                          {evt.status === "in_progress" && evt.encounterId && (
-                            <>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleOpen(evt); }}>
-                                    <FileText className="h-3.5 w-3.5 text-primary" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Abrir prontuário</TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleFinalize(evt); }}>
-                                    <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Finalizar</TooltipContent>
-                              </Tooltip>
-                            </>
-                          )}
-                          {evt.status === "done" && evt.encounterId && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleOpen(evt); }}>
-                                  <FileText className="h-3.5 w-3.5" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Ver prontuário</TooltipContent>
-                            </Tooltip>
-                          )}
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </div>
           )}
         </div>
 
-        {/* Right column: OneClick panel */}
-        <div className="lg:col-span-8 space-y-4">
+        {/* OneClick panel */}
+        <div className="lg:col-span-5 space-y-4">
           {loading ? (
             <div className="space-y-4">
-              <Skeleton className="h-24 w-full rounded-lg" />
-              <div className="grid grid-cols-2 gap-4">
-                <Skeleton className="h-20 rounded-lg" />
-                <Skeleton className="h-20 rounded-lg" />
-                <Skeleton className="h-20 rounded-lg" />
-                <Skeleton className="h-20 rounded-lg" />
+              <Skeleton className="h-28 rounded-xl" />
+              <div className="grid grid-cols-2 gap-3">
+                <Skeleton className="h-24 rounded-xl" />
+                <Skeleton className="h-24 rounded-xl" />
+                <Skeleton className="h-24 rounded-xl" />
+                <Skeleton className="h-24 rounded-xl" />
               </div>
             </div>
           ) : selected && selectedPatient ? (
-            <>
-              {/* Patient card */}
-              <Card className="glass-card">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary text-xl font-bold">
-                      {selectedPatient.name.charAt(0)}
-                    </div>
-                    <div className="flex-1">
-                      <h2 className="text-lg font-semibold">{selectedPatient.name}</h2>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {calcAge(selectedPatient.birthDate) && (
-                          <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">
-                            {calcAge(selectedPatient.birthDate)} anos
-                          </span>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={selected.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+                className="space-y-4"
+              >
+                {/* Patient card */}
+                <Card className="glass-card rounded-xl">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-4">
+                      <Avatar className="h-14 w-14 shrink-0">
+                        <AvatarFallback className="bg-primary/15 text-primary text-xl font-bold">
+                          {selectedPatient.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <h2 className="text-lg font-semibold">{selectedPatient.name}</h2>
+                        <div className="flex flex-wrap gap-1.5 mt-1">
+                          {calcAge(selectedPatient.birthDate) && (
+                            <Badge variant="secondary" className="text-[11px] font-normal">
+                              {calcAge(selectedPatient.birthDate)} anos
+                            </Badge>
+                          )}
+                          {selectedPatient.sex && selectedPatient.sex !== "NA" && (
+                            <Badge variant="secondary" className="text-[11px] font-normal">
+                              {selectedPatient.sex === "M" ? "Masculino" : selectedPatient.sex === "F" ? "Feminino" : "Outro"}
+                            </Badge>
+                          )}
+                          <Badge variant="secondary" className="text-[11px] font-normal">
+                            {typeLabels[selected.type]}
+                          </Badge>
+                        </div>
+                        {selectedClinician && (
+                          <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {selectedClinician.name}
+                          </p>
                         )}
-                        {selectedPatient.sex && selectedPatient.sex !== "NA" && (
-                          <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">
-                            {selectedPatient.sex === "M" ? "Masculino" : selectedPatient.sex === "F" ? "Feminino" : "Outro"}
-                          </span>
-                        )}
-                        <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">
-                          {selected.startTime} — {typeLabels[selected.type]}
-                        </span>
                       </div>
-                      {selectedClinician && (
-                        <p className="text-xs text-muted-foreground mt-1">{selectedClinician.name}</p>
-                      )}
-                    </div>
-                    <div>
-                      <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusConfig[selected.status].className}`}>
+                      <Badge variant="outline" className={`shrink-0 text-xs font-medium border ${statusConfig[selected.status].className}`}>
                         {statusConfig[selected.status].label}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* CTA grid 2x2 */}
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    {
+                      label: "Iniciar consulta",
+                      icon: Stethoscope,
+                      accent: "text-primary",
+                      borderClass: "border-primary/20 hover:bg-primary/[0.06] hover:border-primary/40",
+                      disabled: selected.status !== "scheduled",
+                      onClick: () => handleStart(selected),
+                    },
+                    {
+                      label: "Gerar prontuário",
+                      icon: FileText,
+                      accent: "text-warning",
+                      borderClass: "border-warning/20 hover:bg-warning/[0.06] hover:border-warning/40",
+                      disabled: !selected.encounterId,
+                      onClick: () => handleGenerate(selected),
+                    },
+                    {
+                      label: "Abrir prontuário",
+                      icon: ClipboardList,
+                      accent: "text-muted-foreground",
+                      borderClass: "hover:bg-secondary/60",
+                      disabled: !selected.encounterId,
+                      onClick: () => handleOpen(selected),
+                    },
+                    {
+                      label: "Finalizar",
+                      icon: CheckCircle2,
+                      accent: "text-success",
+                      borderClass: "border-success/20 hover:bg-success/[0.06] hover:border-success/40",
+                      disabled: selected.status === "done" || selected.status === "no_show",
+                      onClick: () => handleFinalize(selected),
+                    },
+                  ].map((cta) => (
+                    <Button
+                      key={cta.label}
+                      variant="outline"
+                      className={`h-auto py-4 flex-col gap-2 rounded-xl transition-all duration-150 ease-out ${cta.borderClass}`}
+                      disabled={cta.disabled}
+                      onClick={cta.onClick}
+                    >
+                      <cta.icon className={`h-6 w-6 ${cta.accent}`} />
+                      <span className="text-sm font-medium">{cta.label}</span>
+                    </Button>
+                  ))}
+                </div>
+
+                {/* Quick notes with autosave */}
+                <Card className="glass-card rounded-xl">
+                  <CardHeader className="pb-2 px-4 pt-4">
+                    <CardTitle className="text-caption font-medium flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <StickyNote className="h-4 w-4 text-muted-foreground" />
+                        Notas rápidas
                       </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                      <AnimatePresence>
+                        {notesSaved && (
+                          <motion.span
+                            initial={{ opacity: 0, x: 8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0 }}
+                            className="flex items-center gap-1 text-[10px] text-success font-normal"
+                          >
+                            <Save className="h-3 w-3" /> Salvo
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <Textarea
+                      placeholder="Anotar antes/durante a consulta..."
+                      rows={3}
+                      value={quickNotes[selected.id] ?? selected.notes ?? ""}
+                      onChange={(e) => handleNotesChange(selected.id, e.target.value)}
+                      className="resize-none rounded-lg text-sm"
+                    />
+                  </CardContent>
+                </Card>
 
-              {/* OneClick CTA grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  className="h-auto py-4 flex-col gap-2 border-primary/30 hover:bg-primary/10 hover:border-primary/50"
-                  disabled={selected.status !== "scheduled"}
-                  onClick={() => handleStart(selected)}
-                >
-                  <Stethoscope className="h-6 w-6 text-primary" />
-                  <span className="text-sm font-medium">Iniciar consulta</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-auto py-4 flex-col gap-2 border-warning/30 hover:bg-warning/10 hover:border-warning/50"
-                  disabled={!selected.encounterId}
-                  onClick={() => handleGenerate(selected)}
-                >
-                  <FileText className="h-6 w-6 text-warning" />
-                  <span className="text-sm font-medium">Gerar prontuário</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-auto py-4 flex-col gap-2 hover:bg-secondary/60"
-                  disabled={!selected.encounterId}
-                  onClick={() => handleOpen(selected)}
-                >
-                  <ClipboardList className="h-6 w-6 text-muted-foreground" />
-                  <span className="text-sm font-medium">Abrir prontuário</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-auto py-4 flex-col gap-2 border-success/30 hover:bg-success/10 hover:border-success/50"
-                  disabled={selected.status === "done" || selected.status === "no_show"}
-                  onClick={() => handleFinalize(selected)}
-                >
-                  <CheckCircle2 className="h-6 w-6 text-success" />
-                  <span className="text-sm font-medium">Finalizar consulta</span>
-                </Button>
-              </div>
-
-              {/* Quick notes */}
-              <Card className="glass-card">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <StickyNote className="h-4 w-4 text-muted-foreground" /> Notas rápidas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    placeholder="Anotar antes/durante a consulta..."
-                    rows={3}
-                    value={quickNotes[selected.id] ?? selected.notes ?? ""}
-                    onChange={(e) => {
-                      setQuickNotes((prev) => ({ ...prev, [selected.id]: e.target.value }));
-                      updateScheduleEvent(selected.id, { notes: e.target.value });
-                    }}
-                    className="resize-none"
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Patient pending tasks mock */}
-              <Card className="glass-card">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center gap-2">
-                    <ClipboardList className="h-4 w-4 text-muted-foreground" /> Pendências do paciente
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-warning" />
-                      <span>Exame de sangue solicitado</span>
+                {/* Pendências */}
+                <Card className="glass-card rounded-xl">
+                  <CardHeader className="pb-2 px-4 pt-4">
+                    <CardTitle className="text-caption font-medium flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                      Pendências do paciente
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4">
+                    <div className="space-y-2.5">
+                      {[
+                        { label: "Exame de sangue solicitado", color: "bg-warning" },
+                        { label: "Retorno em 7 dias", color: "bg-primary/40" },
+                        { label: "Prescrição de paracetamol", color: "bg-muted-foreground/40" },
+                      ].map((item) => (
+                        <div key={item.label} className="flex items-center gap-2.5 text-sm text-muted-foreground">
+                          <div className={`h-2 w-2 rounded-full shrink-0 ${item.color}`} />
+                          <span>{item.label}</span>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-muted-foreground" />
-                      <span>Retorno em 7 dias</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-muted-foreground" />
-                      <span>Prescrição de paracetamol</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </AnimatePresence>
           ) : (
-            <Card className="glass-card">
-              <CardContent className="py-16 text-center text-muted-foreground">
-                <CalendarDays className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                <p>Selecione um agendamento ou crie um novo.</p>
-                <Button variant="outline" size="sm" className="mt-4" onClick={onNewSchedule}>
-                  Novo agendamento
-                </Button>
-              </CardContent>
-            </Card>
+            <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}>
+              <Card className="glass-card rounded-xl">
+                <CardContent className="py-16 text-center text-muted-foreground">
+                  <CalendarDays className="h-12 w-12 mx-auto mb-4 opacity-25" />
+                  <p className="text-sm font-medium mb-1">Nenhum paciente selecionado</p>
+                  <p className="text-xs mb-4">Selecione um agendamento ou crie um novo.</p>
+                  <Button variant="outline" size="sm" onClick={onNewSchedule}>
+                    Novo agendamento
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
           )}
         </div>
       </div>
