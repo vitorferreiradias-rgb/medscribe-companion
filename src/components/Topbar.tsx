@@ -41,7 +41,7 @@ export function Topbar({ currentDate, onDateChange, onNewConsulta, onNewPaciente
   }, [onNewConsulta, onNewAgendamento]);
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/80 backdrop-blur-md px-4 h-14">
+    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/90 backdrop-blur-xl px-4 h-14" style={{ backdropFilter: 'blur(18px) saturate(180%)' }}>
       <SidebarTrigger />
 
       {/* Search */}
