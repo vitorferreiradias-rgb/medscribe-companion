@@ -6,56 +6,59 @@
 
 @layer base {
   :root {
-    /* Liquid Glass — Light Mode */
+    /* Liquid Glass — Light Mode (refined) */
     --background: 220 20% 97%;
-    --foreground: 220 40% 8%;
+    --foreground: 225 50% 9%;
 
-    --card: 0 0% 100% / 0.65;
-    --card-foreground: 220 40% 8%;
+    --card: 0 0% 100% / 0.72;
+    --card-foreground: 225 50% 9%;
 
-    --popover: 0 0% 100% / 0.85;
-    --popover-foreground: 220 40% 8%;
+    --popover: 0 0% 100% / 0.88;
+    --popover-foreground: 225 50% 9%;
 
     --primary: 215 84% 53%;
     --primary-foreground: 0 0% 100%;
+    --primary-dark: 224 72% 43%;
 
     --secondary: 220 14% 94%;
     --secondary-foreground: 220 25% 30%;
 
     --muted: 220 14% 94%;
-    --muted-foreground: 215 16% 47%;
+    --muted-foreground: 215 14% 46%;
 
-    --accent: 220 14% 92%;
-    --accent-foreground: 220 40% 8%;
+    --accent: 168 80% 42%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
     --border: 220 20% 92%;
-    --input: 220 20% 90%;
+    --input: 220 25% 90%;
     --ring: 215 84% 53%;
 
     --radius: 0.75rem;
 
-    --success: 142 72% 36%;
+    --success: 160 64% 40%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 5%;
+    --info: 221 83% 53%;
+    --info-foreground: 0 0% 100%;
 
     --sidebar-background: 0 0% 100% / 0.55;
-    --sidebar-foreground: 215 16% 47%;
+    --sidebar-foreground: 215 14% 46%;
     --sidebar-primary: 215 84% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 94%;
-    --sidebar-accent-foreground: 220 40% 8%;
-    --sidebar-border: 220 20% 92%;
+    --sidebar-accent: 215 84% 53% / 0.08;
+    --sidebar-accent-foreground: 215 84% 53%;
+    --sidebar-border: 220 25% 90% / 0.6;
     --sidebar-ring: 215 84% 53%;
 
     /* Liquid Glass tokens */
-    --glass-bg: 0 0% 100% / 0.65;
+    --glass-bg: 0 0% 100% / 0.72;
     --glass-border: 220 40% 10% / 0.08;
-    --glass-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    --glass-shadow: 0 8px 32px rgba(15, 23, 42, 0.06);
+    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.85);
     --glass-blur: 18px;
     --glass-saturate: 180%;
 
@@ -74,10 +77,12 @@
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: linear-gradient(180deg, hsl(220 20% 97%) 0%, hsl(215 25% 95%) 100%);
+    background: linear-gradient(180deg, hsl(220 20% 97%) 0%, hsl(218 25% 95%) 100%);
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /* Apple-like focus ring */
@@ -85,6 +90,11 @@
     outline: none;
     box-shadow: var(--focus-ring);
   }
+
+  /* Typography scale */
+  h1 { @apply text-[28px] font-bold leading-tight tracking-tight; }
+  h2 { @apply text-[22px] font-semibold leading-snug; }
+  h3 { @apply text-base font-semibold; }
 }
 
 @layer components {
@@ -92,14 +102,36 @@
     background: hsl(var(--glass-bg));
     backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-    border-color: hsl(var(--glass-border));
+    border: 1px solid hsl(var(--glass-border));
     box-shadow: var(--glass-shadow), var(--glass-highlight);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    transition: box-shadow 180ms ease-out, transform 180ms ease-out;
   }
 
   .glass-card:hover {
-    box-shadow: 0 12px 36px rgba(15, 23, 42, 0.12), var(--glass-highlight);
+    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.09), var(--glass-highlight);
     transform: translateY(-1px);
+  }
+
+  .glass-surface {
+    background: hsl(var(--glass-bg));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: var(--glass-highlight);
+  }
+
+  .glass-topbar {
+    background: hsl(0 0% 100% / 0.78);
+    backdrop-filter: blur(20px) saturate(200%);
+    -webkit-backdrop-filter: blur(20px) saturate(200%);
+    border-bottom: 1px solid hsl(var(--glass-border));
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  }
+
+  .glass-sidebar {
+    background: hsl(0 0% 100% / 0.6);
+    backdrop-filter: blur(20px) saturate(190%);
+    -webkit-backdrop-filter: blur(20px) saturate(190%);
   }
 
   .status-recording {
