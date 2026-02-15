@@ -1,27 +1,19 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, FileText, Mic, Edit3, Eye, Copy, Trash2 } from "lucide-react";
+import { Plus, Search, Eye, Trash2, Stethoscope } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { deleteEncounter } from "@/lib/store";
 import { formatDateTimeBR, formatDuration } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { NewEncounterDialog } from "@/components/NewEncounterDialog";
-
-const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  recording: { label: "Gravando", variant: "destructive" },
-  draft: { label: "Rascunho", variant: "secondary" },
-  reviewed: { label: "Revisado", variant: "outline" },
-  final: { label: "Finalizado", variant: "default" },
-};
+import { StatusBadge } from "@/components/StatusBadge";
 
 export default function Consultas() {
   const data = useAppData();
@@ -35,28 +27,20 @@ export default function Consultas() {
 
   const filtered = useMemo(() => {
     let list = [...data.encounters].sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
-
     if (statusFilter !== "all") list = list.filter((e) => e.status === statusFilter);
-
     if (periodFilter !== "all") {
       const now = Date.now();
       const ms = periodFilter === "today" ? 86400000 : periodFilter === "7d" ? 604800000 : 2592000000;
       list = list.filter((e) => now - new Date(e.startedAt).getTime() < ms);
     }
-
     if (search) {
       const q = search.toLowerCase();
       list = list.filter((e) => {
         const pat = data.patients.find((p) => p.id === e.patientId);
         const cli = data.clinicians.find((c) => c.id === e.clinicianId);
-        return (
-          pat?.name.toLowerCase().includes(q) ||
-          cli?.name.toLowerCase().includes(q) ||
-          e.chiefComplaint?.toLowerCase().includes(q)
-        );
+        return pat?.name.toLowerCase().includes(q) || cli?.name.toLowerCase().includes(q) || e.chiefComplaint?.toLowerCase().includes(q);
       });
     }
-
     return list;
   }, [data, search, statusFilter, periodFilter]);
 
@@ -75,10 +59,12 @@ export default function Consultas() {
   if (data.encounters.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
-        <Stethoscope className="h-16 w-16 text-muted-foreground mb-4" />
+        <div className="rounded-full bg-muted p-6 mb-6">
+          <Stethoscope className="h-12 w-12 text-muted-foreground" />
+        </div>
         <h2 className="text-xl font-semibold mb-2">Nenhuma consulta ainda</h2>
-        <p className="text-muted-foreground mb-6">Comece registrando sua primeira consulta.</p>
-        <Button onClick={() => setShowNew(true)}>
+        <p className="text-muted-foreground mb-6 max-w-sm">Comece registrando sua primeira consulta para gerar prontuários automaticamente.</p>
+        <Button onClick={() => setShowNew(true)} size="lg">
           <Plus className="mr-2 h-4 w-4" /> Iniciar primeira consulta
         </Button>
         <NewEncounterDialog open={showNew} onOpenChange={setShowNew} />
@@ -95,44 +81,31 @@ export default function Consultas() {
         </Button>
       </div>
 
-      {/* Pending queue */}
+      {/* KPI cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Prontuários para revisar</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{toReview.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Sem prontuário</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{noNote.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Rascunhos recentes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{drafts.length}</p>
-          </CardContent>
-        </Card>
+        {[
+          { label: "Para revisar", value: toReview.length, accent: "text-primary" },
+          { label: "Sem prontuário", value: noNote.length, accent: "text-warning" },
+          { label: "Rascunhos", value: drafts.length, accent: "text-muted-foreground" },
+        ].map((kpi, i) => (
+          <motion.div key={kpi.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
+            <Card className="glass-card">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{kpi.label}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className={`text-3xl font-bold ${kpi.accent}`}>{kpi.value}</p>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
 
       {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar paciente, médico..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+          <Input placeholder="Buscar paciente, médico..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={periodFilter} onValueChange={setPeriodFilter}>
           <SelectTrigger className="w-[140px]"><SelectValue placeholder="Período" /></SelectTrigger>
@@ -156,7 +129,7 @@ export default function Consultas() {
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -173,7 +146,6 @@ export default function Consultas() {
               {filtered.map((enc) => {
                 const pat = data.patients.find((p) => p.id === enc.patientId);
                 const cli = data.clinicians.find((c) => c.id === enc.clinicianId);
-                const st = statusConfig[enc.status];
                 return (
                   <motion.tr
                     key={enc.id}
@@ -181,16 +153,16 @@ export default function Consultas() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="border-b transition-colors hover:bg-muted/50 cursor-pointer"
+                    className="border-b transition-colors hover:bg-muted/60 cursor-pointer group"
                     onClick={() => navigate(`/consultas/${enc.id}`)}
                   >
                     <TableCell className="font-medium">{formatDateTimeBR(enc.startedAt)}</TableCell>
                     <TableCell>{pat?.name ?? "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">{cli?.name ?? "—"}</TableCell>
                     <TableCell className="hidden sm:table-cell">{formatDuration(enc.durationSec)}</TableCell>
-                    <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
+                    <TableCell><StatusBadge status={enc.status} /></TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                         <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); navigate(`/consultas/${enc.id}`); }}>
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -231,6 +203,3 @@ export default function Consultas() {
     </div>
   );
 }
-
-// Import for empty state
-import { Stethoscope } from "lucide-react";

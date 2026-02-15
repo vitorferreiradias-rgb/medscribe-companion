@@ -49,6 +49,9 @@
     --sidebar-accent-foreground: 210 20% 92%;
     --sidebar-border: 220 13% 16%;
     --sidebar-ring: 199 89% 48%;
+
+    --glass: 220 18% 13% / 0.6;
+    --glass-border: 220 13% 24%;
   }
 }
 
@@ -65,4 +68,32 @@
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-md border-border/50;
+  }
+
+  .status-recording {
+    @apply bg-destructive/15 text-destructive border-destructive/30;
+    animation: pulse-status 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .status-draft {
+    @apply bg-warning/15 text-warning border-warning/30;
+  }
+
+  .status-reviewed {
+    @apply bg-primary/15 text-primary border-primary/30;
+  }
+
+  .status-final {
+    @apply bg-success/15 text-success border-success/30;
+  }
+}
+
+@keyframes pulse-status {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }

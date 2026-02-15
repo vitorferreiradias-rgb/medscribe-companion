@@ -37,7 +37,7 @@ export default function Perfil() {
     <div className="space-y-6 max-w-2xl">
       <h1 className="text-2xl font-semibold">Meu Perfil</h1>
 
-      <Card>
+      <Card className="glass-card">
         <CardHeader><CardTitle className="text-base">Informações da Conta</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div className="flex justify-between"><span className="text-muted-foreground">Nome</span><span>Dr. Ricardo Mendes</span></div>
@@ -47,7 +47,7 @@ export default function Perfil() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="glass-card">
         <CardHeader><CardTitle className="text-base">Preferências</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
@@ -69,7 +69,7 @@ export default function Perfil() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="glass-card">
         <CardHeader><CardTitle className="text-base">Dados</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <Button variant="secondary" onClick={handleResetSeed} className="w-full">
@@ -78,7 +78,7 @@ export default function Perfil() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="glass-card">
         <CardHeader><CardTitle className="text-base">Sessão</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {loggedOut ? (
