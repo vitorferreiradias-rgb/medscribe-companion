@@ -1,4 +1,4 @@
-import { AppData } from "@/types";
+import { AppData, ScheduleEvent } from "@/types";
 import { parseTranscriptToSections } from "./parser";
 import { SOAP_TEMPLATE_ID } from "./soap-template";
 
@@ -13,7 +13,15 @@ function endTime(start: string, durationSec: number): string {
   return new Date(new Date(start).getTime() + durationSec * 1000).toISOString();
 }
 
+function todayStr(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
+function futureDate(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 const mockTranscript1 = [
   { speaker: "medico" as const, text: "Bom dia, qual a sua queixa principal hoje?", tsSec: 0 },
@@ -91,12 +99,33 @@ export function createSeedData(): AppData {
     },
   ];
 
+  const today = todayStr();
+  const tomorrow = futureDate(1);
+  const dayAfter = futureDate(2);
+
+  const scheduleEvents: ScheduleEvent[] = [
+    { id: "sch_1", date: today, startTime: "08:00", endTime: "08:30", patientId: "pat_1", clinicianId: "cli_1", type: "retorno", status: "scheduled", notes: "Retorno cefaleia" },
+    { id: "sch_2", date: today, startTime: "08:30", endTime: "09:00", patientId: "pat_3", clinicianId: "cli_1", type: "primeira", status: "scheduled" },
+    { id: "sch_3", date: today, startTime: "09:00", endTime: "09:30", patientId: "pat_5", clinicianId: "cli_1", type: "retorno", status: "done", encounterId: "enc_5", notes: "Controle PA" },
+    { id: "sch_4", date: today, startTime: "09:30", endTime: "10:00", patientId: "pat_2", clinicianId: "cli_1", type: "retorno", status: "scheduled" },
+    { id: "sch_5", date: today, startTime: "10:00", endTime: "10:30", patientId: "pat_6", clinicianId: "cli_1", type: "primeira", status: "scheduled" },
+    { id: "sch_6", date: today, startTime: "11:00", endTime: "11:30", patientId: "pat_4", clinicianId: "cli_1", type: "procedimento", status: "scheduled", notes: "Pequeno procedimento" },
+    { id: "sch_7", date: today, startTime: "14:00", endTime: "14:30", patientId: "pat_7", clinicianId: "cli_1", type: "retorno", status: "scheduled" },
+    { id: "sch_8", date: today, startTime: "15:00", endTime: "15:30", patientId: "pat_8", clinicianId: "cli_1", type: "primeira", status: "scheduled" },
+    // Tomorrow
+    { id: "sch_9", date: tomorrow, startTime: "08:00", endTime: "08:30", patientId: "pat_2", clinicianId: "cli_1", type: "retorno", status: "scheduled" },
+    { id: "sch_10", date: tomorrow, startTime: "09:00", endTime: "09:30", patientId: "pat_4", clinicianId: "cli_1", type: "primeira", status: "scheduled" },
+    // Day after
+    { id: "sch_11", date: dayAfter, startTime: "10:00", endTime: "10:30", patientId: "pat_1", clinicianId: "cli_1", type: "retorno", status: "scheduled" },
+  ];
+
   return {
     clinicians,
     patients,
     encounters,
     transcripts,
     notes,
+    scheduleEvents,
     settings: {
       persistLocal: true,
       showSimulatedBanner: true,

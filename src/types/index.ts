@@ -72,6 +72,22 @@ export interface NoteTemplate {
   sections: NoteTemplateSection[];
 }
 
+export type ScheduleStatus = "scheduled" | "in_progress" | "done" | "no_show" | "rescheduled";
+export type ScheduleType = "primeira" | "retorno" | "procedimento";
+
+export interface ScheduleEvent {
+  id: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  endTime?: string; // HH:MM
+  patientId: string;
+  clinicianId: string;
+  type: ScheduleType;
+  status: ScheduleStatus;
+  notes?: string;
+  encounterId?: string;
+}
+
 export interface AppSettings {
   persistLocal: boolean;
   showSimulatedBanner: boolean;
@@ -84,5 +100,6 @@ export interface AppData {
   encounters: Encounter[];
   transcripts: Transcript[];
   notes: Note[];
+  scheduleEvents: ScheduleEvent[];
   settings: AppSettings;
 }

@@ -91,6 +91,26 @@
   .status-final {
     @apply bg-success/15 text-success border-success/30;
   }
+
+  .status-scheduled {
+    @apply bg-secondary text-secondary-foreground;
+  }
+
+  .status-in_progress {
+    @apply bg-primary/15 text-primary border-primary/30;
+  }
+
+  .status-done {
+    @apply bg-success/15 text-success border-success/30;
+  }
+
+  .status-no_show {
+    @apply bg-destructive/15 text-destructive border-destructive/30;
+  }
+
+  .status-rescheduled {
+    @apply bg-warning/15 text-warning border-warning/30;
+  }
 }
 
 @keyframes pulse-status {

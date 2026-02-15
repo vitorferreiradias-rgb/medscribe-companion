@@ -1,4 +1,4 @@
-import { Stethoscope, Users, User } from "lucide-react";
+import { CalendarDays, Stethoscope, Users, User } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const mainItems = [
+  { title: "Agenda", url: "/agenda", icon: CalendarDays },
   { title: "Consultas", url: "/consultas", icon: Stethoscope },
   { title: "Pacientes", url: "/pacientes", icon: Users },
 ];
