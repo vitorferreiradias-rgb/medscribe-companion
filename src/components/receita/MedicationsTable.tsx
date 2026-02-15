@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export interface Medication {
   id: string;
@@ -19,6 +19,7 @@ export interface Medication {
   presentation: string;
   isCompounded: boolean;
   compoundedFormula: string;
+  usageInstructions: string;
 }
 
 interface MedicationsTableProps {
@@ -26,38 +27,85 @@ interface MedicationsTableProps {
   onChange: (medications: Medication[]) => void;
 }
 
-const EMPTY_MED: Omit<Medication, "id"> = {
+type MedType = "industrial" | "compounded";
+
+const EMPTY_INDUSTRIAL = {
   commercialName: "",
   activeCompound: "",
   concentration: "",
   presentation: "",
-  isCompounded: false,
+  usageInstructions: "",
+};
+
+const EMPTY_COMPOUNDED = {
   compoundedFormula: "",
+  usageInstructions: "",
 };
 
 export function MedicationsTable({ medications, onChange }: MedicationsTableProps) {
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newMed, setNewMed] = useState<Omit<Medication, "id">>(EMPTY_MED);
+  const [medType, setMedType] = useState<MedType>("industrial");
+  const [industrial, setIndustrial] = useState(EMPTY_INDUSTRIAL);
+  const [compounded, setCompounded] = useState(EMPTY_COMPOUNDED);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const filtered = medications.filter(
     (m) =>
       !search ||
       m.commercialName.toLowerCase().includes(search.toLowerCase()) ||
-      m.activeCompound.toLowerCase().includes(search.toLowerCase())
+      m.activeCompound.toLowerCase().includes(search.toLowerCase()) ||
+      m.compoundedFormula.toLowerCase().includes(search.toLowerCase())
   );
 
+  const resetModal = () => {
+    setMedType("industrial");
+    setIndustrial(EMPTY_INDUSTRIAL);
+    setCompounded(EMPTY_COMPOUNDED);
+  };
+
+  const openModal = () => {
+    resetModal();
+    setShowAddModal(true);
+  };
+
   const addMedication = () => {
-    const med: Medication = { ...newMed, id: crypto.randomUUID() };
+    const med: Medication =
+      medType === "industrial"
+        ? {
+            id: crypto.randomUUID(),
+            commercialName: industrial.commercialName,
+            activeCompound: industrial.activeCompound,
+            concentration: industrial.concentration,
+            presentation: industrial.presentation,
+            isCompounded: false,
+            compoundedFormula: "",
+            usageInstructions: industrial.usageInstructions,
+          }
+        : {
+            id: crypto.randomUUID(),
+            commercialName: "",
+            activeCompound: "",
+            concentration: "",
+            presentation: "",
+            isCompounded: true,
+            compoundedFormula: compounded.compoundedFormula,
+            usageInstructions: compounded.usageInstructions,
+          };
     onChange([...medications, med]);
-    setNewMed(EMPTY_MED);
     setShowAddModal(false);
   };
+
+  const canAdd =
+    medType === "industrial"
+      ? !!industrial.commercialName.trim()
+      : !!compounded.compoundedFormula.trim();
 
   const removeMedication = (id: string) => {
     onChange(medications.filter((m) => m.id !== id));
   };
+
+  const selectedMed = selectedId ? medications.find((m) => m.id === selectedId) : null;
 
   return (
     <>
@@ -72,7 +120,7 @@ export function MedicationsTable({ medications, onChange }: MedicationsTableProp
                 <Badge variant="secondary" className="text-[10px] h-5">{medications.length}</Badge>
               )}
             </div>
-            <Button size="sm" variant="outline" onClick={() => setShowAddModal(true)} className="h-7 text-xs">
+            <Button size="sm" variant="outline" onClick={openModal} className="h-7 text-xs">
               <Plus className="mr-1 h-3 w-3" /> Adicionar
             </Button>
           </div>
@@ -119,8 +167,10 @@ export function MedicationsTable({ medications, onChange }: MedicationsTableProp
                     >
                       <td className="px-4 py-2.5">
                         <div>
-                          <p className="font-medium text-foreground text-xs">{med.commercialName || "—"}</p>
-                          {med.activeCompound && (
+                          <p className="font-medium text-foreground text-xs">
+                            {med.isCompounded ? med.compoundedFormula.slice(0, 50) : med.commercialName || "—"}
+                          </p>
+                          {!med.isCompounded && med.activeCompound && (
                             <p className="text-[11px] text-muted-foreground">{med.activeCompound}</p>
                           )}
                         </div>
@@ -165,20 +215,30 @@ export function MedicationsTable({ medications, onChange }: MedicationsTableProp
             </div>
           )}
 
-          {/* Compounded formula detail */}
+          {/* Expanded detail panel */}
           <AnimatePresence>
-            {selectedId && medications.find((m) => m.id === selectedId)?.isCompounded && (
+            {selectedMed && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 className="overflow-hidden border-t border-border/20"
               >
-                <div className="px-4 py-3 bg-accent/5">
-                  <p className="text-[10px] font-medium text-accent uppercase tracking-wider mb-1.5">Fórmula Manipulada</p>
-                  <p className="text-xs text-foreground whitespace-pre-wrap">
-                    {medications.find((m) => m.id === selectedId)?.compoundedFormula || "Sem fórmula cadastrada"}
-                  </p>
+                <div className="px-4 py-3 bg-muted/10 space-y-2">
+                  {selectedMed.isCompounded && (
+                    <div>
+                      <p className="text-[10px] font-medium text-accent uppercase tracking-wider mb-1">Fórmula Manipulada</p>
+                      <p className="text-xs text-foreground whitespace-pre-wrap">
+                        {selectedMed.compoundedFormula || "Sem fórmula cadastrada"}
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-[10px] font-medium text-primary uppercase tracking-wider mb-1">Fórmula de Uso</p>
+                    <p className="text-xs text-foreground whitespace-pre-wrap">
+                      {selectedMed.usageInstructions || "Sem posologia cadastrada"}
+                    </p>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -194,80 +254,95 @@ export function MedicationsTable({ medications, onChange }: MedicationsTableProp
               <Plus className="h-4 w-4 text-primary" /> Adicionar Medicamento
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Nome comercial</Label>
-              <Input
-                placeholder="Ex: Amoxicilina"
-                value={newMed.commercialName}
-                onChange={(e) => setNewMed({ ...newMed, commercialName: e.target.value })}
-                className="text-sm"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Composto ativo</Label>
-              <Input
-                placeholder="Ex: Amoxicilina tri-hidratada"
-                value={newMed.activeCompound}
-                onChange={(e) => setNewMed({ ...newMed, activeCompound: e.target.value })}
-                className="text-sm"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+
+          <Tabs value={medType} onValueChange={(v) => setMedType(v as MedType)} className="w-full">
+            <TabsList className="w-full grid grid-cols-2">
+              <TabsTrigger value="industrial" className="gap-1.5 text-xs">
+                <Pill className="h-3.5 w-3.5" /> Medicamento
+              </TabsTrigger>
+              <TabsTrigger value="compounded" className="gap-1.5 text-xs">
+                <FlaskConical className="h-3.5 w-3.5" /> Fórmula Manipulada
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="industrial" className="space-y-3 pt-1">
               <div className="space-y-1.5">
-                <Label className="text-xs">Concentração</Label>
+                <Label className="text-xs">Nome comercial <span className="text-destructive">*</span></Label>
                 <Input
-                  placeholder="Ex: 500mg"
-                  value={newMed.concentration}
-                  onChange={(e) => setNewMed({ ...newMed, concentration: e.target.value })}
+                  placeholder="Ex: Amoxicilina"
+                  value={industrial.commercialName}
+                  onChange={(e) => setIndustrial({ ...industrial, commercialName: e.target.value })}
                   className="text-sm"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Apresentação</Label>
+                <Label className="text-xs">Composto ativo</Label>
                 <Input
-                  placeholder="Ex: Comprimido"
-                  value={newMed.presentation}
-                  onChange={(e) => setNewMed({ ...newMed, presentation: e.target.value })}
+                  placeholder="Ex: Amoxicilina tri-hidratada"
+                  value={industrial.activeCompound}
+                  onChange={(e) => setIndustrial({ ...industrial, activeCompound: e.target.value })}
                   className="text-sm"
                 />
               </div>
-            </div>
-            <div className="flex items-center gap-2 pt-1">
-              <Checkbox
-                id="compounded"
-                checked={newMed.isCompounded}
-                onCheckedChange={(v) => setNewMed({ ...newMed, isCompounded: !!v })}
-              />
-              <label htmlFor="compounded" className="text-xs font-medium flex items-center gap-1.5 cursor-pointer">
-                <FlaskConical className="h-3 w-3 text-accent" /> Fórmula manipulada
-              </label>
-            </div>
-            <AnimatePresence>
-              {newMed.isCompounded && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Fórmula</Label>
-                    <Textarea
-                      placeholder="Descreva a fórmula manipulada..."
-                      value={newMed.compoundedFormula}
-                      onChange={(e) => setNewMed({ ...newMed, compoundedFormula: e.target.value })}
-                      rows={3}
-                      className="text-sm resize-none"
-                    />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Concentração</Label>
+                  <Input
+                    placeholder="Ex: 500mg"
+                    value={industrial.concentration}
+                    onChange={(e) => setIndustrial({ ...industrial, concentration: e.target.value })}
+                    className="text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Apresentação</Label>
+                  <Input
+                    placeholder="Ex: Comprimido"
+                    value={industrial.presentation}
+                    onChange={(e) => setIndustrial({ ...industrial, presentation: e.target.value })}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Fórmula de uso (posologia)</Label>
+                <Textarea
+                  placeholder="Ex: Tomar 1 comprimido de 8/8h por 7 dias"
+                  value={industrial.usageInstructions}
+                  onChange={(e) => setIndustrial({ ...industrial, usageInstructions: e.target.value })}
+                  rows={2}
+                  className="text-sm resize-none"
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="compounded" className="space-y-3 pt-1">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Descrição / Nome da fórmula <span className="text-destructive">*</span></Label>
+                <Textarea
+                  placeholder="Descreva a fórmula manipulada..."
+                  value={compounded.compoundedFormula}
+                  onChange={(e) => setCompounded({ ...compounded, compoundedFormula: e.target.value })}
+                  rows={3}
+                  className="text-sm resize-none"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Fórmula de uso (posologia)</Label>
+                <Textarea
+                  placeholder="Ex: Aplicar 2x ao dia na região afetada por 14 dias"
+                  value={compounded.usageInstructions}
+                  onChange={(e) => setCompounded({ ...compounded, usageInstructions: e.target.value })}
+                  rows={2}
+                  className="text-sm resize-none"
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
+
           <DialogFooter>
             <Button variant="ghost" size="sm" onClick={() => setShowAddModal(false)}>Cancelar</Button>
-            <Button size="sm" onClick={addMedication} disabled={!newMed.commercialName && !newMed.activeCompound}>
+            <Button size="sm" onClick={addMedication} disabled={!canAdd}>
               <Plus className="mr-1 h-3 w-3" /> Adicionar
             </Button>
           </DialogFooter>
