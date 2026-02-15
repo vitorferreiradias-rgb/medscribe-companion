@@ -1,57 +1,43 @@
 
+# Refatoracao do Modal de Medicamentos
 
-# Passo 4: Refinamento das Paginas Secundarias + NewEncounterDialog
+## Problema atual
+O modal de adicionar medicamento mistura os dois tipos (industrial e manipulado) num unico formulario com checkbox. O usuario precisa preencher "Nome comercial" mesmo para formula manipulada, e nao ha campo de "Formula de uso" (posologia) para medicamentos industriais.
 
-Ultimo bloco de trabalho do redesign. Aplica o visual "Liquid Glass" e as proporcoes do prompt nas paginas restantes.
+## Mudancas
 
----
+### 1. Modal com duas abas separadas (Tabs)
+No topo do modal, dois botoes/tabs:
+- **Medicamento** (icone Pill) — para medicamentos industriais pre-cadastrados
+- **Formula Manipulada** (icone FlaskConical) — para formulas manipuladas
 
-## 4.1 — Lista de Consultas (`src/pages/Consultas.tsx`)
+### 2. Aba "Medicamento" (industrial)
+Campos:
+- Nome comercial (obrigatorio)
+- Composto ativo
+- Concentracao
+- Apresentacao
+- **Formula de uso** (novo campo Textarea) — ex: "Tomar 1 comprimido de 8/8h por 7 dias"
 
-- KPI cards no topo com `.glass-card`, icones e indicadores de tendencia
-- Tabela/lista com hover states visiveis (elevacao suave, borda accent)
-- Filtros em linha com dropdowns glass
-- Botao "+Nova Consulta" com destaque primario
+### 3. Aba "Formula Manipulada"
+Campos (sem nome comercial):
+- Descricao/nome da formula (campo de texto livre, obrigatorio)
+- **Formula de uso** (Textarea) — posologia/instrucoes de uso
 
-## 4.2 — Pacientes (`src/pages/Pacientes.tsx`)
+### 4. Interface Medication atualizada
+Adicionar campo `usageInstructions: string` ao tipo `Medication`. A tabela exibe a formula de uso ao clicar na linha (expand), junto com a formula manipulada quando aplicavel.
 
-- Mesma abordagem de tabela glass com hover refinado
-- Acoes por linha expandidas: editar, excluir, historico, agendar consulta, iniciar consulta
-- Busca e filtros com visual glass consistente
-
-## 4.3 — Perfil (`src/pages/Perfil.tsx`)
-
-- Cards glass com espacamento 16-24px
-- Formularios mais polidos com labels e inputs refinados
-- Secoes visuais separadas por glass-cards
-
-## 4.4 — NewEncounterDialog (`src/components/NewEncounterDialog.tsx`)
-
-- Step indicator com barra de progresso glass (backdrop-blur)
-- Timer SVG circular com cores mais suaves (primary ao inves de destructive puro)
-- Bolhas de transcricao com radius 16px e sombra micro
-- Skeleton de geracao mais elaborado (pulso suave, mais linhas)
-- Transicoes entre passos com framer-motion (slide/fade 250ms)
-
-## 4.5 — Microinteracoes globais
-
-- Hover 150ms ease-out em todos os botoes interativos
-- Transicoes de pagina 250ms ease-in-out onde aplicavel
+### 5. Tabela — coluna "Formula de uso"
+Ao selecionar uma linha, exibir a formula de uso no painel expandido (mesmo local onde hoje aparece a formula manipulada), para ambos os tipos.
 
 ---
 
-## Arquivos a editar
+## Detalhes tecnicos
 
-| Arquivo | Escopo |
-|---------|--------|
-| `src/pages/Consultas.tsx` | KPIs glass, tabela refinada, filtros |
-| `src/pages/Pacientes.tsx` | Tabela glass, acoes extras por linha |
-| `src/pages/Perfil.tsx` | Cards glass, formulario polido |
-| `src/components/NewEncounterDialog.tsx` | Progress glass, timer suave, bolhas 16px |
+**Arquivo:** `src/components/receita/MedicationsTable.tsx`
 
----
-
-## Complexidade
-
-Media — sao refinamentos visuais sobre componentes ja existentes, sem mudanca de modelo de dados.
-
+- Adicionar `usageInstructions: string` na interface `Medication`
+- Substituir o checkbox `isCompounded` por um state `medType: "industrial" | "compounded"` no modal
+- Renderizar campos condicionalmente conforme a aba selecionada
+- Validacao: industrial exige `commercialName`, manipulado exige `compoundedFormula`
+- Painel expandido mostra `usageInstructions` para ambos os tipos e `compoundedFormula` so para manipulados
