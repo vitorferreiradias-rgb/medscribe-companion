@@ -319,20 +319,12 @@ export function MedicationsTable({ medications, onChange }: MedicationsTableProp
 
             <TabsContent value="compounded" className="pt-1">
               <div className="space-y-1.5 mb-2">
-                <Label className="text-xs">Descrição da fórmula <span className="text-destructive">*</span></Label>
+                <Label className="text-xs">Descrição da fórmula / Modo de uso <span className="text-destructive">*</span></Label>
               </div>
               <PrescriptionEditor
                 value={compounded.compoundedFormula}
                 onChange={(v) => setCompounded({ ...compounded, compoundedFormula: v })}
-                placeholder="Descreva a fórmula manipulada..."
-              />
-              <div className="space-y-1.5 mt-3 mb-2">
-                <Label className="text-xs">Fórmula de uso (posologia)</Label>
-              </div>
-              <PrescriptionEditor
-                value={compounded.usageInstructions}
-                onChange={(v) => setCompounded({ ...compounded, usageInstructions: v })}
-                placeholder="Ex: Aplicar 2x ao dia na região afetada por 14 dias"
+                placeholder="Descreva a fórmula manipulada e o modo de uso..."
               />
             </TabsContent>
           </Tabs>
