@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Eye, Trash2, Stethoscope } from "lucide-react";
+import { Plus, Search, Eye, Trash2, Stethoscope, ClipboardList, FileWarning, FilePen, TrendingUp } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { deleteEncounter } from "@/lib/store";
 import { formatDateTimeBR, formatDuration } from "@/lib/format";
@@ -56,6 +56,12 @@ export default function Consultas() {
     }
   };
 
+  const kpis = [
+    { label: "Para revisar", value: toReview.length, icon: ClipboardList, accent: "text-primary" },
+    { label: "Sem prontuário", value: noNote.length, icon: FileWarning, accent: "text-warning" },
+    { label: "Rascunhos", value: drafts.length, icon: FilePen, accent: "text-muted-foreground" },
+  ];
+
   if (data.encounters.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -81,34 +87,36 @@ export default function Consultas() {
         </Button>
       </div>
 
-      {/* KPI cards */}
+      {/* KPI cards — glass */}
       <div className="grid gap-4 sm:grid-cols-3">
-        {[
-          { label: "Para revisar", value: toReview.length, accent: "text-primary" },
-          { label: "Sem prontuário", value: noNote.length, accent: "text-warning" },
-          { label: "Rascunhos", value: drafts.length, accent: "text-muted-foreground" },
-        ].map((kpi, i) => (
+        {kpis.map((kpi, i) => (
           <motion.div key={kpi.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}>
-            <Card className="glass-card">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{kpi.label}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className={`text-3xl font-bold ${kpi.accent}`}>{kpi.value}</p>
+            <Card className="glass-card rounded-xl">
+              <CardContent className="flex items-center gap-4 p-5">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted/60 ${kpi.accent}`}>
+                  <kpi.icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-muted-foreground">{kpi.label}</p>
+                  <div className="flex items-baseline gap-2">
+                    <p className={`text-2xl font-bold ${kpi.accent}`}>{kpi.value}</p>
+                    <TrendingUp className="h-3 w-3 text-muted-foreground/50" />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      {/* Filters — glass surface */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center glass-surface rounded-xl p-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar paciente, médico..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Buscar paciente, médico..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 border-none bg-background/50" />
         </div>
         <Select value={periodFilter} onValueChange={setPeriodFilter}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Período" /></SelectTrigger>
+          <SelectTrigger className="w-[140px] border-none bg-background/50"><SelectValue placeholder="Período" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Total</SelectItem>
             <SelectItem value="today">Hoje</SelectItem>
@@ -117,7 +125,7 @@ export default function Consultas() {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-[140px] border-none bg-background/50"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="recording">Gravando</SelectItem>
@@ -128,11 +136,11 @@ export default function Consultas() {
         </Select>
       </div>
 
-      {/* Table */}
-      <div className="rounded-lg border overflow-hidden">
+      {/* Table — glass */}
+      <div className="glass-card rounded-xl overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="border-b border-border/50 hover:bg-transparent">
               <TableHead>Data/Hora</TableHead>
               <TableHead>Paciente</TableHead>
               <TableHead className="hidden md:table-cell">Médico</TableHead>
@@ -153,7 +161,7 @@ export default function Consultas() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="border-b transition-colors hover:bg-muted/60 cursor-pointer group"
+                    className="border-b border-border/40 transition-all duration-150 ease-out hover:bg-primary/[0.03] hover:shadow-[inset_3px_0_0_hsl(var(--primary))] cursor-pointer group"
                     onClick={() => navigate(`/consultas/${enc.id}`)}
                   >
                     <TableCell className="font-medium">{formatDateTimeBR(enc.startedAt)}</TableCell>
@@ -162,11 +170,11 @@ export default function Consultas() {
                     <TableCell className="hidden sm:table-cell">{formatDuration(enc.durationSec)}</TableCell>
                     <TableCell><StatusBadge status={enc.status} /></TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); navigate(`/consultas/${enc.id}`); }}>
+                      <div className="flex items-center justify-end gap-1 opacity-50 group-hover:opacity-100 transition-opacity duration-150">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); navigate(`/consultas/${enc.id}`); }}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setDeleteId(enc.id); }}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setDeleteId(enc.id); }}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>

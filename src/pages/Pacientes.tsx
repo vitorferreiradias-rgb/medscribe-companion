@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, Users, Trash2, Edit3, Eye } from "lucide-react";
+import { Plus, Search, Users, Trash2, Edit3, Stethoscope, CalendarPlus, History } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { addPatient, updatePatient, deletePatient } from "@/lib/store";
 import { formatDateBR } from "@/lib/format";
@@ -11,11 +12,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { Patient } from "@/types";
 
 export default function Pacientes() {
   const data = useAppData();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -81,6 +84,8 @@ export default function Pacientes() {
     return encs[0];
   };
 
+  const getEncounterCount = (patId: string) => data.encounters.filter((e) => e.patientId === patId).length;
+
   if (data.patients.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -99,18 +104,23 @@ export default function Pacientes() {
         <Button onClick={openNew}><Plus className="mr-2 h-4 w-4" /> Novo paciente</Button>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Buscar por nome ou telefone..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+      {/* Search — glass surface */}
+      <div className="glass-surface rounded-xl p-3">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Buscar por nome ou telefone..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 border-none bg-background/50" />
+        </div>
       </div>
 
-      <div className="rounded-lg border">
+      {/* Table — glass */}
+      <div className="glass-card rounded-xl overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="border-b border-border/50 hover:bg-transparent">
               <TableHead>Nome</TableHead>
               <TableHead className="hidden sm:table-cell">Nascimento</TableHead>
               <TableHead className="hidden md:table-cell">Contato</TableHead>
+              <TableHead className="hidden lg:table-cell">Consultas</TableHead>
               <TableHead className="hidden lg:table-cell">Última consulta</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
@@ -119,6 +129,7 @@ export default function Pacientes() {
             <AnimatePresence>
               {filtered.map((p) => {
                 const lastEnc = getLastEncounter(p.id);
+                const encCount = getEncounterCount(p.id);
                 return (
                   <motion.tr
                     key={p.id}
@@ -126,17 +137,47 @@ export default function Pacientes() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="border-b transition-colors hover:bg-muted/60 group"
+                    className="border-b border-border/40 transition-all duration-150 ease-out hover:bg-primary/[0.03] hover:shadow-[inset_3px_0_0_hsl(var(--primary))] group"
                   >
-                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
+                          {p.name.charAt(0)}
+                        </div>
+                        {p.name}
+                      </div>
+                    </TableCell>
                     <TableCell className="hidden sm:table-cell">{p.birthDate ? formatDateBR(p.birthDate) : "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">{p.phone ?? "—"}</TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{encCount}</span>
+                    </TableCell>
                     <TableCell className="hidden lg:table-cell">{lastEnc ? formatDateBR(lastEnc.startedAt) : "—"}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(p)}><Edit3 className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => setDeleteId(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                      </div>
+                      <TooltipProvider delayDuration={300}>
+                        <div className="flex items-center justify-end gap-0.5 opacity-50 group-hover:opacity-100 transition-opacity duration-150">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Edit3 className="h-4 w-4" /></Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Editar</TooltipContent>
+                          </Tooltip>
+                          {lastEnc && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/consultas/${lastEnc.id}`)}><History className="h-4 w-4" /></Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Histórico</TooltipContent>
+                            </Tooltip>
+                          )}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDeleteId(p.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Excluir</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TooltipProvider>
                     </TableCell>
                   </motion.tr>
                 );
@@ -144,7 +185,7 @@ export default function Pacientes() {
             </AnimatePresence>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum paciente encontrado.</TableCell>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum paciente encontrado.</TableCell>
               </TableRow>
             )}
           </TableBody>
