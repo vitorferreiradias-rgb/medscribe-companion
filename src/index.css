@@ -6,61 +6,102 @@
 
 @layer base {
   :root {
-    /* Liquid Glass — Light Mode (refined) */
-    --background: 220 20% 97%;
-    --foreground: 225 50% 9%;
+    /* ─── 1. Neutros (base do vidro) ─── */
+    --background: 218 24% 97%;          /* #F5F7FA — BG 0 */
+    --background-gradient: 216 30% 95%; /* #EEF3F9 — BG 1 */
+    --foreground: 222 60% 8%;           /* #0B1220 — Neutral 900 */
 
     --card: 0 0% 100% / 0.72;
-    --card-foreground: 225 50% 9%;
+    --card-foreground: 222 60% 8%;
 
     --popover: 0 0% 100% / 0.88;
-    --popover-foreground: 225 50% 9%;
+    --popover-foreground: 222 60% 8%;
 
-    --primary: 215 84% 53%;
+    /* Neutral scale */
+    --neutral-50: 210 40% 98%;   /* #F8FAFC */
+    --neutral-100: 214 32% 96%;  /* #F1F5F9 */
+    --neutral-200: 213 27% 90%;  /* #E2E8F0 */
+    --neutral-300: 213 18% 79%;  /* #CBD5E1 */
+    --neutral-400: 215 16% 65%;  /* #94A3B8 */
+    --neutral-500: 215 14% 46%;  /* #64748B */
+    --neutral-600: 215 19% 35%;  /* #475569 */
+    --neutral-700: 217 24% 27%;  /* #334155 */
+    --neutral-800: 217 33% 17%;  /* #1E293B */
+    --neutral-900: 222 60% 8%;   /* #0B1220 */
+
+    /* ─── 2. Texto ─── */
+    --text-primary: 222 60% 8%;       /* #0B1220 */
+    --text-secondary: 215 23% 34%;    /* #42526B */
+    --text-muted: 213 14% 49%;        /* #6B7C93 */
+    --text-chip: 221 39% 11%;         /* #111827 */
+
+    /* ─── 3. Primário ─── */
+    --primary: 215 84% 53%;           /* #1F6FEB — Primary 600 */
     --primary-foreground: 0 0% 100%;
-    --primary-dark: 224 72% 43%;
+    --primary-hover: 218 78% 46%;     /* #1A5FD0 — Primary 700 */
+    --primary-link: 215 86% 55%;      /* #2A7AF0 — Primary 500 */
+    /* primary subtle: rgba(31,111,235,0.10) */
+    /* focus ring: rgba(31,111,235,0.18) */
 
-    --secondary: 220 14% 94%;
-    --secondary-foreground: 220 25% 30%;
-
-    --muted: 220 14% 94%;
-    --muted-foreground: 215 14% 46%;
-
-    --accent: 168 80% 42%;
+    /* ─── 4. Acentos ─── */
+    /* Teal */
+    --accent: 174 78% 26%;            /* #0F766E — Teal 600 */
     --accent-foreground: 0 0% 100%;
+    --accent-light: 170 66% 40%;      /* #14B8A6 — Teal 500 */
+    /* teal subtle: rgba(20,184,166,0.10) */
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
+    /* Indigo */
+    --indigo: 244 57% 58%;            /* #4F46E5 — Indigo 600 */
+    --indigo-light: 243 75% 67%;      /* #6366F1 — Indigo 500 */
+    /* indigo subtle: rgba(99,102,241,0.10) */
 
-    --border: 220 20% 92%;
-    --input: 220 25% 90%;
-    --ring: 215 84% 53%;
+    /* Slate-blue */
+    --slate-blue: 217 91% 60%;        /* #2563EB */
+    /* slate-blue subtle: rgba(37,99,235,0.10) */
 
-    --radius: 0.75rem;
-
-    --success: 160 64% 40%;
+    /* ─── 5. Estados ─── */
+    --success: 142 72% 39%;           /* #16A34A */
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 38 92% 44%;            /* #D97706 */
     --warning-foreground: 0 0% 5%;
-    --info: 221 83% 53%;
+    --destructive: 0 84% 51%;         /* #DC2626 */
+    --destructive-foreground: 0 0% 98%;
+    --info: 217 91% 60%;              /* #2563EB */
     --info-foreground: 0 0% 100%;
 
+    /* ─── UI tokens ─── */
+    --secondary: 214 32% 96%;         /* Neutral 100 */
+    --secondary-foreground: 217 24% 27%;
+    --muted: 214 32% 96%;
+    --muted-foreground: 213 14% 49%;  /* #6B7C93 */
+
+    --border: 213 27% 90%;            /* Neutral 200 */
+    --input: 213 18% 87%;
+    --ring: 215 84% 53%;
+    --radius: 0.75rem;
+
+    /* ─── Sidebar ─── */
     --sidebar-background: 0 0% 100% / 0.55;
-    --sidebar-foreground: 215 14% 46%;
+    --sidebar-foreground: 213 14% 49%;
     --sidebar-primary: 215 84% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 215 84% 53% / 0.08;
     --sidebar-accent-foreground: 215 84% 53%;
-    --sidebar-border: 220 25% 90% / 0.6;
+    --sidebar-border: 213 27% 90% / 0.6;
     --sidebar-ring: 215 84% 53%;
 
-    /* Liquid Glass tokens */
+    /* ─── Liquid Glass tokens ─── */
     --glass-bg: 0 0% 100% / 0.72;
-    --glass-border: 220 40% 10% / 0.08;
+    --glass-border: 220 40% 10% / 0.10;  /* border sutil */
+    --glass-divider: 220 40% 10% / 0.08; /* divider sutil */
     --glass-shadow: 0 8px 32px rgba(15, 23, 42, 0.06);
     --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.85);
     --glass-blur: 18px;
     --glass-saturate: 180%;
+
+    /* Warm bloom (radial glow para dialogs/cards) */
+    --bloom-warm: rgba(255, 180, 120, 0.18);
+    --bloom-warm-subtle: rgba(255, 200, 150, 0.12);
 
     /* Focus ring Apple-style */
     --focus-ring: 0 0 0 4px rgba(31, 111, 235, 0.18);
@@ -79,7 +120,7 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: linear-gradient(180deg, hsl(220 20% 97%) 0%, hsl(218 25% 95%) 100%);
+    background: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background-gradient)) 100%);
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -134,21 +175,30 @@
     -webkit-backdrop-filter: blur(20px) saturate(190%);
   }
 
+  /* ─── Status badges ─── */
   .status-recording {
-    @apply bg-destructive/10 text-destructive border-destructive/20;
+    @apply border-destructive/20;
+    background: rgba(220, 38, 38, 0.10);
+    color: hsl(var(--destructive));
     animation: pulse-status 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   .status-draft {
-    @apply bg-warning/10 text-warning border-warning/20;
+    background: rgba(217, 119, 6, 0.10);
+    color: hsl(var(--warning));
+    border-color: rgba(217, 119, 6, 0.20);
   }
 
   .status-reviewed {
-    @apply bg-primary/10 text-primary border-primary/20;
+    background: rgba(31, 111, 235, 0.10);
+    color: hsl(var(--primary));
+    border-color: rgba(31, 111, 235, 0.20);
   }
 
   .status-final {
-    @apply bg-success/10 text-success border-success/20;
+    background: rgba(22, 163, 74, 0.10);
+    color: hsl(var(--success));
+    border-color: rgba(22, 163, 74, 0.20);
   }
 
   .status-scheduled {
@@ -156,19 +206,27 @@
   }
 
   .status-in_progress {
-    @apply bg-primary/10 text-primary border-primary/20;
+    background: rgba(31, 111, 235, 0.10);
+    color: hsl(var(--primary));
+    border-color: rgba(31, 111, 235, 0.20);
   }
 
   .status-done {
-    @apply bg-success/10 text-success border-success/20;
+    background: rgba(22, 163, 74, 0.10);
+    color: hsl(var(--success));
+    border-color: rgba(22, 163, 74, 0.20);
   }
 
   .status-no_show {
-    @apply bg-destructive/10 text-destructive border-destructive/20;
+    background: rgba(220, 38, 38, 0.10);
+    color: hsl(var(--destructive));
+    border-color: rgba(220, 38, 38, 0.20);
   }
 
   .status-rescheduled {
-    @apply bg-warning/10 text-warning border-warning/20;
+    background: rgba(217, 119, 6, 0.10);
+    color: hsl(var(--warning));
+    border-color: rgba(217, 119, 6, 0.20);
   }
 }
 
