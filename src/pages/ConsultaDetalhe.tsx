@@ -96,7 +96,7 @@ export default function ConsultaDetalhe() {
       </Card>
 
       {/* Sticky action bar */}
-      <div className="sticky top-12 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-2 bg-background/80 backdrop-blur-md border-b border-border">
+      <div className="sticky top-12 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-2 bg-background/90 backdrop-blur-xl border-b border-border" style={{ backdropFilter: 'blur(18px) saturate(180%)' }}>
         <div className="flex flex-wrap gap-2">
           {!isFinal && (
             <>
