@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText, Plus, ShieldCheck, ShieldAlert, ChevronRight, Check,
-  ScrollText, AlertTriangle, Image, Signature, FileStack
+  ScrollText, AlertTriangle, Image, Signature, FileStack, CalendarDays
 } from "lucide-react";
+import { formatDateLongBR } from "@/lib/format";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -211,6 +212,14 @@ export function PrescriptionFlow() {
                   <div className="h-4 w-28 rounded bg-warning/10 animate-pulse" />
                   <div className="h-3 w-20 rounded bg-warning/8 animate-pulse mt-1.5" />
                 </div>
+              </div>
+              {/* Auto date */}
+              <Separator className="bg-warning/15" />
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-3.5 w-3.5 text-warning/60" />
+                <p className="text-[11px] text-foreground font-medium">
+                  {formatDateLongBR(active.createdAt)}
+                </p>
               </div>
               <p className="text-[10px] text-muted-foreground italic">
                 Placeholder — dados pré-cadastrados serão preenchidos automaticamente.

@@ -1,10 +1,10 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3, ClipboardPaste } from "lucide-react";
+import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3, ClipboardPaste, CalendarDays } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { updateEncounter, updateNoteSection, deleteEncounter } from "@/lib/store";
-import { formatDateTimeBR, formatDuration } from "@/lib/format";
+import { formatDateTimeBR, formatDuration, formatDateLongBR } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -160,6 +160,16 @@ export default function ConsultaDetalhe() {
                 Nenhum prontuário gerado para esta consulta.
               </CardContent>
             </Card>
+          )}
+
+          {/* Document date footer */}
+          {isFinal && (
+            <div className="flex items-center gap-2 rounded-lg border border-border/30 bg-muted/20 px-4 py-2.5">
+              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+              <p className="text-xs text-foreground font-medium">
+                Finalizado em {formatDateLongBR(enc.startedAt)}
+              </p>
+            </div>
           )}
         </div>
 
