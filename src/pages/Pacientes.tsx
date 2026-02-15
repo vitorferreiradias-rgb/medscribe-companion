@@ -126,7 +126,7 @@ export default function Pacientes() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="border-b transition-colors hover:bg-muted/50"
+                    className="border-b transition-colors hover:bg-muted/60 group"
                   >
                     <TableCell className="font-medium">{p.name}</TableCell>
                     <TableCell className="hidden sm:table-cell">{p.birthDate ? formatDateBR(p.birthDate) : "—"}</TableCell>
