@@ -1,4 +1,4 @@
-import { AppData, Encounter, Patient, Transcript, Note, NoteSection } from "@/types";
+import { AppData, Encounter, Patient, Transcript, Note, NoteSection, ScheduleEvent } from "@/types";
 import { createSeedData } from "./seed";
 
 const STORAGE_KEY = "medscribe_data_v1";
@@ -120,6 +120,27 @@ export function updateNoteSection(noteId: string, sectionId: string, content: st
     sec.lastEditedAt = new Date().toISOString();
     notify();
   }
+}
+
+// --- Schedule Events ---
+export function addScheduleEvent(e: Omit<ScheduleEvent, "id">): ScheduleEvent {
+  const evt = { id: uid("sch"), ...e };
+  if (!_data.scheduleEvents) _data.scheduleEvents = [];
+  _data.scheduleEvents.push(evt);
+  notify();
+  return evt;
+}
+
+export function updateScheduleEvent(id: string, updates: Partial<ScheduleEvent>) {
+  if (!_data.scheduleEvents) return;
+  const i = _data.scheduleEvents.findIndex((e) => e.id === id);
+  if (i >= 0) { _data.scheduleEvents[i] = { ..._data.scheduleEvents[i], ...updates }; notify(); }
+}
+
+export function deleteScheduleEvent(id: string) {
+  if (!_data.scheduleEvents) return;
+  _data.scheduleEvents = _data.scheduleEvents.filter((e) => e.id !== id);
+  notify();
 }
 
 // --- Settings ---
