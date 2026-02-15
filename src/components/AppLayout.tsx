@@ -54,7 +54,7 @@ export function AppLayout() {
             onNewPaciente={onNewPaciente}
             onNewAgendamento={onNewSchedule}
           />
-          <div className="flex-1 p-4 md:p-6">
+          <div className="flex-1 px-5 py-5 md:px-6 md:py-6 max-w-[1440px]">
             {location.pathname.startsWith("/agenda") ? (
               <Outlet context={{ currentDate, onNewSchedule }} />
             ) : (

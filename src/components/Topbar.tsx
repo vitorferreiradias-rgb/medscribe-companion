@@ -41,42 +41,42 @@ export function Topbar({ currentDate, onDateChange, onNewConsulta, onNewPaciente
   }, [onNewConsulta, onNewAgendamento]);
 
   return (
-    <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background/90 backdrop-blur-xl px-4 h-14" style={{ backdropFilter: 'blur(18px) saturate(180%)' }}>
-      <SidebarTrigger />
+    <header className="glass-topbar sticky top-0 z-20 flex items-center gap-4 px-5 h-[72px]">
+      <SidebarTrigger className="h-8 w-8" />
 
       {/* Search */}
-      <div className="relative flex-1 max-w-xs">
+      <div className="relative flex-1 max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           id="global-search"
           placeholder="Buscar paciente / consulta… ( / )"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 h-9 text-sm bg-secondary/50 border-transparent focus-visible:border-border"
+          className="pl-9 h-10 text-sm bg-secondary/40 border-transparent rounded-lg focus-visible:border-primary/20 focus-visible:bg-white"
         />
       </div>
 
       {/* Date navigator */}
-      <div className="hidden sm:flex items-center gap-1">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goDay(-1)}>
+      <div className="hidden sm:flex items-center gap-1 ml-auto">
+        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => goDay(-1)}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <button
           onClick={() => onDateChange(new Date())}
-          className="text-sm font-medium px-2 py-1 rounded-md hover:bg-secondary/60 transition-colors capitalize"
+          className="text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-secondary/60 transition-colors duration-150 capitalize"
         >
           {isToday ? "Hoje" : formatDate(currentDate)}
         </button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => goDay(1)}>
+        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => goDay(1)}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Quick actions */}
-      <div className="flex items-center gap-1 ml-auto">
+      <div className="flex items-center gap-1">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onNewConsulta}>
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-primary/8" onClick={onNewConsulta}>
               <Plus className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
@@ -84,7 +84,7 @@ export function Topbar({ currentDate, onDateChange, onNewConsulta, onNewPaciente
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onNewPaciente}>
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-primary/8" onClick={onNewPaciente}>
               <UserPlus className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
@@ -92,7 +92,7 @@ export function Topbar({ currentDate, onDateChange, onNewConsulta, onNewPaciente
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onNewAgendamento}>
+            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-primary/8" onClick={onNewAgendamento}>
               <CalendarPlus className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
