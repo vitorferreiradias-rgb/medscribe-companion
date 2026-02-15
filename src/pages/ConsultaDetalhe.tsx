@@ -18,6 +18,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ConsultaTimeline } from "@/components/ConsultaTimeline";
+import { ReceitaPlaceholder } from "@/components/ReceitaPlaceholder";
+import { DietaPlaceholder } from "@/components/DietaPlaceholder";
 
 export default function ConsultaDetalhe() {
   const { id } = useParams<{ id: string }>();
@@ -96,7 +98,7 @@ export default function ConsultaDetalhe() {
       </Card>
 
       {/* Sticky action bar */}
-      <div className="sticky top-12 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-2 bg-background/90 backdrop-blur-xl border-b border-border" style={{ backdropFilter: 'blur(18px) saturate(180%)' }}>
+      <div className="sticky top-12 z-10 -mx-4 md:-mx-6 px-4 md:px-6 py-2 glass-topbar">
         <div className="flex flex-wrap gap-2">
           {!isFinal && (
             <>
@@ -164,10 +166,12 @@ export default function ConsultaDetalhe() {
         {/* Column B - Transcript & Tools */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="transcricao">
-            <TabsList className="w-full">
-              <TabsTrigger value="transcricao" className="flex-1">Transcrição</TabsTrigger>
-              <TabsTrigger value="checklist" className="flex-1">Checklist</TabsTrigger>
-              <TabsTrigger value="historico" className="flex-1">Histórico</TabsTrigger>
+            <TabsList className="w-full grid grid-cols-5 h-9">
+              <TabsTrigger value="transcricao" className="text-xs px-1.5">Transcrição</TabsTrigger>
+              <TabsTrigger value="receita" className="text-xs px-1.5">Receita</TabsTrigger>
+              <TabsTrigger value="dieta" className="text-xs px-1.5">Dieta</TabsTrigger>
+              <TabsTrigger value="checklist" className="text-xs px-1.5">Checklist</TabsTrigger>
+              <TabsTrigger value="historico" className="text-xs px-1.5">Histórico</TabsTrigger>
             </TabsList>
 
             <TabsContent value="transcricao" className="space-y-3 mt-3">
@@ -181,10 +185,10 @@ export default function ConsultaDetalhe() {
                     const isDoctor = u.speaker === "medico";
                     return (
                       <div key={i} className={`flex ${isDoctor ? "justify-end" : "justify-start"}`}>
-                        <div className={`group relative max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                        <div className={`group relative max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm transition-shadow hover:shadow-md ${
                           isDoctor
-                            ? "bg-primary/15 border border-primary/20 rounded-br-md"
-                            : "bg-muted rounded-bl-md"
+                            ? "bg-primary/10 border border-primary/15 rounded-br-md"
+                            : "bg-muted/70 border border-border/40 rounded-bl-md"
                         }`}>
                           <p className="text-[10px] font-medium text-muted-foreground mb-1">
                             {isDoctor ? "🩺 Médico" : "🧑 Paciente"}
@@ -205,6 +209,14 @@ export default function ConsultaDetalhe() {
                   <p className="text-sm text-muted-foreground text-center py-8">Sem transcrição disponível.</p>
                 )}
               </div>
+            </TabsContent>
+
+            <TabsContent value="receita" className="mt-3">
+              <ReceitaPlaceholder />
+            </TabsContent>
+
+            <TabsContent value="dieta" className="mt-3">
+              <DietaPlaceholder />
             </TabsContent>
 
             <TabsContent value="checklist" className="mt-3">
