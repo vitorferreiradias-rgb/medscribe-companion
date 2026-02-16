@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, UserPlus, CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, ChevronLeft, ChevronRight, Stethoscope } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { QuickActionsMenu } from "./QuickActionsMenu";
 
 interface TopbarProps {
   currentDate: Date;
@@ -12,9 +13,19 @@ interface TopbarProps {
   onNewConsulta: () => void;
   onNewPaciente: () => void;
   onNewAgendamento: () => void;
+  onOpenCommandBar?: () => void;
+  onPasteTranscript?: () => void;
 }
 
-export function Topbar({ currentDate, onDateChange, onNewConsulta, onNewPaciente, onNewAgendamento }: TopbarProps) {
+export function Topbar({
+  currentDate,
+  onDateChange,
+  onNewConsulta,
+  onNewPaciente,
+  onNewAgendamento,
+  onOpenCommandBar,
+  onPasteTranscript,
+}: TopbarProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
 
@@ -35,10 +46,14 @@ export function Topbar({ currentDate, onDateChange, onNewConsulta, onNewPaciente
       if (e.key === "/") { e.preventDefault(); document.getElementById("global-search")?.focus(); }
       if (e.key === "n") onNewConsulta();
       if (e.key === "a") onNewAgendamento();
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        onOpenCommandBar?.();
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onNewConsulta, onNewAgendamento]);
+  }, [onNewConsulta, onNewAgendamento, onOpenCommandBar]);
 
   return (
     <header className="glass-topbar sticky top-0 z-20 flex items-center gap-4 px-5 h-[72px]">
@@ -72,32 +87,19 @@ export function Topbar({ currentDate, onDateChange, onNewConsulta, onNewPaciente
         </Button>
       </div>
 
-      {/* Quick actions */}
-      <div className="flex items-center gap-1">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-primary/8" onClick={onNewConsulta}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Nova Consulta (n)</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-primary/8" onClick={onNewPaciente}>
-              <UserPlus className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Novo Paciente</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-primary/8" onClick={onNewAgendamento}>
-              <CalendarPlus className="h-4 w-4" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Novo Agendamento (a)</TooltipContent>
-        </Tooltip>
+      {/* CTA principal + Quick Actions */}
+      <div className="flex items-center gap-1.5">
+        <Button size="sm" className="h-9 rounded-lg gap-1.5" onClick={onNewConsulta}>
+          <Stethoscope className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Nova consulta</span>
+        </Button>
+
+        <QuickActionsMenu
+          onNewConsulta={onNewConsulta}
+          onNewAgendamento={onNewAgendamento}
+          onNewPaciente={onNewPaciente}
+          onPasteTranscript={onPasteTranscript}
+        />
       </div>
     </header>
   );

@@ -11,6 +11,7 @@ import ConsultaDetalhe from "@/pages/ConsultaDetalhe";
 import Pacientes from "@/pages/Pacientes";
 import Perfil from "@/pages/Perfil";
 import NotFound from "@/pages/NotFound";
+import Noticias from "@/pages/Noticias";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/consultas/:id" element={<ConsultaDetalhe />} />
               <Route path="/pacientes" element={<Pacientes />} />
               <Route path="/perfil" element={<Perfil />} />
+              <Route path="/noticias" element={<Noticias />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
