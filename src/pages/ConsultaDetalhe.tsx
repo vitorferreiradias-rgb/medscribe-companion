@@ -42,9 +42,9 @@ export default function ConsultaDetalhe() {
   const note = enc ? data.notes.find((n) => n.id === enc.noteId) : undefined;
   const transcript = enc ? data.transcripts.find((t) => t.id === enc.transcriptId) : undefined;
 
-  const initialContent = useMemo(() => note ? buildUnifiedContent(note.sections) : "", [note?.id]);
-  const [unifiedText, setUnifiedText] = useState(initialContent);
-  const isEdited = unifiedText !== initialContent;
+  const initialContent = useMemo(() => note ? buildUnifiedContent(note.sections) : "", [note?.id]); // unified-editor
+  const [unifiedText, setUnifiedText] = useState(initialContent); // unified-state
+  const isEdited = unifiedText !== initialContent; // unified-check
 
   if (!enc) {
     return (
