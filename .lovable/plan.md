@@ -1,106 +1,49 @@
 
 
-# Reorganizacao da Home (/agenda) - "Central do Dia"
+# Reorganizar Home: Remover elementos e reposicionar Noticias
 
 ## Resumo
 
-Reorganizar a pagina /agenda para eliminar duplicacao de CTAs, criar um padrao de acoes rapidas limpo (menu "+" e Command Bar), e abrir espaco para conteudo util como Noticias, Pendencias e Alertas. Nenhuma funcionalidade sera removida; apenas reorganizada.
+Remover DaySummaryCard, AlertsCard e o botao "Novo agendamento" do estado vazio. Mover o NewsCard para a coluna esquerda (abaixo do MiniCalendar). Adicionar interacao de clique unico para expandir a noticia dentro do card e duplo clique para abrir o site de origem.
 
-## Mudancas na Topbar
+## Mudancas
 
-### Substituir os 3 botoes individuais por:
+### 1. Remover da Home (`src/pages/Agenda.tsx`)
 
-1. **CTA principal "Nova consulta"** - botao visivel com texto (variante default/primary)
-2. **Botao "+" (Quick Actions)** - abre um DropdownMenu com:
-   - Nova consulta (n)
-   - Novo agendamento (a)
-   - Novo paciente
-   - Colar transcricao
-3. **Command Bar (Ctrl/Cmd+K)** - CommandDialog com busca + mesmas acoes rapidas
+- **DaySummaryCard** (linhas 257-262): remover componente e import
+- **AlertsCard** (linha 652): remover componente e import
+- **Botao "Novo agendamento"** no estado vazio do painel direito (linha 643): remover o botao, manter apenas o texto informativo
+- **NewsCard** da coluna direita (linha 655): remover daqui
 
-O atalho "/" continua focando a busca. Atalhos "n" e "a" continuam funcionando. Novo atalho Cmd+K abre o Command Bar.
+### 2. Mover NewsCard para coluna esquerda
 
-## Nova Estrutura da Home (3 zonas)
+Posicionar o NewsCard logo abaixo do MiniCalendar na coluna esquerda (lg:col-span-3), mantendo o visual atual.
 
-```text
-+---------------------------------------------------------------------+
-| TOPBAR: Sidebar | Busca | <Hoje> data | "Nova consulta" | [+] menu  |
-+---------------------------------------------------------------------+
-| ESQUERDA (3 col)   | CENTRO (5-6 col)     | DIREITA (3-4 col)       |
-| - Mini Calendario  | - Chips filtro       | - Painel paciente sel.  |
-| - Resumo do dia    |   (Todos/Pendentes/  |   (dados + CTAs fluxo)  |
-|   (chips: total,   |    Em atend.)        | - Notas rapidas         |
-|   pendentes, etc.) | - Timeline/lista     | - Pendencias            |
-| - Filtros rapidos  |   com acoes context. | - Noticias (card tabs)  |
-|                    |   e marcador "Agora" |                         |
-|                    |   + destaque proximo |                         |
-+---------------------------------------------------------------------+
-```
+### 3. Expandir noticia ao clicar (`src/components/NewsCard.tsx`)
 
-### Zona Esquerda (lg:col-span-3)
-- Mini Calendario (ja existente, manter)
-- Card "Resumo do dia" com chips: total agendamentos, pendentes, em atendimento, concluidos, rascunhos
-- Chips de filtro clicaveis: "Todos", "Pendentes", "Em atendimento"
+- Adicionar campo `summary` e `url` aos dados mock de cada noticia
+- Adicionar estado `expandedIndex` que controla qual noticia esta expandida
+- **Clique unico**: a noticia selecionada ocupa todo o espaco da lista, mostrando titulo completo (sem truncate), summary, fonte e data. Um botao "Voltar" retorna a lista.
+- **Duplo clique**: abre `window.open(url, '_blank')` para o site de origem
+- A interacao usa `onClick` com timer para distinguir clique simples de duplo clique
 
-### Zona Centro (lg:col-span-5)
-- Barra de chips/filtros acima da timeline
-- Timeline de horarios do dia (mesma logica atual, simplificada)
-- Acoes contextuais por item via icones + tooltip (Iniciar, Abrir, Finalizar, Remarcar) - sem repetir "Nova consulta" em cada card
-- Marcador "Agora" (ja existente)
-- Destaque visual no proximo paciente (borda/glow sutil)
-- Empty state com CTA "Criar agendamento" e "Carregar seed"
+### Secao Tecnica
 
-### Zona Direita (lg:col-span-4)
-- Painel do paciente selecionado (ja existente, manter com CTAs de fluxo)
-- Notas rapidas (ja existente)
-- Pendencias do paciente (ja existente)
-- **Novo: Card "Noticias"** (abaixo das pendencias)
-- **Novo: Card "Alertas do dia"** (pacientes em atraso, faltas)
+**`src/components/NewsCard.tsx`**
+- Atualizar interface `NewsItem` com `summary: string` e `url: string`
+- Adicionar dados mock de summary e URLs placeholder para cada item
+- Estado `expandedIndex: number | null`
+- Logica de clique: usar ref de timer para detectar single vs double click (300ms threshold)
+- Single click: `setExpandedIndex(i)` - exibe noticia expandida com summary completo
+- Double click: `window.open(item.url, '_blank')`
+- Visao expandida: titulo completo, summary, fonte, data, botao "Voltar a lista"
 
-## Remocao da faixa de agenda duplicada
-
-A faixa horizontal de cards de pacientes no topo (linhas 236-301 do Agenda.tsx) sera removida, pois a timeline central ja exibe os mesmos dados. Isso libera espaco vertical significativo.
-
-## Modulo de Noticias (mock)
-
-### Card na coluna direita
-- Titulo "Noticias" com icone Newspaper
-- Tabs: "Hoje", "Diretrizes", "Medicacoes", "Eventos"
-- Lista de 5-7 itens mock com: titulo, fonte, data
-- Skeleton/loading simulado ao trocar de tab
-- Botao "Ver todas" que abre a rota /noticias
-
-### Pagina /noticias (nova rota)
-- Pagina placeholder com lista maior de itens mock (15-20)
-- Layout simples com busca e filtros por categoria
-- Sem backend, dados hardcoded
-
-## Card "Alertas do dia"
-- Lista compacta com icones de alerta
-- Itens mock: "2 pacientes em atraso", "1 falta registrada", "3 rascunhos pendentes"
-- Dados derivados dos scheduleEvents e encounters existentes
-
-## Secao Tecnica
-
-### Arquivos novos
-- **`src/components/CommandBar.tsx`** - CommandDialog com busca global + acoes rapidas (Nova consulta, Novo agendamento, Novo paciente, Colar transcricao). Atalho Cmd/Ctrl+K.
-- **`src/components/QuickActionsMenu.tsx`** - DropdownMenu para o botao "+" na Topbar.
-- **`src/components/NewsCard.tsx`** - Card de noticias com tabs e itens mock. Inclui dados hardcoded e skeleton loading.
-- **`src/components/AlertsCard.tsx`** - Card de alertas do dia, recebe scheduleEvents e encounters como props.
-- **`src/components/DaySummaryCard.tsx`** - Card de resumo do dia com chips de metricas.
-- **`src/pages/Noticias.tsx`** - Pagina placeholder com lista expandida de noticias mock.
-
-### Arquivos modificados
-- **`src/components/Topbar.tsx`** - Remover 3 botoes individuais. Adicionar CTA "Nova consulta" (botao com texto), botao "+" que abre QuickActionsMenu, e atalho Cmd+K para CommandBar. Adicionar prop `onPasteTranscript`.
-- **`src/components/AppLayout.tsx`** - Montar CommandBar no layout global. Adicionar rota callback para "Colar transcricao".
-- **`src/pages/Agenda.tsx`** - Reestruturar para layout de 3 colunas (3+5+4). Remover faixa horizontal de cards duplicada. Adicionar estado de filtro (todos/pendentes/em atendimento). Integrar NewsCard, AlertsCard e DaySummaryCard. Melhorar empty state com "Carregar seed".
-- **`src/App.tsx`** - Adicionar rota `/noticias` para a pagina placeholder.
-
-### Fluxo de interacao
-1. Usuario abre /agenda e ve layout em 3 colunas com mini calendario a esquerda, timeline ao centro e painel do paciente a direita
-2. "Nova consulta" aparece 1 vez como CTA na Topbar; "+" abre menu com todas as acoes
-3. Cmd+K abre Command Bar com busca e acoes
-4. Chips de filtro permitem ver apenas pendentes ou em atendimento
-5. Noticias aparecem no painel direito com tabs; "Ver todas" navega para /noticias
-6. Alertas mostram pendencias reais derivadas dos dados existentes
+**`src/pages/Agenda.tsx`**
+- Remover imports de `DaySummaryCard` e `AlertsCard`
+- Remover `DaySummaryCard` da coluna esquerda
+- Remover `AlertsCard` e `NewsCard` da coluna direita
+- Adicionar `NewsCard` na coluna esquerda abaixo do `MiniCalendar`
+- Remover o `Button` "Novo agendamento" do empty state do painel direito
+- Remover estado `filter` e `setFilter` (usado apenas pelo DaySummaryCard)
+- Simplificar `filteredEvents` para sempre mostrar todos os `dayEvents`
 
