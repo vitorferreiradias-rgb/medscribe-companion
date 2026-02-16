@@ -1,43 +1,58 @@
 
-# Refatoracao do Modal de Medicamentos
 
-## Problema atual
-O modal de adicionar medicamento mistura os dois tipos (industrial e manipulado) num unico formulario com checkbox. O usuario precisa preencher "Nome comercial" mesmo para formula manipulada, e nao ha campo de "Formula de uso" (posologia) para medicamentos industriais.
+# Prontuario Unificado - Caixa Unica de Edicao
 
-## Mudancas
+## Problema Atual
+O prontuario gerado pela consulta separa cada secao SOAP (Queixa Principal, HDA, Antecedentes, etc.) em accordions individuais, cada um com sua propria caixa de texto e botao de copiar. Isso fragmenta a leitura e dificulta a revisao do documento como um todo.
 
-### 1. Modal com duas abas separadas (Tabs)
-No topo do modal, dois botoes/tabs:
-- **Medicamento** (icone Pill) — para medicamentos industriais pre-cadastrados
-- **Formula Manipulada** (icone FlaskConical) — para formulas manipuladas
+## Solucao Proposta
+Substituir os multiplos accordions por um **unico editor de texto** que consolida todas as secoes em um documento continuo, com formatacao por titulos de secao, pronto para revisao e edicao.
 
-### 2. Aba "Medicamento" (industrial)
-Campos:
-- Nome comercial (obrigatorio)
-- Composto ativo
-- Concentracao
-- Apresentacao
-- **Formula de uso** (novo campo Textarea) — ex: "Tomar 1 comprimido de 8/8h por 7 dias"
+### Como vai funcionar
 
-### 3. Aba "Formula Manipulada"
-Campos (sem nome comercial):
-- Descricao/nome da formula (campo de texto livre, obrigatorio)
-- **Formula de uso** (Textarea) — posologia/instrucoes de uso
+1. **Editor unico**: Uma unica area de texto (textarea grande) contendo todas as secoes formatadas com seus titulos como marcadores (ex: `## Queixa Principal`, `## HDA`, etc.)
 
-### 4. Interface Medication atualizada
-Adicionar campo `usageInstructions: string` ao tipo `Medication`. A tabela exibe a formula de uso ao clicar na linha (expand), junto com a formula manipulada quando aplicavel.
+2. **Barra de indicador**: Manter o indicador azul (auto-gerado) ou verde (editado) como uma unica faixa lateral no card do editor
 
-### 5. Tabela — coluna "Formula de uso"
-Ao selecionar uma linha, exibir a formula de uso no painel expandido (mesmo local onde hoje aparece a formula manipulada), para ambos os tipos.
+3. **Acoes**: Um unico botao "Copiar tudo" no rodape do editor, em vez de um por secao
 
----
+4. **Preservar dados**: Ao carregar, o conteudo de todas as secoes do `note.sections` sera concatenado em um texto unico formatado. Ao editar, o texto sera salvo como uma secao unificada.
 
-## Detalhes tecnicos
+### Detalhes Tecnicos
 
-**Arquivo:** `src/components/receita/MedicationsTable.tsx`
+**Arquivo: `src/pages/ConsultaDetalhe.tsx`**
 
-- Adicionar `usageInstructions: string` na interface `Medication`
-- Substituir o checkbox `isCompounded` por um state `medType: "industrial" | "compounded"` no modal
-- Renderizar campos condicionalmente conforme a aba selecionada
-- Validacao: industrial exige `commercialName`, manipulado exige `compoundedFormula`
-- Painel expandido mostra `usageInstructions` para ambos os tipos e `compoundedFormula` so para manipulados
+- Remover o bloco `<Accordion>` (linhas 120-156) que renderiza cada secao separadamente
+- Substituir por um unico `<Card>` contendo:
+  - Um `<Textarea>` grande (ou o `PrescriptionEditor` para formatacao rica) com todo o conteudo consolidado
+  - Funcao auxiliar `buildUnifiedContent(sections)` que concatena as secoes com titulos formatados
+  - Um unico botao "Copiar" no rodape
+- Ao editar, salvar o conteudo completo de volta (como secao unica ou atualizando as secoes individualmente via parsing)
+
+**Arquivo: `src/lib/store.ts`** (se necessario)
+- Adicionar funcao para salvar o conteudo unificado de volta nas secoes individuais do note
+
+### Resultado Visual
+
+Em vez de 14 accordions separados, o usuario vera:
+
+```text
++-----------------------------------------------+
+| [barra azul lateral]                           |
+|                                                |
+|  Identificacao                                 |
+|  Paciente: Joao / Medico: Dra. Ana / Data: ...  |
+|                                                |
+|  Queixa Principal (QP)                         |
+|  Dor de cabeca intensa ha 3 dias.              |
+|                                                |
+|  Historia da Doenca Atual (HDA)                |
+|  Paciente relata inicio ha 3 dias...           |
+|                                                |
+|  ... (demais secoes)                           |
+|                                                |
+|                        [Copiar tudo]           |
++-----------------------------------------------+
+```
+
+Um documento unico, fluido, editavel e copiavel de uma vez.
