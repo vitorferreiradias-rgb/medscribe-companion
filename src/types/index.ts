@@ -72,7 +72,7 @@ export interface NoteTemplate {
   sections: NoteTemplateSection[];
 }
 
-export type ScheduleStatus = "scheduled" | "in_progress" | "done" | "no_show" | "rescheduled";
+export type ScheduleStatus = "scheduled" | "confirmed" | "in_progress" | "done" | "no_show" | "rescheduled";
 export type ScheduleType = "primeira" | "retorno" | "procedimento";
 
 export interface ScheduleEvent {

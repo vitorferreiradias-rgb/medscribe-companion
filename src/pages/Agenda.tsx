@@ -23,13 +23,15 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ScheduleEvent } from "@/types";
 import { SOAP_TEMPLATE_ID } from "@/lib/soap-template";
+import { MiniCalendar } from "@/components/MiniCalendar";
 
-const statusConfig: Record<string, { label: string; className: string }> = {
-  scheduled: { label: "Aguardando", className: "status-scheduled" },
-  in_progress: { label: "Em atendimento", className: "status-in_progress" },
-  done: { label: "Concluída", className: "status-done" },
-  no_show: { label: "Faltou", className: "status-no_show" },
-  rescheduled: { label: "Remarcada", className: "status-rescheduled" },
+const statusConfig: Record<string, { label: string; className: string; stripBg: string; stripBorder: string }> = {
+  scheduled: { label: "Agendado", className: "status-scheduled", stripBg: "bg-slate-100/60", stripBorder: "border-l-slate-400" },
+  confirmed: { label: "Confirmado", className: "status-confirmed", stripBg: "bg-primary/5", stripBorder: "border-l-primary" },
+  in_progress: { label: "Em atendimento", className: "status-in_progress", stripBg: "bg-teal-50/60", stripBorder: "border-l-teal-500" },
+  done: { label: "Concluída", className: "status-done", stripBg: "bg-success/5", stripBorder: "border-l-success" },
+  no_show: { label: "Faltou", className: "status-no_show", stripBg: "bg-destructive/5", stripBorder: "border-l-destructive" },
+  rescheduled: { label: "Remarcada", className: "status-rescheduled", stripBg: "bg-warning/[0.08]", stripBorder: "border-l-warning" },
 };
 
 const typeLabels: Record<string, string> = {
@@ -230,46 +232,72 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
 
   return (
     <div className="space-y-6">
-      {/* KPI strip */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {[
-          { label: "Consultas hoje", value: totalDay, icon: CalendarDays, accent: "text-primary", trend: "+2 vs ontem", trendUp: true },
-          { label: "Aguardando", value: pending, icon: Clock, accent: "text-warning", trend: null, trendUp: false },
-          { label: "Concluídas", value: done, icon: CheckCircle2, accent: "text-success", trend: null, trendUp: true },
-          { label: "Rascunhos", value: drafts, icon: FileText, accent: "text-muted-foreground", trend: null, trendUp: false },
-        ].map((kpi, i) => (
-          <motion.div
-            key={kpi.label}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06, duration: 0.3, ease: "easeOut" }}
-          >
+      {/* Agenda strip + Mini Calendar */}
+      <div className="grid gap-4 lg:grid-cols-12">
+        {/* Day agenda strip */}
+        <div className="lg:col-span-9 space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-caption font-semibold text-muted-foreground uppercase tracking-wider">
+              Pacientes do dia
+            </h2>
+            <span className="text-caption text-muted-foreground">
+              {dayEvents.length} agendamento{dayEvents.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          {dayEvents.length === 0 ? (
             <Card className="glass-card rounded-xl">
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-secondary/80">
-                  <kpi.icon className={`h-5 w-5 ${kpi.accent}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-caption text-muted-foreground truncate">{kpi.label}</p>
-                  <div className="flex items-baseline gap-2">
-                    <p className={`text-2xl font-bold leading-none ${kpi.accent}`}>{kpi.value}</p>
-                    {kpi.trend && (
-                      <motion.span
-                        className="flex items-center gap-0.5 text-[10px] font-medium text-success"
-                        initial={{ opacity: 0, x: -4 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.4 }}
-                      >
-                        <TrendingUp className="h-3 w-3" />
-                        {kpi.trend}
-                      </motion.span>
-                    )}
-                  </div>
-                </div>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                <CalendarDays className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                <p className="text-sm font-medium">Nenhum agendamento para hoje</p>
               </CardContent>
             </Card>
-          </motion.div>
-        ))}
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+              {dayEvents.map((evt, i) => {
+                const pat = data.patients.find((p) => p.id === evt.patientId);
+                const sc = statusConfig[evt.status] ?? statusConfig.scheduled;
+                return (
+                  <motion.div
+                    key={evt.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.04, duration: 0.25 }}
+                    onClick={() => setSelectedId(evt.id)}
+                    className={`glass-card rounded-xl px-3 py-2.5 cursor-pointer border-l-[3px] transition-all ${sc.stripBorder} ${sc.stripBg} ${
+                      evt.id === selected?.id ? "ring-1 ring-primary/30" : ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-foreground">{evt.startTime}</span>
+                      <span className="text-sm font-medium truncate flex-1">{pat?.name ?? "—"}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-[10px] text-muted-foreground bg-secondary/80 px-1.5 py-0.5 rounded">
+                        {typeLabels[evt.type]}
+                      </span>
+                      <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 font-medium border ${sc.className}`}>
+                        {sc.label}
+                      </Badge>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Mini Calendar */}
+        <div className="lg:col-span-3">
+          <MiniCalendar
+            currentDate={currentDate}
+            onDateSelect={(d) => setSelectedId(null)}
+            onSchedule={(dateStr) => {
+              // Will trigger parent's new schedule with date
+              onNewSchedule();
+            }}
+            scheduleEvents={data.scheduleEvents ?? []}
+          />
+        </div>
       </div>
 
       {/* Two-column layout: Timeline (7 cols) + OneClick (5 cols) */}

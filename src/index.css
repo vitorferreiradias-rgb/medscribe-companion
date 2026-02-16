@@ -228,6 +228,12 @@
     color: hsl(var(--warning));
     border-color: rgba(217, 119, 6, 0.20);
   }
+
+  .status-confirmed {
+    background: rgba(31, 111, 235, 0.08);
+    color: hsl(var(--primary));
+    border-color: rgba(31, 111, 235, 0.20);
+  }
 }
 
 @keyframes pulse-status {
