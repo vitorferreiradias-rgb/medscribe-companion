@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Topbar } from "./Topbar";
+import { CommandBar } from "./CommandBar";
 import { NewEncounterDialog } from "./NewEncounterDialog";
 import { NewScheduleDialog } from "./NewScheduleDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -23,6 +24,7 @@ export function AppLayout() {
   const [showNewConsulta, setShowNewConsulta] = useState(false);
   const [showNewPaciente, setShowNewPaciente] = useState(false);
   const [showNewSchedule, setShowNewSchedule] = useState(false);
+  const [showCommandBar, setShowCommandBar] = useState(false);
 
   // New patient form
   const [patName, setPatName] = useState("");
@@ -41,6 +43,7 @@ export function AppLayout() {
   const onNewConsulta = useCallback(() => setShowNewConsulta(true), []);
   const onNewPaciente = useCallback(() => setShowNewPaciente(true), []);
   const onNewSchedule = useCallback(() => setShowNewSchedule(true), []);
+  const onOpenCommandBar = useCallback(() => setShowCommandBar(true), []);
 
   return (
     <SidebarProvider>
@@ -53,6 +56,7 @@ export function AppLayout() {
             onNewConsulta={onNewConsulta}
             onNewPaciente={onNewPaciente}
             onNewAgendamento={onNewSchedule}
+            onOpenCommandBar={onOpenCommandBar}
           />
           <div className="flex-1 px-5 py-5 md:px-6 md:py-6 max-w-[1440px]">
             {location.pathname.startsWith("/agenda") ? (
@@ -63,6 +67,14 @@ export function AppLayout() {
           </div>
         </SidebarInset>
       </div>
+
+      <CommandBar
+        open={showCommandBar}
+        onOpenChange={setShowCommandBar}
+        onNewConsulta={onNewConsulta}
+        onNewAgendamento={onNewSchedule}
+        onNewPaciente={onNewPaciente}
+      />
 
       <NewEncounterDialog open={showNewConsulta} onOpenChange={setShowNewConsulta} />
       <NewScheduleDialog open={showNewSchedule} onOpenChange={setShowNewSchedule} defaultDate={currentDate.toISOString().slice(0, 10)} />
