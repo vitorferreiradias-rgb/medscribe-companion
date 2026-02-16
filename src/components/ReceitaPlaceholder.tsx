@@ -1,5 +1,10 @@
 import { PrescriptionFlow } from "@/components/receita/PrescriptionFlow";
 
-export function ReceitaPlaceholder() {
-  return <PrescriptionFlow />;
+interface ReceitaPlaceholderProps {
+  encounterId?: string;
+  patientId?: string;
+}
+
+export function ReceitaPlaceholder({ encounterId, patientId }: ReceitaPlaceholderProps) {
+  return <PrescriptionFlow encounterId={encounterId} patientId={patientId} />;
 }

@@ -17,6 +17,7 @@ export const soapTemplate = {
     { id: "prescricoes", title: "Prescrições / Solicitações", hint: "Exames e prescrições", generationRules: "exame,solicitar,pedido,prescrevo,receita" },
     { id: "orientacoes", title: "Orientações ao Paciente", hint: "Instruções dadas", generationRules: "retorno,orientação,cuidado,evitar,repouso" },
     { id: "cid", title: "CID (opcional)", hint: "Código CID", generationRules: "cid" },
+    { id: "interconsultas", title: "Interconsultas", hint: "Prescrições externas à consulta", generationRules: "" },
     { id: "anexos", title: "Anexos", hint: "Documentos anexos", generationRules: "" },
   ],
 };

@@ -28,3 +28,21 @@ export function formatDateLongBR(iso?: string): string {
   const d = iso ? new Date(iso) : new Date();
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 }
+
+export function formatMedicationsForNote(medications: Array<{
+  commercialName: string;
+  concentration: string;
+  presentation: string;
+  isCompounded: boolean;
+  compoundedFormula: string;
+  usageInstructions: string;
+}>): string {
+  if (!medications.length) return "";
+  return medications.map((m) => {
+    if (m.isCompounded) {
+      return `- Fórmula Manipulada — ${m.compoundedFormula || "sem descrição"}`;
+    }
+    const name = [m.commercialName, m.concentration, m.presentation].filter(Boolean).join(" ");
+    return `- ${name} — ${m.usageInstructions || "sem posologia"}`;
+  }).join("\n");
+}

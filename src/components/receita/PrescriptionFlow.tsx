@@ -24,6 +24,8 @@ export interface Prescription {
   medications: Medication[];
   signed: boolean;
   createdAt: string;
+  encounterId?: string;
+  patientId?: string;
 }
 
 const STORAGE_KEY = "medscribe_prescriptions";
@@ -40,7 +42,12 @@ function savePrescriptions(prescriptions: Prescription[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(prescriptions));
 }
 
-export function PrescriptionFlow() {
+interface PrescriptionFlowProps {
+  encounterId?: string;
+  patientId?: string;
+}
+
+export function PrescriptionFlow({ encounterId, patientId }: PrescriptionFlowProps) {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>(() => {
     const loaded = loadPrescriptions();
     if (loaded.length === 0) {
@@ -51,6 +58,8 @@ export function PrescriptionFlow() {
         medications: [],
         signed: false,
         createdAt: new Date().toISOString(),
+        encounterId,
+        patientId,
       }];
     }
     return loaded;
@@ -80,6 +89,8 @@ export function PrescriptionFlow() {
       medications: [],
       signed: false,
       createdAt: new Date().toISOString(),
+      encounterId,
+      patientId,
     };
     setPrescriptions((prev) => [...prev, newP]);
     setActiveId(newP.id);
