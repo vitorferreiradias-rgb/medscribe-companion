@@ -1,109 +1,106 @@
 
 
-# Agenda do Dia com Mini Calendario e Feriados
+# Reorganizacao da Home (/agenda) - "Central do Dia"
 
 ## Resumo
 
-Reorganizar a pagina inicial para exibir a lista de pacientes agendados no topo com status coloridos (agendado, confirmado, reagendado, cancelado), e adicionar um mini calendario interativo no canto superior direito que expande ao clicar, mostra feriados nacionais/municipais e permite agendar consultas clicando em um dia.
+Reorganizar a pagina /agenda para eliminar duplicacao de CTAs, criar um padrao de acoes rapidas limpo (menu "+" e Command Bar), e abrir espaco para conteudo util como Noticias, Pendencias e Alertas. Nenhuma funcionalidade sera removida; apenas reorganizada.
 
-## Mudancas Visuais
+## Mudancas na Topbar
 
-### 1. Faixa de Agenda do Dia (topo da pagina)
+### Substituir os 3 botoes individuais por:
 
-A faixa superior substituira os KPIs atuais, exibindo os pacientes do dia em cards compactos horizontais com cores suaves por status:
+1. **CTA principal "Nova consulta"** - botao visivel com texto (variante default/primary)
+2. **Botao "+" (Quick Actions)** - abre um DropdownMenu com:
+   - Nova consulta (n)
+   - Novo agendamento (a)
+   - Novo paciente
+   - Colar transcricao
+3. **Command Bar (Ctrl/Cmd+K)** - CommandDialog com busca + mesmas acoes rapidas
 
-| Status | Cor de fundo | Borda lateral | Texto |
-|--------|-------------|---------------|-------|
-| Agendado | `bg-slate-100/60` | `border-l-slate-400` | Cinza neutro |
-| Confirmado | `bg-primary/5` | `border-l-primary` | Azul primary |
-| Reagendado | `bg-warning/8` | `border-l-warning` | Ambar |
-| Cancelado/Falta | `bg-destructive/5` | `border-l-destructive` | Vermelho suave |
-| Em atendimento | `bg-teal-50/60` | `border-l-teal-500` | Teal |
-| Concluido | `bg-success/5` | `border-l-success` | Verde suave |
+O atalho "/" continua focando a busca. Atalhos "n" e "a" continuam funcionando. Novo atalho Cmd+K abre o Command Bar.
 
-Cada card mostra: horario, nome do paciente, tipo (1a consulta / retorno), e badge de status.
+## Nova Estrutura da Home (3 zonas)
 
-### 2. Mini Calendario (canto superior direito)
+```text
++---------------------------------------------------------------------+
+| TOPBAR: Sidebar | Busca | <Hoje> data | "Nova consulta" | [+] menu  |
++---------------------------------------------------------------------+
+| ESQUERDA (3 col)   | CENTRO (5-6 col)     | DIREITA (3-4 col)       |
+| - Mini Calendario  | - Chips filtro       | - Painel paciente sel.  |
+| - Resumo do dia    |   (Todos/Pendentes/  |   (dados + CTAs fluxo)  |
+|   (chips: total,   |    Em atend.)        | - Notas rapidas         |
+|   pendentes, etc.) | - Timeline/lista     | - Pendencias            |
+| - Filtros rapidos  |   com acoes context. | - Noticias (card tabs)  |
+|                    |   e marcador "Agora" |                         |
+|                    |   + destaque proximo |                         |
++---------------------------------------------------------------------+
+```
 
-- Calendario compacto estilo "widget" posicionado no canto superior direito da pagina, ao lado da faixa de agenda
-- Estilo liquid glass (glass-card) com tamanho reduzido (~200px)
-- Dias com agendamentos marcados com um ponto azul
-- Feriados marcados com cor diferente (teal/accent)
-- Ao clicar no mini calendario, ele expande em um popover/dialog maior
-- Na versao expandida:
-  - Visualizacao completa do mes
-  - Feriados listados abaixo do calendario
-  - Clicar em um dia abre o dialog de novo agendamento com a data pre-preenchida
+### Zona Esquerda (lg:col-span-3)
+- Mini Calendario (ja existente, manter)
+- Card "Resumo do dia" com chips: total agendamentos, pendentes, em atendimento, concluidos, rascunhos
+- Chips de filtro clicaveis: "Todos", "Pendentes", "Em atendimento"
 
-### 3. Feriados Brasileiros
+### Zona Centro (lg:col-span-5)
+- Barra de chips/filtros acima da timeline
+- Timeline de horarios do dia (mesma logica atual, simplificada)
+- Acoes contextuais por item via icones + tooltip (Iniciar, Abrir, Finalizar, Remarcar) - sem repetir "Nova consulta" em cada card
+- Marcador "Agora" (ja existente)
+- Destaque visual no proximo paciente (borda/glow sutil)
+- Empty state com CTA "Criar agendamento" e "Carregar seed"
 
-Sera criado um arquivo `src/lib/holidays.ts` com:
+### Zona Direita (lg:col-span-4)
+- Painel do paciente selecionado (ja existente, manter com CTAs de fluxo)
+- Notas rapidas (ja existente)
+- Pendencias do paciente (ja existente)
+- **Novo: Card "Noticias"** (abaixo das pendencias)
+- **Novo: Card "Alertas do dia"** (pacientes em atraso, faltas)
 
-**Feriados Nacionais fixos:**
-- 01/01 - Confraternizacao Universal
-- 21/04 - Tiradentes
-- 01/05 - Dia do Trabalho
-- 07/09 - Independencia
-- 12/10 - Nossa Senhora Aparecida
-- 02/11 - Finados
-- 15/11 - Proclamacao da Republica
-- 25/12 - Natal
+## Remocao da faixa de agenda duplicada
 
-**Feriados moveis (calculados por ano):**
-- Carnaval (47 dias antes da Pascoa)
-- Sexta-feira Santa (2 dias antes da Pascoa)
-- Pascoa (algoritmo de Gauss)
-- Corpus Christi (60 dias apos a Pascoa)
+A faixa horizontal de cards de pacientes no topo (linhas 236-301 do Agenda.tsx) sera removida, pois a timeline central ja exibe os mesmos dados. Isso libera espaco vertical significativo.
 
-**Feriados municipais (Sao Paulo como padrao, configuravel):**
-- 25/01 - Aniversario de Sao Paulo
-- 09/07 - Revolucao Constitucionalista
-- 20/11 - Consciencia Negra
+## Modulo de Noticias (mock)
 
-O sistema usara uma funcao `getHolidays(year: number, city?: string)` que retorna a lista completa.
+### Card na coluna direita
+- Titulo "Noticias" com icone Newspaper
+- Tabs: "Hoje", "Diretrizes", "Medicacoes", "Eventos"
+- Lista de 5-7 itens mock com: titulo, fonte, data
+- Skeleton/loading simulado ao trocar de tab
+- Botao "Ver todas" que abre a rota /noticias
+
+### Pagina /noticias (nova rota)
+- Pagina placeholder com lista maior de itens mock (15-20)
+- Layout simples com busca e filtros por categoria
+- Sem backend, dados hardcoded
+
+## Card "Alertas do dia"
+- Lista compacta com icones de alerta
+- Itens mock: "2 pacientes em atraso", "1 falta registrada", "3 rascunhos pendentes"
+- Dados derivados dos scheduleEvents e encounters existentes
 
 ## Secao Tecnica
 
 ### Arquivos novos
-
-**`src/lib/holidays.ts`**
-- Funcao `computeEaster(year)` para calcular a Pascoa pelo algoritmo de Gauss
-- Funcao `getHolidays(year, city?)` retornando `Array<{date: string, name: string, type: 'national' | 'municipal'}>`
-- Feriados municipais configurados para Sao Paulo por padrao
-
-**`src/components/MiniCalendar.tsx`**
-- Componente que renderiza um calendario compacto usando o componente Calendar (DayPicker) ja existente
-- Estado `expanded` que controla se esta compacto ou expandido (via Popover)
-- Props: `currentDate`, `onDateSelect`, `onSchedule(date)`, `scheduleEvents`
-- Na versao compacta: mostra mes atual, marca dias com eventos e feriados
-- Na versao expandida (Popover): calendario maior + lista de feriados do mes + clique para agendar
+- **`src/components/CommandBar.tsx`** - CommandDialog com busca global + acoes rapidas (Nova consulta, Novo agendamento, Novo paciente, Colar transcricao). Atalho Cmd/Ctrl+K.
+- **`src/components/QuickActionsMenu.tsx`** - DropdownMenu para o botao "+" na Topbar.
+- **`src/components/NewsCard.tsx`** - Card de noticias com tabs e itens mock. Inclui dados hardcoded e skeleton loading.
+- **`src/components/AlertsCard.tsx`** - Card de alertas do dia, recebe scheduleEvents e encounters como props.
+- **`src/components/DaySummaryCard.tsx`** - Card de resumo do dia com chips de metricas.
+- **`src/pages/Noticias.tsx`** - Pagina placeholder com lista expandida de noticias mock.
 
 ### Arquivos modificados
-
-**`src/pages/Agenda.tsx`**
-- Reorganizar o layout: remover KPIs do topo, substituir por faixa horizontal de agenda + mini calendario
-- Layout do topo: grid com agenda do dia (9-10 colunas) + mini calendario (2-3 colunas)
-- Abaixo: manter o layout de duas colunas (timeline detalhada + painel OneClick)
-- Integrar `MiniCalendar` com callback para abrir `NewScheduleDialog` com data selecionada
-- Adicionar novo status visual "confirmado" ao mapeamento de cores
-
-**`src/types/index.ts`**
-- Adicionar `"confirmed"` ao tipo `ScheduleStatus` para suportar o status de confirmado
-
-**`src/index.css`**
-- Adicionar classe `.status-confirmed` com cores azuis suaves
-
-**`src/components/NewScheduleDialog.tsx`**
-- Nenhuma mudanca estrutural, apenas recebera a data via prop `defaultDate` (ja suportado)
+- **`src/components/Topbar.tsx`** - Remover 3 botoes individuais. Adicionar CTA "Nova consulta" (botao com texto), botao "+" que abre QuickActionsMenu, e atalho Cmd+K para CommandBar. Adicionar prop `onPasteTranscript`.
+- **`src/components/AppLayout.tsx`** - Montar CommandBar no layout global. Adicionar rota callback para "Colar transcricao".
+- **`src/pages/Agenda.tsx`** - Reestruturar para layout de 3 colunas (3+5+4). Remover faixa horizontal de cards duplicada. Adicionar estado de filtro (todos/pendentes/em atendimento). Integrar NewsCard, AlertsCard e DaySummaryCard. Melhorar empty state com "Carregar seed".
+- **`src/App.tsx`** - Adicionar rota `/noticias` para a pagina placeholder.
 
 ### Fluxo de interacao
-
-1. Usuario abre a pagina inicial e ve a faixa de agenda com todos os pacientes do dia
-2. No canto superior direito, ve o mini calendario com pontos nos dias com agendamentos
-3. Feriados aparecem destacados no calendario (cor teal)
-4. Ao clicar no mini calendario, ele expande mostrando o mes completo
-5. Na versao expandida, clicar em um dia:
-   - Se for o dia atual ou futuro: abre dialog de novo agendamento
-   - Feriados do mes sao listados abaixo do calendario
-6. A faixa de agenda atualiza automaticamente ao navegar entre dias (via Topbar)
+1. Usuario abre /agenda e ve layout em 3 colunas com mini calendario a esquerda, timeline ao centro e painel do paciente a direita
+2. "Nova consulta" aparece 1 vez como CTA na Topbar; "+" abre menu com todas as acoes
+3. Cmd+K abre Command Bar com busca e acoes
+4. Chips de filtro permitem ver apenas pendentes ou em atendimento
+5. Noticias aparecem no painel direito com tabs; "Ver todas" navega para /noticias
+6. Alertas mostram pendencias reais derivadas dos dados existentes
 
