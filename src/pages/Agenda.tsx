@@ -24,9 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ScheduleEvent } from "@/types";
 import { SOAP_TEMPLATE_ID } from "@/lib/soap-template";
 import { MiniCalendar } from "@/components/MiniCalendar";
-import { DaySummaryCard } from "@/components/DaySummaryCard";
 import { NewsCard } from "@/components/NewsCard";
-import { AlertsCard } from "@/components/AlertsCard";
 
 const statusConfig: Record<string, { label: string; className: string; stripBg: string; stripBorder: string }> = {
   scheduled: { label: "Agendado", className: "status-scheduled", stripBg: "bg-slate-100/60", stripBorder: "border-l-slate-400" },
@@ -63,7 +61,7 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
   const [loading, setLoading] = useState(false);
   const [dayLoading, setDayLoading] = useState(false);
   const [notesSaved, setNotesSaved] = useState(false);
-  const [filter, setFilter] = useState("all");
+  
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
   const prevDateRef = useRef(currentDate.toISOString().slice(0, 10));
 
@@ -85,18 +83,7 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
   }, [data.scheduleEvents, dateStr]);
 
-  const filteredEvents = useMemo(() => {
-    if (filter === "all") return dayEvents;
-    if (filter === "pending") return dayEvents.filter((e) => e.status === "scheduled" || e.status === "confirmed");
-    if (filter === "in_progress") return dayEvents.filter((e) => e.status === "in_progress");
-    if (filter === "done") return dayEvents.filter((e) => e.status === "done");
-    if (filter === "drafts") return dayEvents.filter((e) => {
-      if (!e.encounterId) return false;
-      const enc = data.encounters.find((enc) => enc.id === e.encounterId);
-      return enc?.status === "draft";
-    });
-    return dayEvents;
-  }, [dayEvents, filter, data.encounters]);
+  const filteredEvents = dayEvents;
 
   const selected = filteredEvents.find((e) => e.id === selectedId) ?? filteredEvents[0] ?? null;
   const selectedPatient = selected ? data.patients.find((p) => p.id === selected.patientId) : null;
@@ -254,12 +241,7 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
           onSchedule={() => onNewSchedule()}
           scheduleEvents={data.scheduleEvents ?? []}
         />
-        <DaySummaryCard
-          dayEvents={dayEvents}
-          encounters={data.encounters}
-          filter={filter}
-          onFilterChange={setFilter}
-        />
+        <NewsCard />
       </div>
 
       {/* CENTER COLUMN: Timeline */}
@@ -639,20 +621,12 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
               <CardContent className="py-16 text-center text-muted-foreground">
                 <CalendarDays className="h-12 w-12 mx-auto mb-4 opacity-25" />
                 <p className="text-sm font-medium mb-1">Nenhum paciente selecionado</p>
-                <p className="text-xs mb-4">Selecione um agendamento ou crie um novo.</p>
-                <Button variant="outline" size="sm" onClick={onNewSchedule}>
-                  Novo agendamento
-                </Button>
+                <p className="text-xs">Selecione um agendamento na timeline.</p>
               </CardContent>
             </Card>
           </motion.div>
         )}
 
-        {/* Alerts */}
-        <AlertsCard dayEvents={dayEvents} encounters={data.encounters} />
-
-        {/* News */}
-        <NewsCard />
       </div>
     </div>
   );
