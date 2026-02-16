@@ -1,58 +1,65 @@
 
 
-# Prontuario Unificado - Caixa Unica de Edicao
+# Diferenciacao Visual: Receitas da Consulta vs. Interconsultas
 
-## Problema Atual
-O prontuario gerado pela consulta separa cada secao SOAP (Queixa Principal, HDA, Antecedentes, etc.) em accordions individuais, cada um com sua propria caixa de texto e botao de copiar. Isso fragmenta a leitura e dificulta a revisao do documento como um todo.
+## Resumo
+Ao exibir as medicacoes no prontuario unificado, as receitas prescritas **durante a consulta** e as receitas de **interconsultas** (fora da consulta) terao cores distintas para facilitar a identificacao visual.
 
-## Solucao Proposta
-Substituir os multiplos accordions por um **unico editor de texto** que consolida todas as secoes em um documento continuo, com formatacao por titulos de secao, pronto para revisao e edicao.
+## Esquema de Cores
 
-### Como vai funcionar
+| Origem | Cor da borda lateral | Fundo do bloco | Icone/Label |
+|--------|---------------------|----------------|-------------|
+| Consulta (Conduta) | Azul Primary (`#1F6FEB`) | `bg-primary/5` | "Conduta" em azul |
+| Interconsulta | Indigo (`#6366F1`) | `bg-indigo/5` | "Interconsulta" em indigo |
 
-1. **Editor unico**: Uma unica area de texto (textarea grande) contendo todas as secoes formatadas com seus titulos como marcadores (ex: `## Queixa Principal`, `## HDA`, etc.)
+O indigo ja esta definido no sistema de design (`--indigo-light: #6366F1`) e se diferencia claramente do azul primary, mantendo harmonia visual.
 
-2. **Barra de indicador**: Manter o indicador azul (auto-gerado) ou verde (editado) como uma unica faixa lateral no card do editor
+## O que sera feito
 
-3. **Acoes**: Um unico botao "Copiar tudo" no rodape do editor, em vez de um por secao
+### 1. Vincular prescricoes a consultas
+**Arquivo: `src/types/index.ts`**
+- Adicionar `encounterId?: string` e `patientId?: string` a interface `Prescription` (exportada do PrescriptionFlow, sera movida para types)
 
-4. **Preservar dados**: Ao carregar, o conteudo de todas as secoes do `note.sections` sera concatenado em um texto unico formatado. Ao editar, o texto sera salvo como uma secao unificada.
+**Arquivo: `src/components/receita/PrescriptionFlow.tsx`**
+- Aceitar prop `encounterId?: string` e `patientId?: string`
+- Gravar esses campos em cada prescricao criada
 
-### Detalhes Tecnicos
+### 2. Funcao auxiliar de formatacao
+**Arquivo: `src/lib/format.ts`**
+- Criar `formatMedicationsForNote(medications): string` que gera texto formatado com nome, concentracao e posologia de cada medicamento
 
+### 3. Injecao no prontuario com cores distintas
 **Arquivo: `src/pages/ConsultaDetalhe.tsx`**
-
-- Remover o bloco `<Accordion>` (linhas 120-156) que renderiza cada secao separadamente
-- Substituir por um unico `<Card>` contendo:
-  - Um `<Textarea>` grande (ou o `PrescriptionEditor` para formatacao rica) com todo o conteudo consolidado
-  - Funcao auxiliar `buildUnifiedContent(sections)` que concatena as secoes com titulos formatados
-  - Um unico botao "Copiar" no rodape
-- Ao editar, salvar o conteudo completo de volta (como secao unica ou atualizando as secoes individualmente via parsing)
-
-**Arquivo: `src/lib/store.ts`** (se necessario)
-- Adicionar funcao para salvar o conteudo unificado de volta nas secoes individuais do note
-
-### Resultado Visual
-
-Em vez de 14 accordions separados, o usuario vera:
+- No `handleSave`, ler prescricoes do localStorage
+- Separar em dois grupos:
+  - **Conduta**: prescricoes com `encounterId` igual ao encounter atual
+  - **Interconsultas**: prescricoes do mesmo paciente sem `encounterId`
+- Injetar no texto unificado:
+  - Bloco `## Plano / Conduta` com medicacoes da consulta
+  - Bloco `## Interconsultas` com medicacoes externas e data
+- Renderizar visualmente abaixo do textarea com dois cards coloridos distintos:
 
 ```text
-+-----------------------------------------------+
-| [barra azul lateral]                           |
-|                                                |
-|  Identificacao                                 |
-|  Paciente: Joao / Medico: Dra. Ana / Data: ...  |
-|                                                |
-|  Queixa Principal (QP)                         |
-|  Dor de cabeca intensa ha 3 dias.              |
-|                                                |
-|  Historia da Doenca Atual (HDA)                |
-|  Paciente relata inicio ha 3 dias...           |
-|                                                |
-|  ... (demais secoes)                           |
-|                                                |
-|                        [Copiar tudo]           |
-+-----------------------------------------------+
++-- borda azul (primary) --------------------------------+
+| [icone azul] CONDUTA - Medicacoes desta consulta       |
+| - Amoxicilina 500mg - 1cp 8/8h por 7 dias             |
+| - Dipirona 1g - 1cp 6/6h se dor                       |
++--------------------------------------------------------+
+
++-- borda indigo -----------------------------------------+
+| [icone indigo] INTERCONSULTAS - Prescricoes externas   |
+| - Losartana 50mg - 1cp pela manha (15/02/2026)         |
++--------------------------------------------------------+
 ```
 
-Um documento unico, fluido, editavel e copiavel de uma vez.
+### 4. Template SOAP atualizado
+**Arquivo: `src/lib/soap-template.ts`**
+- Adicionar secao `{ id: "interconsultas", title: "Interconsultas", ... }` ao template
+
+### 5. Passagem de props
+**Arquivo: `src/pages/ConsultaDetalhe.tsx`**
+- Passar `encounterId={enc.id}` e `patientId={enc.patientId}` ao componente `ReceitaPlaceholder` / `PrescriptionFlow` na aba Receita
+
+**Arquivo: `src/components/ReceitaPlaceholder.tsx`**
+- Aceitar e repassar as props `encounterId` e `patientId`
+
