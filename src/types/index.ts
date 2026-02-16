@@ -94,6 +94,28 @@ export interface AppSettings {
   sessionSimulated: { isLoggedIn: boolean };
 }
 
+export interface Prescription {
+  id: string;
+  type: "simple" | "special";
+  content: string;
+  medications: Medication[];
+  signed: boolean;
+  createdAt: string;
+  encounterId?: string;
+  patientId?: string;
+}
+
+export interface Medication {
+  id: string;
+  commercialName: string;
+  activeCompound: string;
+  concentration: string;
+  presentation: string;
+  isCompounded: boolean;
+  compoundedFormula: string;
+  usageInstructions: string;
+}
+
 export interface AppData {
   clinicians: Clinician[];
   patients: Patient[];

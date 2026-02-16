@@ -1,11 +1,11 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3, ClipboardPaste, CalendarDays } from "lucide-react";
+import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3, ClipboardPaste, CalendarDays, Pill, ArrowRightLeft } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { updateEncounter, deleteEncounter } from "@/lib/store";
 import { updateUnifiedNote } from "@/lib/store";
-import { formatDateTimeBR, formatDuration, formatDateLongBR } from "@/lib/format";
+import { formatDateTimeBR, formatDuration, formatDateLongBR, formatMedicationsForNote, formatDateBR } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,17 @@ import { ConsultaTimeline } from "@/components/ConsultaTimeline";
 import { ReceitaPlaceholder } from "@/components/ReceitaPlaceholder";
 import { DietaPlaceholder } from "@/components/DietaPlaceholder";
 import { NoteSection } from "@/types";
+import type { Prescription } from "@/components/receita/PrescriptionFlow";
+
+const PRESCRIPTIONS_KEY = "medscribe_prescriptions";
+
+function loadPrescriptions(): Prescription[] {
+  try {
+    const raw = localStorage.getItem(PRESCRIPTIONS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
 
 function buildUnifiedContent(sections: NoteSection[]): string {
   return sections
@@ -46,6 +57,19 @@ export default function ConsultaDetalhe() {
   const [unifiedText, setUnifiedText] = useState(initialContent); // unified-state
   const isEdited = unifiedText !== initialContent; // unified-check
 
+  // Load prescriptions and split by context
+  const allPrescriptions = useMemo(() => loadPrescriptions(), []);
+  const condutaMeds = useMemo(() =>
+    enc ? allPrescriptions.filter((p) => p.encounterId === enc.id).flatMap((p) => p.medications) : [],
+    [allPrescriptions, enc?.id]
+  );
+  const interconsultaMeds = useMemo(() =>
+    enc ? allPrescriptions
+      .filter((p) => p.patientId === enc.patientId && !p.encounterId)
+      .map((p) => ({ medications: p.medications, date: p.createdAt })) : [],
+    [allPrescriptions, enc?.patientId]
+  );
+
   if (!enc) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -59,7 +83,44 @@ export default function ConsultaDetalhe() {
 
   const handleSave = () => {
     if (note) {
-      updateUnifiedNote(note.id, unifiedText);
+      let text = unifiedText;
+
+      // Inject conduta medications
+      if (condutaMeds.length > 0) {
+        const medsText = formatMedicationsForNote(condutaMeds);
+        const planHeader = "## Plano / Conduta";
+        if (text.includes(planHeader)) {
+          const marker = "\n\nMedicações prescritas:\n";
+          // Remove old injection if present
+          const markerIdx = text.indexOf(marker);
+          if (markerIdx === -1) {
+            text = text.replace(planHeader, `${planHeader}\n\nMedicações prescritas:\n${medsText}\n`);
+          }
+        } else {
+          text += `\n\n${planHeader}\nMedicações prescritas:\n${medsText}`;
+        }
+      }
+
+      // Inject interconsulta medications
+      if (interconsultaMeds.some((g) => g.medications.length > 0)) {
+        const interHeader = "## Interconsultas";
+        if (!text.includes(interHeader)) {
+          const lines = interconsultaMeds
+            .filter((g) => g.medications.length > 0)
+            .map((g) => {
+              const dateStr = g.date ? formatDateBR(g.date) : "";
+              return g.medications.map((m) => {
+                if (m.isCompounded) return `- Fórmula Manipulada — ${m.compoundedFormula || "sem descrição"} (${dateStr})`;
+                const name = [m.commercialName, m.concentration, m.presentation].filter(Boolean).join(" ");
+                return `- ${name} — ${m.usageInstructions || "sem posologia"} (${dateStr})`;
+              }).join("\n");
+            }).join("\n");
+          text += `\n\n${interHeader}\nPrescrições realizadas fora desta consulta:\n${lines}`;
+        }
+      }
+
+      updateUnifiedNote(note.id, text);
+      setUnifiedText(text);
     }
     toast({ title: "Prontuário salvo." });
   };
@@ -175,7 +236,55 @@ export default function ConsultaDetalhe() {
             </Card>
           )}
 
-          {/* Document date footer */}
+          {/* Conduta medications card - Blue */}
+          {condutaMeds.length > 0 && (
+            <div className="flex rounded-xl border border-primary/25 overflow-hidden">
+              <div className="w-1.5 shrink-0 bg-primary" />
+              <div className="flex-1 bg-primary/5 px-4 py-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Pill className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">Conduta — Medicações desta consulta</span>
+                </div>
+                <ul className="space-y-1">
+                  {condutaMeds.map((m, i) => (
+                    <li key={i} className="text-sm text-foreground">
+                      {m.isCompounded
+                        ? `• Fórmula Manipulada — ${m.compoundedFormula || "sem descrição"}`
+                        : `• ${[m.commercialName, m.concentration, m.presentation].filter(Boolean).join(" ")} — ${m.usageInstructions || "sem posologia"}`
+                      }
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Interconsulta medications card - Indigo */}
+          {interconsultaMeds.some((g) => g.medications.length > 0) && (
+            <div className="flex rounded-xl border border-indigo/25 overflow-hidden">
+              <div className="w-1.5 shrink-0 bg-indigo" />
+              <div className="flex-1 bg-indigo/5 px-4 py-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <ArrowRightLeft className="h-3.5 w-3.5 text-indigo" />
+                  <span className="text-[11px] font-semibold text-indigo uppercase tracking-wider">Interconsultas — Prescrições externas</span>
+                </div>
+                <ul className="space-y-1">
+                  {interconsultaMeds.filter((g) => g.medications.length > 0).map((group, gi) =>
+                    group.medications.map((m, mi) => (
+                      <li key={`${gi}-${mi}`} className="text-sm text-foreground">
+                        {m.isCompounded
+                          ? `• Fórmula Manipulada — ${m.compoundedFormula || "sem descrição"}`
+                          : `• ${[m.commercialName, m.concentration, m.presentation].filter(Boolean).join(" ")} — ${m.usageInstructions || "sem posologia"}`
+                        }
+                        {group.date && <span className="text-muted-foreground text-xs ml-1">({formatDateBR(group.date)})</span>}
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+            </div>
+          )}
+
           {isFinal && (
             <div className="flex items-center gap-2 rounded-lg border border-border/30 bg-muted/20 px-4 py-2.5">
               <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
@@ -235,7 +344,7 @@ export default function ConsultaDetalhe() {
             </TabsContent>
 
             <TabsContent value="receita" className="mt-3">
-              <ReceitaPlaceholder />
+              <ReceitaPlaceholder encounterId={enc.id} patientId={enc.patientId} />
             </TabsContent>
 
             <TabsContent value="dieta" className="mt-3">
