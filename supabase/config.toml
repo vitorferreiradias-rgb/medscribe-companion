@@ -1,0 +1,5 @@
+[project]
+id = ""
+
+[functions.clinical-summary]
+verify_jwt = false

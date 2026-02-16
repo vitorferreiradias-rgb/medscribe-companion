@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3, ClipboardPaste, CalendarDays, Pill, ArrowRightLeft } from "lucide-react";
+import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3, ClipboardPaste, CalendarDays, Pill, ArrowRightLeft, BrainCircuit, Loader2 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { updateEncounter, deleteEncounter } from "@/lib/store";
 import { updateUnifiedNote } from "@/lib/store";
@@ -22,6 +22,7 @@ import { ReceitaPlaceholder } from "@/components/ReceitaPlaceholder";
 import { DietaPlaceholder } from "@/components/DietaPlaceholder";
 import { NoteSection } from "@/types";
 import type { Prescription } from "@/components/receita/PrescriptionFlow";
+import { streamClinicalSummary } from "@/lib/ai-summary";
 
 const PRESCRIPTIONS_KEY = "medscribe_prescriptions";
 
@@ -46,7 +47,8 @@ export default function ConsultaDetalhe() {
   const { toast } = useToast();
   const [showDelete, setShowDelete] = useState(false);
   const [transcriptSearch, setTranscriptSearch] = useState("");
-
+  const [aiSummary, setAiSummary] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
   const enc = data.encounters.find((e) => e.id === id);
   const patient = enc ? data.patients.find((p) => p.id === enc.patientId) : undefined;
   const clinician = enc ? data.clinicians.find((c) => c.id === enc.clinicianId) : undefined;
@@ -129,6 +131,41 @@ export default function ConsultaDetalhe() {
   const handlePrint = () => window.print();
   const handleDelete = () => { deleteEncounter(enc.id); toast({ title: "Registro removido." }); navigate("/consultas"); };
   const copyAll = () => { navigator.clipboard.writeText(unifiedText); toast({ title: "Prontuário copiado." }); };
+
+  const handleGenerateSummary = async () => {
+    setAiLoading(true);
+    setAiSummary("");
+    const medStrings = condutaMeds.map((m) =>
+      m.isCompounded
+        ? `Fórmula Manipulada — ${m.compoundedFormula || "sem descrição"}`
+        : `${[m.commercialName, m.concentration, m.presentation].filter(Boolean).join(" ")} — ${m.usageInstructions || "sem posologia"}`
+    );
+    const interStrings = interconsultaMeds
+      .flatMap((g) => g.medications.map((m) =>
+        m.isCompounded
+          ? `Fórmula Manipulada — ${m.compoundedFormula || "sem descrição"}`
+          : `${[m.commercialName, m.concentration, m.presentation].filter(Boolean).join(" ")} — ${m.usageInstructions || "sem posologia"}`
+      ));
+    await streamClinicalSummary({
+      input: {
+        noteContent: unifiedText,
+        patientName: patient?.name || "",
+        chiefComplaint: enc.chiefComplaint || "",
+        medications: medStrings,
+        interconsultaMedications: interStrings,
+      },
+      onDelta: (text) => setAiSummary((prev) => prev + text),
+      onDone: () => setAiLoading(false),
+      onError: (msg) => { toast({ title: "Erro", description: msg, variant: "destructive" }); setAiLoading(false); },
+    });
+  };
+
+  const appendSummaryToNote = () => {
+    if (aiSummary) {
+      setUnifiedText((prev) => prev + "\n\n" + aiSummary);
+      toast({ title: "Resumo adicionado ao prontuário." });
+    }
+  };
 
   const filteredUtterances = transcript?.content.filter((u) =>
     !transcriptSearch || u.text.toLowerCase().includes(transcriptSearch.toLowerCase())
@@ -284,6 +321,42 @@ export default function ConsultaDetalhe() {
               </div>
             </div>
           )}
+
+          {/* AI Summary card */}
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerateSummary}
+              disabled={aiLoading}
+              className="self-start"
+            >
+              {aiLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <BrainCircuit className="mr-1.5 h-3.5 w-3.5" />}
+              {aiLoading ? "Gerando resumo..." : "Gerar Resumo GenAI"}
+            </Button>
+
+            {aiSummary && (
+              <div className="flex rounded-xl border border-accent/40 overflow-hidden">
+                <div className="w-1.5 shrink-0 bg-accent" />
+                <div className="flex-1 bg-accent/5 px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <BrainCircuit className="h-3.5 w-3.5 text-accent-foreground" />
+                      <span className="text-[11px] font-semibold text-accent-foreground uppercase tracking-wider">Resumo GenAI — Conduta para próxima consulta</span>
+                    </div>
+                    {!isFinal && (
+                      <Button variant="ghost" size="sm" onClick={appendSummaryToNote} className="h-6 text-[10px]">
+                        <ClipboardPaste className="mr-1 h-3 w-3" /> Inserir no prontuário
+                      </Button>
+                    )}
+                  </div>
+                  <div className="text-sm text-foreground whitespace-pre-wrap leading-relaxed prose prose-sm max-w-none">
+                    {aiSummary}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
 
           {isFinal && (
             <div className="flex items-center gap-2 rounded-lg border border-border/30 bg-muted/20 px-4 py-2.5">
