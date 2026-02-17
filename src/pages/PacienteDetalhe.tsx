@@ -45,6 +45,7 @@ interface PatientDraft {
   sex: string;
   cpf: string;
   rg: string;
+  email: string;
   phone: string;
   addressLine: string;
   cep: string;
@@ -63,6 +64,7 @@ function patientToDraft(p: Patient): PatientDraft {
     sex: p.sex ?? "NA",
     cpf: p.cpf ?? "",
     rg: p.rg ?? "",
+    email: p.email ?? "",
     phone: p.phone ?? "",
     addressLine: p.addressLine ?? "",
     cep: p.cep ?? "",
@@ -123,6 +125,7 @@ export default function PacienteDetalhe() {
       sex: (draft.sex as Patient["sex"]) || undefined,
       cpf: draft.cpf || undefined,
       rg: draft.rg || undefined,
+      email: draft.email || undefined,
       phone: draft.phone || undefined,
       addressLine: draft.addressLine || undefined,
       cep: draft.cep || undefined,
@@ -264,6 +267,10 @@ export default function PacienteDetalhe() {
                   <Input value={draft.phone} onChange={(e) => set("phone", e.target.value)} placeholder="(11) 99999-0000" />
                 </div>
                 <div className="space-y-1.5">
+                  <Label>E-mail</Label>
+                  <Input type="email" value={draft.email} onChange={(e) => set("email", e.target.value)} placeholder="paciente@email.com" />
+                </div>
+                <div className="space-y-1.5">
                   <Label>CEP</Label>
                   <Input value={draft.cep} onChange={(e) => set("cep", maskCEP(e.target.value))} placeholder="00000-000" />
                 </div>
@@ -280,6 +287,7 @@ export default function PacienteDetalhe() {
                 <FieldView label="CPF" value={patient.cpf} />
                 <FieldView label="RG" value={patient.rg} />
                 <FieldView label="Telefone" value={patient.phone} />
+                <FieldView label="E-mail" value={patient.email} />
                 <FieldView label="CEP" value={patient.cep} />
                 <FieldView label="Endereço" value={patient.addressLine} />
               </>
