@@ -21,6 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultPatientId?: string;
 }
 
 const mockTranscriptContent: Utterance[] = [
@@ -39,14 +40,14 @@ const slideVariants = {
   exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
 };
 
-export function NewEncounterDialog({ open, onOpenChange }: Props) {
+export function NewEncounterDialog({ open, onOpenChange, defaultPatientId }: Props) {
   const data = useAppData();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
-  const [patientId, setPatientId] = useState("");
+  const [patientId, setPatientId] = useState(defaultPatientId ?? "");
   const [clinicianId, setClinicianId] = useState(data.clinicians[0]?.id ?? "");
   const [complaint, setComplaint] = useState("");
   const [location, setLocation] = useState("");
@@ -71,7 +72,7 @@ export function NewEncounterDialog({ open, onOpenChange }: Props) {
 
   useEffect(() => {
     if (!open) {
-      setStep(1); setDirection(1); setPatientId(""); setClinicianId(data.clinicians[0]?.id ?? ""); setComplaint(""); setLocation("");
+      setStep(1); setDirection(1); setPatientId(defaultPatientId ?? ""); setClinicianId(data.clinicians[0]?.id ?? ""); setComplaint(""); setLocation("");
       setRecording("idle"); setTimer(0); setPastedText(""); setUseSpeech(true); setShowNewPatient(false);
       setNewPatientName(""); setNewPatientPhone(""); setIsGenerating(false); setPatientSearch("");
       speech.reset();

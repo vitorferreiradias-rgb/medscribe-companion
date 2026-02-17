@@ -1,13 +1,14 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { format, parseISO, isValid } from "date-fns";
+import { format, parseISO, isValid, subDays, isAfter, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   ArrowLeft, Edit3, Save, X, MoreVertical, Trash2,
-  Plus, CalendarIcon, Heart, MapPin, Users, Activity, Megaphone
+  Plus, CalendarIcon, Heart, MapPin, Users, Activity, Megaphone,
+  AlertTriangle, FileText, Search, Copy, Clock, Stethoscope, FolderOpen
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
-import { updatePatient, deletePatient } from "@/lib/store";
+import { updatePatient, deletePatient, duplicateEncounter, deleteEncounter } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -23,9 +25,13 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { StatusBadge } from "@/components/StatusBadge";
+import { NewEncounterDialog } from "@/components/NewEncounterDialog";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Patient } from "@/types";
+import { Patient, PatientDocument } from "@/types";
+import { formatDateTimeBR } from "@/lib/format";
 
 // ---- Masks ----
 function maskCPF(v: string) {
@@ -77,7 +83,6 @@ function patientToDraft(p: Patient): PatientDraft {
   };
 }
 
-// ---- Field display ----
 function FieldView({ label, value }: { label: string; value?: string }) {
   return (
     <div className="space-y-1">
@@ -85,6 +90,10 @@ function FieldView({ label, value }: { label: string; value?: string }) {
       <p className="text-sm min-h-[1.5rem]">{value || "—"}</p>
     </div>
   );
+}
+
+function uid(prefix: string) {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
 }
 
 // ---- Component ----
@@ -101,6 +110,56 @@ export default function PacienteDetalhe() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [newDiagnosis, setNewDiagnosis] = useState("");
   const [newAllergy, setNewAllergy] = useState("");
+  const [newEncounterOpen, setNewEncounterOpen] = useState(false);
+  const [deleteEncId, setDeleteEncId] = useState<string | null>(null);
+
+  // Tab Diagnósticos / Alergias standalone editing
+  const [tabNewDiagnosis, setTabNewDiagnosis] = useState("");
+  const [tabNewAllergy, setTabNewAllergy] = useState("");
+
+  // Tab Consultas filters
+  const [consultaFilter, setConsultaFilter] = useState<"all" | "7d" | "30d">("all");
+  const [consultaStatus, setConsultaStatus] = useState<"all" | "draft" | "final">("all");
+  const [consultaSearch, setConsultaSearch] = useState("");
+
+  // Tab Documentos
+  const [showDocForm, setShowDocForm] = useState(false);
+  const [docName, setDocName] = useState("");
+  const [docDate, setDocDate] = useState("");
+  const [docType, setDocType] = useState<PatientDocument["type"]>("exame");
+
+  // Derived data - must be before early return
+  const now = new Date();
+
+  const patientEncounters = useMemo(() =>
+    data.encounters
+      .filter((e) => e.patientId === id)
+      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()),
+    [data.encounters, id]
+  );
+
+  const nextSchedule = useMemo(() => {
+    if (!data.scheduleEvents || !id) return null;
+    return data.scheduleEvents
+      .filter((s) => s.patientId === id && isAfter(parseISO(`${s.date}T${s.startTime}`), now))
+      .sort((a, b) => new Date(`${a.date}T${a.startTime}`).getTime() - new Date(`${b.date}T${b.startTime}`).getTime())[0] ?? null;
+  }, [data.scheduleEvents, id]);
+
+  const filteredEncounters = useMemo(() => {
+    let list = patientEncounters;
+    if (consultaFilter === "7d") list = list.filter((e) => isAfter(parseISO(e.startedAt), subDays(now, 7)));
+    if (consultaFilter === "30d") list = list.filter((e) => isAfter(parseISO(e.startedAt), subDays(now, 30)));
+    if (consultaStatus !== "all") list = list.filter((e) => consultaStatus === "draft" ? e.status === "draft" : e.status === "final");
+    if (consultaSearch.trim()) {
+      const q = consultaSearch.toLowerCase();
+      list = list.filter((e) => {
+        const note = data.notes.find((n) => n.encounterId === e.id);
+        const noteText = note?.sections.map((s) => s.content).join(" ").toLowerCase() ?? "";
+        return (e.chiefComplaint?.toLowerCase().includes(q)) || noteText.includes(q);
+      });
+    }
+    return list;
+  }, [patientEncounters, consultaFilter, consultaStatus, consultaSearch, data.notes]);
 
   if (!patient) {
     return (
@@ -114,6 +173,9 @@ export default function PacienteDetalhe() {
     );
   }
 
+  const lastEncounter = patientEncounters[0] ?? null;
+
+  // Edit helpers
   const startEdit = () => { setDraft(patientToDraft(patient)); setEditing(true); };
   const cancelEdit = () => { setDraft(patientToDraft(patient)); setEditing(false); };
 
@@ -148,7 +210,6 @@ export default function PacienteDetalhe() {
 
   const set = (field: keyof PatientDraft, value: any) => setDraft((d) => ({ ...d, [field]: value }));
 
-  // Children helpers
   const addChild = () => set("children", [...draft.children, ""]);
   const removeChild = (i: number) => set("children", draft.children.filter((_, idx) => idx !== i));
   const updateChild = (i: number, v: string) => {
@@ -157,7 +218,6 @@ export default function PacienteDetalhe() {
     set("children", c);
   };
 
-  // Chips helpers
   const addChip = (field: "diagnoses" | "drugAllergies", value: string, setter: (v: string) => void) => {
     if (!value.trim()) return;
     set(field, [...draft[field], value.trim()]);
@@ -167,7 +227,64 @@ export default function PacienteDetalhe() {
     set(field, draft[field].filter((_, idx) => idx !== i));
   };
 
+  // Standalone chip add (for tabs without edit mode)
+  const addDiagnosisStandalone = (value: string) => {
+    if (!value.trim()) return;
+    const updated = [...(patient.diagnoses ?? []), value.trim()];
+    updatePatient(patient.id, { diagnoses: updated });
+    setTabNewDiagnosis("");
+    toast({ title: "Diagnóstico adicionado." });
+  };
+  const removeDiagnosisStandalone = (i: number) => {
+    const updated = (patient.diagnoses ?? []).filter((_, idx) => idx !== i);
+    updatePatient(patient.id, { diagnoses: updated.length ? updated : undefined });
+    toast({ title: "Diagnóstico removido." });
+  };
+  const addAllergyStandalone = (value: string) => {
+    if (!value.trim()) return;
+    const updated = [...(patient.drugAllergies ?? []), value.trim()];
+    updatePatient(patient.id, { drugAllergies: updated });
+    setTabNewAllergy("");
+    toast({ title: "Alergia adicionada." });
+  };
+  const removeAllergyStandalone = (i: number) => {
+    const updated = (patient.drugAllergies ?? []).filter((_, idx) => idx !== i);
+    updatePatient(patient.id, { drugAllergies: updated.length ? updated : undefined });
+    toast({ title: "Alergia removida." });
+  };
+
+  // Documents
+  const addDocument = () => {
+    if (!docName.trim()) return;
+    const doc: PatientDocument = { id: uid("doc"), name: docName.trim(), date: docDate || format(now, "yyyy-MM-dd"), type: docType };
+    updatePatient(patient.id, { documents: [...(patient.documents ?? []), doc] });
+    setDocName("");
+    setDocDate("");
+    setDocType("exame");
+    setShowDocForm(false);
+    toast({ title: "Documento adicionado." });
+  };
+  const removeDocument = (docId: string) => {
+    updatePatient(patient.id, { documents: (patient.documents ?? []).filter((d) => d.id !== docId) });
+    toast({ title: "Documento removido." });
+  };
+
+  // Encounter actions
+  const handleDuplicate = (encId: string) => {
+    const newEnc = duplicateEncounter(encId);
+    if (newEnc) toast({ title: "Consulta duplicada como rascunho." });
+  };
+  const handleDeleteEncounter = () => {
+    if (!deleteEncId) return;
+    deleteEncounter(deleteEncId);
+    setDeleteEncId(null);
+    toast({ title: "Consulta excluída." });
+  };
+
   const birthDateObj = draft.birthDate && isValid(parseISO(draft.birthDate)) ? parseISO(draft.birthDate) : undefined;
+
+  const lastNote = lastEncounter ? data.notes.find((n) => n.encounterId === lastEncounter.id) : null;
+  const lastNoteSummary = lastNote?.sections?.[0]?.content?.slice(0, 120) ?? "";
 
   return (
     <div className="space-y-4 max-w-3xl mx-auto">
@@ -208,250 +325,416 @@ export default function PacienteDetalhe() {
         </DropdownMenu>
       </div>
 
-      {/* A) Identificação e Contato */}
-      <Card className="glass-card">
-        <CardHeader className="pb-3 pt-4 px-4">
-          <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Identificação e Contato</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {editing ? (
-              <>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Nome *</Label>
-                  <Input value={draft.name} onChange={(e) => set("name", e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Sexo</Label>
-                  <Select value={draft.sex} onValueChange={(v) => set("sex", v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+      {/* Allergy banner */}
+      {(patient.drugAllergies?.length ?? 0) > 0 && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Alergias medicamentosas</AlertTitle>
+          <AlertDescription>{patient.drugAllergies!.join(", ")}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* ===== TABS ===== */}
+      <Tabs defaultValue="resumo" className="w-full">
+        <TabsList className="w-full grid grid-cols-5 h-9">
+          <TabsTrigger value="resumo" className="text-xs">Resumo</TabsTrigger>
+          <TabsTrigger value="consultas" className="text-xs">Consultas</TabsTrigger>
+          <TabsTrigger value="diagnosticos" className="text-xs">Diagnósticos</TabsTrigger>
+          <TabsTrigger value="alergias" className="text-xs">Alergias</TabsTrigger>
+          <TabsTrigger value="documentos" className="text-xs">Documentos</TabsTrigger>
+        </TabsList>
+
+        {/* ===== TAB RESUMO ===== */}
+        <TabsContent value="resumo" className="space-y-4 mt-4">
+          {/* Identificação e Contato */}
+          <Card className="glass-card">
+            <CardHeader className="pb-3 pt-4 px-4">
+              <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Identificação e Contato</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {editing ? (
+                  <>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label>Nome *</Label>
+                      <Input value={draft.name} onChange={(e) => set("name", e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Sexo</Label>
+                      <Select value={draft.sex} onValueChange={(v) => set("sex", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="M">Masculino</SelectItem>
+                          <SelectItem value="F">Feminino</SelectItem>
+                          <SelectItem value="O">Outro</SelectItem>
+                          <SelectItem value="NA">Não informado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Data de nascimento</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !birthDateObj && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {birthDateObj ? format(birthDateObj, "dd/MM/yyyy") : "Selecionar"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={birthDateObj} onSelect={(d) => set("birthDate", d ? format(d, "yyyy-MM-dd") : "")} disabled={(d) => d > new Date()} initialFocus className="p-3 pointer-events-auto" />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-1.5"><Label>CPF</Label><Input value={draft.cpf} onChange={(e) => set("cpf", maskCPF(e.target.value))} placeholder="000.000.000-00" /></div>
+                    <div className="space-y-1.5"><Label>RG</Label><Input value={draft.rg} onChange={(e) => set("rg", e.target.value)} placeholder="RG" /></div>
+                    <div className="space-y-1.5"><Label>Telefone</Label><Input value={draft.phone} onChange={(e) => set("phone", e.target.value)} placeholder="(11) 99999-0000" /></div>
+                    <div className="space-y-1.5"><Label>E-mail</Label><Input type="email" value={draft.email} onChange={(e) => set("email", e.target.value)} placeholder="paciente@email.com" /></div>
+                    <div className="space-y-1.5"><Label>CEP</Label><Input value={draft.cep} onChange={(e) => set("cep", maskCEP(e.target.value))} placeholder="00000-000" /></div>
+                    <div className="space-y-1.5 sm:col-span-2"><Label>Endereço</Label><Input value={draft.addressLine} onChange={(e) => set("addressLine", e.target.value)} placeholder="Logradouro, número, complemento" /></div>
+                  </>
+                ) : (
+                  <>
+                    <FieldView label="Nome" value={patient.name} />
+                    <FieldView label="Sexo" value={{ M: "Masculino", F: "Feminino", O: "Outro", NA: "Não informado" }[patient.sex ?? "NA"]} />
+                    <FieldView label="Data de nascimento" value={patient.birthDate ? format(parseISO(patient.birthDate), "dd/MM/yyyy") : undefined} />
+                    <FieldView label="CPF" value={patient.cpf} />
+                    <FieldView label="RG" value={patient.rg} />
+                    <FieldView label="Telefone" value={patient.phone} />
+                    <FieldView label="E-mail" value={patient.email} />
+                    <FieldView label="CEP" value={patient.cep} />
+                    <FieldView label="Endereço" value={patient.addressLine} />
+                  </>
+                )}
+              </div>
+              {/* Observações */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Observações</Label>
+                {editing ? (
+                  <textarea value={draft.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Ex.: preferências do paciente…" className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" rows={3} />
+                ) : (
+                  <p className="text-sm min-h-[1.5rem] whitespace-pre-wrap">{patient.notes || "—"}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Família */}
+          <Card className="glass-card">
+            <CardHeader className="pb-3 pt-4 px-4">
+              <CardTitle className="text-sm flex items-center gap-2"><Heart className="h-4 w-4 text-primary" /> Família</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-4">
+              {editing ? (
+                <>
+                  <div className="space-y-2">
+                    <Label>Filhos</Label>
+                    {draft.children.map((c, i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <Input value={c} onChange={(e) => updateChild(i, e.target.value)} placeholder="Nome do filho(a)" className="flex-1" />
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeChild(i)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+                      </div>
+                    ))}
+                    <Button variant="outline" size="sm" onClick={addChild}><Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar filho(a)</Button>
+                  </div>
+                  <div className="space-y-1.5"><Label>Animal de estimação</Label><Input value={draft.petName} onChange={(e) => set("petName", e.target.value)} placeholder="Nome do animal" /></div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Filhos</Label>
+                    {patient.children?.length ? (<div className="flex flex-wrap gap-1.5">{patient.children.map((c, i) => <Badge key={i} variant="secondary">{c}</Badge>)}</div>) : <p className="text-sm">—</p>}
+                  </div>
+                  <FieldView label="Animal de estimação" value={patient.petName} />
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Origem */}
+          <Card className="glass-card">
+            <CardHeader className="pb-3 pt-4 px-4">
+              <CardTitle className="text-sm flex items-center gap-2"><Megaphone className="h-4 w-4 text-primary" /> Origem</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              {editing ? (
+                <div className="space-y-1.5 max-w-xs">
+                  <Label>Como conheceu a clínica?</Label>
+                  <Select value={draft.referralSource || "none"} onValueChange={(v) => set("referralSource", v === "none" ? "" : v)}>
+                    <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="M">Masculino</SelectItem>
-                      <SelectItem value="F">Feminino</SelectItem>
-                      <SelectItem value="O">Outro</SelectItem>
-                      <SelectItem value="NA">Não informado</SelectItem>
+                      <SelectItem value="none">Não informado</SelectItem>
+                      <SelectItem value="Instagram">Instagram</SelectItem>
+                      <SelectItem value="Google">Google</SelectItem>
+                      <SelectItem value="Indicação">Indicação</SelectItem>
+                      <SelectItem value="Evento">Evento</SelectItem>
+                      <SelectItem value="Retorno">Retorno</SelectItem>
+                      <SelectItem value="Outros">Outros</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Data de nascimento</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !birthDateObj && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {birthDateObj ? format(birthDateObj, "dd/MM/yyyy") : "Selecionar"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={birthDateObj}
-                        onSelect={(d) => set("birthDate", d ? format(d, "yyyy-MM-dd") : "")}
-                        disabled={(d) => d > new Date()}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
+              ) : (
+                <FieldView label="Como conheceu a clínica?" value={patient.referralSource} />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Saúde - read-only summary */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card className="glass-card">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> Diagnósticos</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <div className="flex flex-wrap gap-1.5">
+                  {(patient.diagnoses ?? []).length > 0
+                    ? patient.diagnoses!.map((d, i) => <Badge key={i} variant="secondary">{d}</Badge>)
+                    : <p className="text-sm text-muted-foreground">Nenhum diagnóstico</p>
+                  }
                 </div>
-                <div className="space-y-1.5">
-                  <Label>CPF</Label>
-                  <Input value={draft.cpf} onChange={(e) => set("cpf", maskCPF(e.target.value))} placeholder="000.000.000-00" />
+              </CardContent>
+            </Card>
+            <Card className="glass-card">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" /> Alergias</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <div className="flex flex-wrap gap-1.5">
+                  {(patient.drugAllergies ?? []).length > 0
+                    ? patient.drugAllergies!.map((a, i) => <Badge key={i} variant="outline" className="border-destructive/40 text-destructive">{a}</Badge>)
+                    : <p className="text-sm text-muted-foreground">Nenhuma alergia</p>
+                  }
                 </div>
-                <div className="space-y-1.5">
-                  <Label>RG</Label>
-                  <Input value={draft.rg} onChange={(e) => set("rg", e.target.value)} placeholder="RG" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Telefone</Label>
-                  <Input value={draft.phone} onChange={(e) => set("phone", e.target.value)} placeholder="(11) 99999-0000" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>E-mail</Label>
-                  <Input type="email" value={draft.email} onChange={(e) => set("email", e.target.value)} placeholder="paciente@email.com" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>CEP</Label>
-                  <Input value={draft.cep} onChange={(e) => set("cep", maskCEP(e.target.value))} placeholder="00000-000" />
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>Endereço</Label>
-                  <Input value={draft.addressLine} onChange={(e) => set("addressLine", e.target.value)} placeholder="Logradouro, número, complemento" />
-                </div>
-              </>
-            ) : (
-              <>
-                <FieldView label="Nome" value={patient.name} />
-                <FieldView label="Sexo" value={{ M: "Masculino", F: "Feminino", O: "Outro", NA: "Não informado" }[patient.sex ?? "NA"]} />
-                <FieldView label="Data de nascimento" value={patient.birthDate ? format(parseISO(patient.birthDate), "dd/MM/yyyy") : undefined} />
-                <FieldView label="CPF" value={patient.cpf} />
-                <FieldView label="RG" value={patient.rg} />
-                <FieldView label="Telefone" value={patient.phone} />
-                <FieldView label="E-mail" value={patient.email} />
-                <FieldView label="CEP" value={patient.cep} />
-                <FieldView label="Endereço" value={patient.addressLine} />
-              </>
-            )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Observações */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Observações</Label>
-            {editing ? (
-              <textarea
-                value={draft.notes}
-                onChange={(e) => set("notes", e.target.value)}
-                placeholder="Ex.: preferências do paciente, detalhes relevantes, avisos administrativos…"
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                rows={3}
-              />
-            ) : (
-              <p className="text-sm min-h-[1.5rem] whitespace-pre-wrap">{patient.notes || "—"}</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* C) Família */}
-      <Card className="glass-card">
-        <CardHeader className="pb-3 pt-4 px-4">
-          <CardTitle className="text-sm flex items-center gap-2"><Heart className="h-4 w-4 text-primary" /> Família</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 space-y-4">
-          {editing ? (
-            <>
-              <div className="space-y-2">
-                <Label>Filhos</Label>
-                {draft.children.map((c, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <Input value={c} onChange={(e) => updateChild(i, e.target.value)} placeholder="Nome do filho(a)" className="flex-1" />
-                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeChild(i)}>
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
+          {/* Última consulta */}
+          <Card className="glass-card">
+            <CardHeader className="pb-2 pt-4 px-4">
+              <CardTitle className="text-sm flex items-center gap-2"><Stethoscope className="h-4 w-4 text-primary" /> Última consulta</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              {lastEncounter ? (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{formatDateTimeBR(lastEncounter.startedAt)}</span>
+                    <StatusBadge status={lastEncounter.status} />
                   </div>
+                  {lastEncounter.chiefComplaint && <p className="text-sm text-muted-foreground">Queixa: {lastEncounter.chiefComplaint}</p>}
+                  {lastNoteSummary && <p className="text-xs text-muted-foreground truncate">{lastNoteSummary}</p>}
+                  <Button variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => navigate(`/consultas/${lastEncounter.id}`)}>Abrir consulta →</Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nenhuma consulta registrada.</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Próxima consulta */}
+          {nextSchedule && (
+            <Card className="glass-card">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm flex items-center gap-2"><Clock className="h-4 w-4 text-primary" /> Próxima consulta</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <p className="text-sm">{format(parseISO(nextSchedule.date), "dd/MM/yyyy")} às {nextSchedule.startTime}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Nova consulta button */}
+          <Button onClick={() => setNewEncounterOpen(true)} className="w-full">
+            <Plus className="mr-2 h-4 w-4" /> Nova consulta
+          </Button>
+
+          {patientEncounters.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <Stethoscope className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p className="text-sm">Nenhuma consulta registrada ainda.</p>
+              <p className="text-xs mt-1">Clique em "Nova consulta" para começar.</p>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ===== TAB CONSULTAS ===== */}
+        <TabsContent value="consultas" className="space-y-4 mt-4">
+          {/* Filters */}
+          <div className="flex flex-wrap gap-2 items-center">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar nas consultas…" value={consultaSearch} onChange={(e) => setConsultaSearch(e.target.value)} className="pl-9" />
+            </div>
+            <Select value={consultaFilter} onValueChange={(v) => setConsultaFilter(v as any)}>
+              <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="7d">7 dias</SelectItem>
+                <SelectItem value="30d">30 dias</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={consultaStatus} onValueChange={(v) => setConsultaStatus(v as any)}>
+              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos status</SelectItem>
+                <SelectItem value="draft">Rascunho</SelectItem>
+                <SelectItem value="final">Finalizado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filteredEncounters.length > 0 ? (
+            <div className="space-y-2">
+              {filteredEncounters.map((enc) => {
+                const encNote = data.notes.find((n) => n.encounterId === enc.id);
+                const summary = enc.chiefComplaint || encNote?.sections?.[0]?.content?.slice(0, 80) || "Sem resumo";
+                return (
+                  <Card key={enc.id} className="glass-card hover:border-primary/30 transition-colors">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium">{formatDateTimeBR(enc.startedAt)}</span>
+                            <StatusBadge status={enc.status} />
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate">{summary}</p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button variant="outline" size="sm" onClick={() => navigate(`/consultas/${enc.id}`)}>Abrir</Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleDuplicate(enc.id)}><Copy className="mr-2 h-4 w-4" /> Duplicar</DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onClick={() => setDeleteEncId(enc.id)}><Trash2 className="mr-2 h-4 w-4" /> Excluir</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground">
+              <Stethoscope className="h-10 w-10 mx-auto mb-3 opacity-40" />
+              <p className="text-sm">Nenhuma consulta encontrada.</p>
+              <Button variant="outline" className="mt-3" onClick={() => setNewEncounterOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" /> Criar primeira consulta
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ===== TAB DIAGNÓSTICOS ===== */}
+        <TabsContent value="diagnosticos" className="space-y-4 mt-4">
+          <Card className="glass-card">
+            <CardHeader className="pb-3 pt-4 px-4">
+              <CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> Diagnósticos</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-3">
+              <div className="flex flex-wrap gap-1.5">
+                {(patient.diagnoses ?? []).map((d, i) => (
+                  <Badge key={i} variant="secondary" className="gap-1">
+                    {d}
+                    <button onClick={() => removeDiagnosisStandalone(i)} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
+                  </Badge>
                 ))}
-                <Button variant="outline" size="sm" onClick={addChild}><Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar filho(a)</Button>
+                {(patient.diagnoses ?? []).length === 0 && <p className="text-sm text-muted-foreground">Nenhum diagnóstico cadastrado.</p>}
               </div>
-              <div className="space-y-1.5">
-                <Label>Animal de estimação</Label>
-                <Input value={draft.petName} onChange={(e) => set("petName", e.target.value)} placeholder="Nome do animal" />
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Filhos</Label>
-                {patient.children?.length ? (
-                  <div className="flex flex-wrap gap-1.5">{patient.children.map((c, i) => <Badge key={i} variant="secondary">{c}</Badge>)}</div>
-                ) : <p className="text-sm">—</p>}
-              </div>
-              <FieldView label="Animal de estimação" value={patient.petName} />
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* D) Origem */}
-      <Card className="glass-card">
-        <CardHeader className="pb-3 pt-4 px-4">
-          <CardTitle className="text-sm flex items-center gap-2"><Megaphone className="h-4 w-4 text-primary" /> Origem</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4">
-          {editing ? (
-            <div className="space-y-1.5 max-w-xs">
-              <Label>Como conheceu a clínica?</Label>
-              <Select value={draft.referralSource || "none"} onValueChange={(v) => set("referralSource", v === "none" ? "" : v)}>
-                <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Não informado</SelectItem>
-                  <SelectItem value="Instagram">Instagram</SelectItem>
-                  <SelectItem value="Google">Google</SelectItem>
-                  <SelectItem value="Indicação">Indicação</SelectItem>
-                  <SelectItem value="Evento">Evento</SelectItem>
-                  <SelectItem value="Retorno">Retorno</SelectItem>
-                  <SelectItem value="Outros">Outros</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          ) : (
-            <FieldView label="Como conheceu a clínica?" value={patient.referralSource} />
-          )}
-        </CardContent>
-      </Card>
-
-      {/* E) Saúde */}
-      <Card className="glass-card">
-        <CardHeader className="pb-3 pt-4 px-4">
-          <CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4 text-primary" /> Saúde</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 space-y-4">
-          {/* Diagnósticos */}
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Diagnósticos</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {draft.diagnoses.map((d, i) => (
-                <Badge key={i} variant="secondary" className="gap-1">
-                  {d}
-                  {editing && (
-                    <button onClick={() => removeChip("diagnoses", i)} className="ml-0.5 hover:text-destructive">
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </Badge>
-              ))}
-              {!editing && draft.diagnoses.length === 0 && <p className="text-sm">—</p>}
-            </div>
-            {editing && (
               <div className="flex gap-2 max-w-sm">
-                <Input
-                  value={newDiagnosis}
-                  onChange={(e) => setNewDiagnosis(e.target.value)}
-                  placeholder="Novo diagnóstico"
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addChip("diagnoses", newDiagnosis, setNewDiagnosis); } }}
-                  className="flex-1"
-                />
-                <Button variant="outline" size="sm" onClick={() => addChip("diagnoses", newDiagnosis, setNewDiagnosis)}>
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
+                <Input value={tabNewDiagnosis} onChange={(e) => setTabNewDiagnosis(e.target.value)} placeholder="Novo diagnóstico" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addDiagnosisStandalone(tabNewDiagnosis); } }} className="flex-1" />
+                <Button variant="outline" size="sm" onClick={() => addDiagnosisStandalone(tabNewDiagnosis)}><Plus className="h-3.5 w-3.5" /></Button>
               </div>
-            )}
-          </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {/* Alergias */}
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Alergias medicamentosas</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {draft.drugAllergies.map((a, i) => (
-                <Badge key={i} variant="outline" className="gap-1 border-destructive/40 text-destructive">
-                  {a}
-                  {editing && (
-                    <button onClick={() => removeChip("drugAllergies", i)} className="ml-0.5 hover:text-destructive">
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
-                </Badge>
-              ))}
-              {!editing && draft.drugAllergies.length === 0 && <p className="text-sm">—</p>}
-            </div>
-            {editing && (
+        {/* ===== TAB ALERGIAS ===== */}
+        <TabsContent value="alergias" className="space-y-4 mt-4">
+          <Card className="glass-card">
+            <CardHeader className="pb-3 pt-4 px-4">
+              <CardTitle className="text-sm flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" /> Alergias Medicamentosas</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-3">
+              <div className="flex flex-wrap gap-1.5">
+                {(patient.drugAllergies ?? []).map((a, i) => (
+                  <Badge key={i} variant="outline" className="gap-1 border-destructive/40 text-destructive">
+                    {a}
+                    <button onClick={() => removeAllergyStandalone(i)} className="ml-0.5 hover:text-destructive"><X className="h-3 w-3" /></button>
+                  </Badge>
+                ))}
+                {(patient.drugAllergies ?? []).length === 0 && <p className="text-sm text-muted-foreground">Nenhuma alergia cadastrada.</p>}
+              </div>
               <div className="flex gap-2 max-w-sm">
-                <Input
-                  value={newAllergy}
-                  onChange={(e) => setNewAllergy(e.target.value)}
-                  placeholder="Nova alergia"
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addChip("drugAllergies", newAllergy, setNewAllergy); } }}
-                  className="flex-1"
-                />
-                <Button variant="outline" size="sm" onClick={() => addChip("drugAllergies", newAllergy, setNewAllergy)}>
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
+                <Input value={tabNewAllergy} onChange={(e) => setTabNewAllergy(e.target.value)} placeholder="Nova alergia" onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAllergyStandalone(tabNewAllergy); } }} className="flex-1" />
+                <Button variant="outline" size="sm" onClick={() => addAllergyStandalone(tabNewAllergy)}><Plus className="h-3.5 w-3.5" /></Button>
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      {/* Delete confirmation */}
+        {/* ===== TAB DOCUMENTOS ===== */}
+        <TabsContent value="documentos" className="space-y-4 mt-4">
+          <Card className="glass-card">
+            <CardHeader className="pb-3 pt-4 px-4">
+              <CardTitle className="text-sm flex items-center gap-2"><FolderOpen className="h-4 w-4 text-primary" /> Documentos / Exames</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-3">
+              {(patient.documents ?? []).length > 0 ? (
+                <div className="space-y-2">
+                  {(patient.documents ?? []).map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/50 p-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{doc.name}</p>
+                          <p className="text-xs text-muted-foreground">{format(parseISO(doc.date), "dd/MM/yyyy")} • {doc.type}</p>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeDocument(doc.id)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6 text-muted-foreground">
+                  <FolderOpen className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">Nenhum documento cadastrado.</p>
+                </div>
+              )}
+
+              {showDocForm ? (
+                <div className="rounded-lg border border-border/50 p-3 space-y-3">
+                  <Input placeholder="Nome do documento" value={docName} onChange={(e) => setDocName(e.target.value)} />
+                  <Input type="date" value={docDate} onChange={(e) => setDocDate(e.target.value)} />
+                  <Select value={docType} onValueChange={(v) => setDocType(v as PatientDocument["type"])}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="exame">Exame</SelectItem>
+                      <SelectItem value="laudo">Laudo</SelectItem>
+                      <SelectItem value="imagem">Imagem</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={addDocument} disabled={!docName.trim()}><Plus className="mr-1 h-3 w-3" /> Salvar</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowDocForm(false)}>Cancelar</Button>
+                  </div>
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setShowDocForm(true)}>
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar exame (mock)
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Delete patient confirmation */}
       <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -464,6 +747,23 @@ export default function PacienteDetalhe() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Delete encounter confirmation */}
+      <AlertDialog open={!!deleteEncId} onOpenChange={(open) => { if (!open) setDeleteEncId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir consulta?</AlertDialogTitle>
+            <AlertDialogDescription>Todos os dados desta consulta serão removidos permanentemente.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteEncounter}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* New encounter dialog */}
+      <NewEncounterDialog open={newEncounterOpen} onOpenChange={setNewEncounterOpen} defaultPatientId={patient.id} />
     </div>
   );
 }
