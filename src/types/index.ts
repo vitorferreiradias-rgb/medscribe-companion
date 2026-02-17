@@ -13,6 +13,15 @@ export interface Patient {
   phone?: string;
   notes?: string;
   archived?: boolean;
+  cpf?: string;
+  rg?: string;
+  addressLine?: string;
+  cep?: string;
+  children?: string[];
+  petName?: string;
+  referralSource?: string;
+  diagnoses?: string[];
+  drugAllergies?: string[];
 }
 
 export type EncounterStatus = "recording" | "draft" | "reviewed" | "final";
