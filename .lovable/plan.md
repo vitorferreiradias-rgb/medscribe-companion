@@ -1,49 +1,110 @@
 
 
-# Reorganizar Home: Remover elementos e reposicionar Noticias
+# Detalhe do Paciente — Visualizacao e Edicao completa
 
 ## Resumo
 
-Remover DaySummaryCard, AlertsCard e o botao "Novo agendamento" do estado vazio. Mover o NewsCard para a coluna esquerda (abaixo do MiniCalendar). Adicionar interacao de clique unico para expandir a noticia dentro do card e duplo clique para abrir o site de origem.
+Criar uma nova pagina `/pacientes/:id` com visualizacao e edicao completa do paciente, seguindo o padrao de rotas do app (como `/consultas/:id`). Expandir o modelo `Patient` com novos campos (CPF, RG, endereco, CEP, filhos, animal, origem, diagnosticos, alergias). Na tabela de pacientes, o clique no nome navega para a pagina de detalhe.
 
 ## Mudancas
 
-### 1. Remover da Home (`src/pages/Agenda.tsx`)
+### 1. Expandir tipo Patient (`src/types/index.ts`)
 
-- **DaySummaryCard** (linhas 257-262): remover componente e import
-- **AlertsCard** (linha 652): remover componente e import
-- **Botao "Novo agendamento"** no estado vazio do painel direito (linha 643): remover o botao, manter apenas o texto informativo
-- **NewsCard** da coluna direita (linha 655): remover daqui
+Adicionar campos ao interface Patient:
+- `cpf?: string`
+- `rg?: string`
+- `addressLine?: string`
+- `cep?: string`
+- `children?: string[]`
+- `petName?: string`
+- `referralSource?: string`
+- `diagnoses?: string[]`
+- `drugAllergies?: string[]`
 
-### 2. Mover NewsCard para coluna esquerda
+### 2. Adicionar rota (`src/App.tsx`)
 
-Posicionar o NewsCard logo abaixo do MiniCalendar na coluna esquerda (lg:col-span-3), mantendo o visual atual.
+Adicionar rota `/pacientes/:id` apontando para novo componente `PacienteDetalhe`, dentro do grupo `AppLayout`, ao lado da rota `/pacientes`.
 
-### 3. Expandir noticia ao clicar (`src/components/NewsCard.tsx`)
+### 3. Tornar nome clicavel na tabela (`src/pages/Pacientes.tsx`)
 
-- Adicionar campo `summary` e `url` aos dados mock de cada noticia
-- Adicionar estado `expandedIndex` que controla qual noticia esta expandida
-- **Clique unico**: a noticia selecionada ocupa todo o espaco da lista, mostrando titulo completo (sem truncate), summary, fonte e data. Um botao "Voltar" retorna a lista.
-- **Duplo clique**: abre `window.open(url, '_blank')` para o site de origem
-- A interacao usa `onClick` com timer para distinguir clique simples de duplo clique
+Na celula do nome do paciente (linha 142-148), envolver o nome em um elemento clicavel que navega para `/pacientes/${p.id}`. Usar `cursor-pointer` e `hover:underline` para indicar interatividade.
 
-### Secao Tecnica
+### 4. Criar pagina PacienteDetalhe (`src/pages/PacienteDetalhe.tsx`)
 
-**`src/components/NewsCard.tsx`**
-- Atualizar interface `NewsItem` com `summary: string` e `url: string`
-- Adicionar dados mock de summary e URLs placeholder para cada item
-- Estado `expandedIndex: number | null`
-- Logica de clique: usar ref de timer para detectar single vs double click (300ms threshold)
-- Single click: `setExpandedIndex(i)` - exibe noticia expandida com summary completo
-- Double click: `window.open(item.url, '_blank')`
-- Visao expandida: titulo completo, summary, fonte, data, botao "Voltar a lista"
+Pagina completa com as seguintes caracteristicas:
 
-**`src/pages/Agenda.tsx`**
-- Remover imports de `DaySummaryCard` e `AlertsCard`
-- Remover `DaySummaryCard` da coluna esquerda
-- Remover `AlertsCard` e `NewsCard` da coluna direita
-- Adicionar `NewsCard` na coluna esquerda abaixo do `MiniCalendar`
-- Remover o `Button` "Novo agendamento" do empty state do painel direito
-- Remover estado `filter` e `setFilter` (usado apenas pelo DaySummaryCard)
-- Simplificar `filteredEvents` para sempre mostrar todos os `dayEvents`
+**Header:**
+- Botao voltar para `/pacientes`
+- Avatar com inicial + nome em destaque
+- Badge "Ativo" / "Arquivado"
+- Botoes: "Editar" (habilita edicao), "Salvar" (persiste), "Cancelar" (descarta)
+- Menu "..." com opcao "Excluir" (AlertDialog de confirmacao)
+
+**Modo visualizacao vs edicao:**
+- Estado `editing: boolean` (default false)
+- Campos exibidos como texto em modo visualizacao
+- Campos editaveis quando `editing = true`
+- Estado local `draft` clonado do paciente ao entrar em edicao
+- "Cancelar" reseta draft e sai de edicao
+- "Salvar" chama `updatePatient()`, mostra toast, sai de edicao
+
+**Secoes (Cards com glass-card):**
+
+A) Identificacao:
+- Nome (obrigatorio)
+- Data de nascimento (date picker com Calendar/Popover, formato pt-BR)
+- Sexo (Select existente)
+- CPF (input com mascara `###.###.###-##`)
+- RG (input com mascara simples)
+
+B) Contato e Endereco:
+- Telefone (existente)
+- Endereco (input texto)
+- CEP (input com mascara `#####-###`)
+
+C) Familia:
+- Lista dinamica de filhos: array de inputs com botao "+ Adicionar filho(a)" e icone trash para remover
+- Animal de estimacao (input texto)
+
+D) Origem (Marketing):
+- "Como conheceu a clinica?" — Select com opcoes: Instagram, Google, Indicacao, Evento, Retorno, Outros
+
+E) Saude:
+- Diagnosticos: input + botao adicionar, exibidos como badges/chips removiveis
+- Alergias medicamentosas: input + botao adicionar, exibidos como badges com outline destrutivo removiveis
+
+**Validacoes:**
+- Nome obrigatorio (desabilita salvar se vazio)
+- CPF: mascara automatica e validacao de formato (11 digitos)
+- CEP: mascara automatica e validacao de formato (8 digitos)
+- Data de nascimento: validacao de data valida
+
+**Mascaras (funcoes utilitarias inline):**
+- `maskCPF(value)`: aplica `###.###.###-##`
+- `maskCEP(value)`: aplica `#####-###`
+- Implementadas como funcoes simples no proprio arquivo, sem dependencia externa
+
+**Paciente nao encontrado:**
+- Exibir mensagem "Paciente nao encontrado" com botao voltar (mesmo padrao de ConsultaDetalhe)
+
+## Secao Tecnica
+
+### `src/types/index.ts`
+- Adicionar 9 campos opcionais ao `Patient`
+
+### `src/App.tsx`
+- Import `PacienteDetalhe`
+- Nova Route: `<Route path="/pacientes/:id" element={<PacienteDetalhe />} />`
+
+### `src/pages/Pacientes.tsx`
+- Linha 147: envolver `{p.name}` em `<button onClick={() => navigate(`/pacientes/${p.id}`)} className="hover:underline hover:text-primary text-left">{p.name}</button>`
+
+### `src/pages/PacienteDetalhe.tsx` (novo arquivo)
+- Imports: useParams, useNavigate, useState, useAppData, updatePatient, deletePatient, componentes shadcn
+- useParams para obter id, buscar paciente em data.patients
+- Estado: `editing`, `draft` (copia dos campos do paciente), `deleteConfirm`
+- Estado para chips: `newDiagnosis`, `newAllergy` (inputs temporarios)
+- Funcoes: `handleSave`, `handleCancel`, `handleDelete`, `addChild`, `removeChild`, `addDiagnosis`, `removeDiagnosis`, `addAllergy`, `removeAllergy`
+- Layout: header + 5 cards empilhados verticalmente
+- Usa Card, CardContent, CardHeader, CardTitle, Input, Label, Select, Badge, Button, AlertDialog, Calendar, Popover
 
