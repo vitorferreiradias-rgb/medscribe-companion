@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, FileText, CalendarClock, XCircle, CheckCircle2,
-  Clock, CalendarDays, Stethoscope, StickyNote, ClipboardList,
-  User, Save, Loader2,
+  CalendarDays,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import {
@@ -215,26 +214,22 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
 
   if (dayLoading) {
     return (
-      <div className="grid gap-5 lg:grid-cols-12">
-        <div className="lg:col-span-3 space-y-4">
+      <div className="space-y-5">
+        <div className="grid gap-5 lg:grid-cols-2">
           <Skeleton className="h-[220px] rounded-xl" />
-          <Skeleton className="h-[100px] rounded-xl" />
+          <Skeleton className="h-[220px] rounded-xl" />
         </div>
-        <div className="lg:col-span-5 space-y-2">
+        <div className="space-y-2">
           {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
-        </div>
-        <div className="lg:col-span-4 space-y-4">
-          <Skeleton className="h-28 rounded-xl" />
-          <Skeleton className="h-40 rounded-xl" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-12">
-      {/* LEFT COLUMN: Mini Calendar + Summary + Filters */}
-      <div className="lg:col-span-3 space-y-4">
+      <div className="space-y-5">
+      {/* TOP ROW: Calendar + News side by side */}
+      <div className="grid gap-5 lg:grid-cols-2">
         <MiniCalendar
           currentDate={currentDate}
           onDateSelect={() => setSelectedId(null)}
@@ -244,8 +239,8 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
         <NewsCard />
       </div>
 
-      {/* CENTER COLUMN: Timeline */}
-      <div className="lg:col-span-5 space-y-3">
+      {/* TIMELINE */}
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-caption font-semibold text-muted-foreground uppercase tracking-wider">
             Agenda do dia
@@ -447,187 +442,6 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
           </Card>
         )}
       </div>
-
-      {/* RIGHT COLUMN: Patient panel + News + Alerts */}
-      <div className="lg:col-span-4 space-y-4">
-        {loading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-28 rounded-xl" />
-            <div className="grid grid-cols-2 gap-3">
-              <Skeleton className="h-24 rounded-xl" />
-              <Skeleton className="h-24 rounded-xl" />
-            </div>
-          </div>
-        ) : selected && selectedPatient ? (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={selected.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="space-y-4"
-            >
-              {/* Patient card */}
-              <Card className="glass-card rounded-xl">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="h-14 w-14 shrink-0">
-                      <AvatarFallback className="bg-primary/15 text-primary text-xl font-bold">
-                        {selectedPatient.name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <h2 className="text-lg font-semibold">{selectedPatient.name}</h2>
-                      <div className="flex flex-wrap gap-1.5 mt-1">
-                        {calcAge(selectedPatient.birthDate) && (
-                          <Badge variant="secondary" className="text-[11px] font-normal">
-                            {calcAge(selectedPatient.birthDate)} anos
-                          </Badge>
-                        )}
-                        {selectedPatient.sex && selectedPatient.sex !== "NA" && (
-                          <Badge variant="secondary" className="text-[11px] font-normal">
-                            {selectedPatient.sex === "M" ? "Masculino" : selectedPatient.sex === "F" ? "Feminino" : "Outro"}
-                          </Badge>
-                        )}
-                        <Badge variant="secondary" className="text-[11px] font-normal">
-                          {typeLabels[selected.type]}
-                        </Badge>
-                      </div>
-                      {selectedClinician && (
-                        <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {selectedClinician.name}
-                        </p>
-                      )}
-                    </div>
-                    <Badge variant="outline" className={`shrink-0 text-xs font-medium border ${statusConfig[selected.status].className}`}>
-                      {statusConfig[selected.status].label}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* CTA grid */}
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  {
-                    label: "Iniciar consulta",
-                    icon: Stethoscope,
-                    accent: "text-primary",
-                    borderClass: "border-primary/20 hover:bg-primary/[0.06] hover:border-primary/40",
-                    disabled: selected.status !== "scheduled" && selected.status !== "confirmed",
-                    onClick: () => handleStart(selected),
-                  },
-                  {
-                    label: "Gerar prontuário",
-                    icon: FileText,
-                    accent: "text-warning",
-                    borderClass: "border-warning/20 hover:bg-warning/[0.06] hover:border-warning/40",
-                    disabled: !selected.encounterId,
-                    onClick: () => handleGenerate(selected),
-                  },
-                  {
-                    label: "Abrir prontuário",
-                    icon: ClipboardList,
-                    accent: "text-muted-foreground",
-                    borderClass: "hover:bg-secondary/60",
-                    disabled: !selected.encounterId,
-                    onClick: () => handleOpen(selected),
-                  },
-                  {
-                    label: "Finalizar",
-                    icon: CheckCircle2,
-                    accent: "text-success",
-                    borderClass: "border-success/20 hover:bg-success/[0.06] hover:border-success/40",
-                    disabled: selected.status === "done" || selected.status === "no_show",
-                    onClick: () => handleFinalize(selected),
-                  },
-                ].map((cta) => (
-                  <Button
-                    key={cta.label}
-                    variant="outline"
-                    className={`h-auto py-4 flex-col gap-2 rounded-xl transition-all duration-150 ease-out ${cta.borderClass}`}
-                    disabled={cta.disabled}
-                    onClick={cta.onClick}
-                  >
-                    <cta.icon className={`h-6 w-6 ${cta.accent}`} />
-                    <span className="text-sm font-medium">{cta.label}</span>
-                  </Button>
-                ))}
-              </div>
-
-              {/* Quick notes */}
-              <Card className="glass-card rounded-xl">
-                <CardHeader className="pb-2 px-4 pt-4">
-                  <CardTitle className="text-caption font-medium flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <StickyNote className="h-4 w-4 text-muted-foreground" />
-                      Notas rápidas
-                    </span>
-                    <AnimatePresence>
-                      {notesSaved && (
-                        <motion.span
-                          initial={{ opacity: 0, x: 8 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0 }}
-                          className="flex items-center gap-1 text-[10px] text-success font-normal"
-                        >
-                          <Save className="h-3 w-3" /> Salvo
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-4">
-                  <Textarea
-                    placeholder="Anotar antes/durante a consulta..."
-                    rows={3}
-                    value={quickNotes[selected.id] ?? selected.notes ?? ""}
-                    onChange={(e) => handleNotesChange(selected.id, e.target.value)}
-                    className="resize-none rounded-lg text-sm"
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Pendências */}
-              <Card className="glass-card rounded-xl">
-                <CardHeader className="pb-2 px-4 pt-4">
-                  <CardTitle className="text-caption font-medium flex items-center gap-2">
-                    <ClipboardList className="h-4 w-4 text-muted-foreground" />
-                    Pendências do paciente
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="px-4 pb-4">
-                  <div className="space-y-2.5">
-                    {[
-                      { label: "Exame de sangue solicitado", color: "bg-warning" },
-                      { label: "Retorno em 7 dias", color: "bg-primary/40" },
-                      { label: "Prescrição de paracetamol", color: "bg-muted-foreground/40" },
-                    ].map((item) => (
-                      <div key={item.label} className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                        <div className={`h-2 w-2 rounded-full shrink-0 ${item.color}`} />
-                        <span>{item.label}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </AnimatePresence>
-        ) : (
-          <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}>
-            <Card className="glass-card rounded-xl">
-              <CardContent className="py-16 text-center text-muted-foreground">
-                <CalendarDays className="h-12 w-12 mx-auto mb-4 opacity-25" />
-                <p className="text-sm font-medium mb-1">Nenhum paciente selecionado</p>
-                <p className="text-xs">Selecione um agendamento na timeline.</p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
       </div>
-    </div>
-  );
+    );
 }
