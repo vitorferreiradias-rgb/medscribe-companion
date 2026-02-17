@@ -1,48 +1,49 @@
 
 
-# Correcao de Simetria do Calendario
+# Reorganizar Home: Remover elementos e reposicionar Noticias
 
-## Problema
+## Resumo
 
-O calendario usa celulas com largura fixa (`w-9` = 36px) em linhas `flex`, totalizando 252px para 7 colunas. Como o container e mais largo que isso, sobra espaco vazio a direita, criando assimetria visual.
-
-## Solucao
-
-Trocar larguras fixas por larguras fluidas (`flex-1`) para que as 7 colunas preencham 100% da largura disponivel, mantendo simetria perfeita entre bordas esquerda e direita.
+Remover DaySummaryCard, AlertsCard e o botao "Novo agendamento" do estado vazio. Mover o NewsCard para a coluna esquerda (abaixo do MiniCalendar). Adicionar interacao de clique unico para expandir a noticia dentro do card e duplo clique para abrir o site de origem.
 
 ## Mudancas
 
-### 1. `src/components/ui/calendar.tsx` - Grid fluido
+### 1. Remover da Home (`src/pages/Agenda.tsx`)
 
-Alterar as classNames do DayPicker:
+- **DaySummaryCard** (linhas 257-262): remover componente e import
+- **AlertsCard** (linha 652): remover componente e import
+- **Botao "Novo agendamento"** no estado vazio do painel direito (linha 643): remover o botao, manter apenas o texto informativo
+- **NewsCard** da coluna direita (linha 655): remover daqui
 
-- **`head_row`**: de `"flex"` para `"flex w-full"` (garantir largura total)
-- **`head_cell`**: trocar `w-9` por `flex-1 text-center` para distribuir igualmente
-- **`row`**: ja tem `"flex w-full"` (manter)
-- **`cell`**: trocar `h-9 w-9` por `h-9 flex-1` para ocupar largura proporcional
-- **`day`** (botao): trocar `h-9 w-9` por `h-9 w-full` para preencher a celula
-- **`caption`**: manter `flex justify-center` com `px-2` para alinhar com o grid
-- **`nav_button_previous`**: de `absolute left-1` para `absolute left-0`
-- **`nav_button_next`**: de `absolute right-1` para `absolute right-0`
+### 2. Mover NewsCard para coluna esquerda
 
-### 2. `src/components/MiniCalendar.tsx` - Ajuste do compact calendar
+Posicionar o NewsCard logo abaixo do MiniCalendar na coluna esquerda (lg:col-span-3), mantendo o visual atual.
 
-Atualizar os overrides de classe no compact calendar (linha 101) para refletir as novas classes fluidas:
+### 3. Expandir noticia ao clicar (`src/components/NewsCard.tsx`)
 
-- Trocar `[&_.rdp-head_cell]:w-6` por `[&_.rdp-head_cell]:flex-1 [&_.rdp-head_cell]:text-center`
-- Trocar `[&_.rdp-cell]:w-6` por `[&_.rdp-cell]:flex-1`
-- Trocar `[&_.rdp-day]:w-6` por `[&_.rdp-day]:w-full`
-- Manter alturas (`h-6`) e tamanhos de fonte
+- Adicionar campo `summary` e `url` aos dados mock de cada noticia
+- Adicionar estado `expandedIndex` que controla qual noticia esta expandida
+- **Clique unico**: a noticia selecionada ocupa todo o espaco da lista, mostrando titulo completo (sem truncate), summary, fonte e data. Um botao "Voltar" retorna a lista.
+- **Duplo clique**: abre `window.open(url, '_blank')` para o site de origem
+- A interacao usa `onClick` com timer para distinguir clique simples de duplo clique
 
 ### Secao Tecnica
 
-**`src/components/ui/calendar.tsx`** (6 linhas afetadas):
-- Linha 28: `head_cell` - `w-9` -> `flex-1 text-center`
-- Linha 31: `cell` - `h-9 w-9` -> `h-9 flex-1`
-- Linha 32: `day` - `h-9 w-9` -> `h-9 w-full`
-- Linha 25: `nav_button_previous` - `left-1` -> `left-0`
-- Linha 26: `nav_button_next` - `right-1` -> `right-0`
+**`src/components/NewsCard.tsx`**
+- Atualizar interface `NewsItem` com `summary: string` e `url: string`
+- Adicionar dados mock de summary e URLs placeholder para cada item
+- Estado `expandedIndex: number | null`
+- Logica de clique: usar ref de timer para detectar single vs double click (300ms threshold)
+- Single click: `setExpandedIndex(i)` - exibe noticia expandida com summary completo
+- Double click: `window.open(item.url, '_blank')`
+- Visao expandida: titulo completo, summary, fonte, data, botao "Voltar a lista"
 
-**`src/components/MiniCalendar.tsx`** (linha 101):
-- Atualizar overrides CSS do compact calendar para usar `flex-1` e `w-full` em vez de larguras fixas (`w-6`)
+**`src/pages/Agenda.tsx`**
+- Remover imports de `DaySummaryCard` e `AlertsCard`
+- Remover `DaySummaryCard` da coluna esquerda
+- Remover `AlertsCard` e `NewsCard` da coluna direita
+- Adicionar `NewsCard` na coluna esquerda abaixo do `MiniCalendar`
+- Remover o `Button` "Novo agendamento" do empty state do painel direito
+- Remover estado `filter` e `setFilter` (usado apenas pelo DaySummaryCard)
+- Simplificar `filteredEvents` para sempre mostrar todos os `dayEvents`
 

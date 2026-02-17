@@ -98,7 +98,7 @@ export function MiniCalendar({ currentDate, onDateSelect, onSchedule, scheduleEv
         onSelect={handleDayClick}
         modifiers={modifiers}
         modifiersStyles={modifiersStyles}
-        className={cn("p-0 pointer-events-none text-[10px] [&_.rdp-caption]:hidden [&_.rdp-head_cell]:flex-1 [&_.rdp-head_cell]:text-center [&_.rdp-head_cell]:text-[9px] [&_.rdp-cell]:flex-1 [&_.rdp-cell]:h-6 [&_.rdp-day]:w-full [&_.rdp-day]:h-6 [&_.rdp-day]:text-[10px] [&_.rdp-row]:mt-0.5")}
+        className={cn("p-0 pointer-events-none text-[10px] [&_.rdp-caption]:hidden [&_.rdp-head_cell]:w-6 [&_.rdp-head_cell]:text-[9px] [&_.rdp-cell]:w-6 [&_.rdp-cell]:h-6 [&_.rdp-day]:w-6 [&_.rdp-day]:h-6 [&_.rdp-day]:text-[10px] [&_.rdp-row]:mt-0.5")}
         showOutsideDays={false}
       />
     </div>
