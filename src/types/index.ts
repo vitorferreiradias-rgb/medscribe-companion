@@ -11,6 +11,7 @@ export interface Patient {
   birthDate?: string;
   sex?: "M" | "F" | "O" | "NA";
   phone?: string;
+  email?: string;
   notes?: string;
   archived?: boolean;
   cpf?: string;
