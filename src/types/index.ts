@@ -5,6 +5,13 @@ export interface Clinician {
   crm: string;
 }
 
+export interface PatientDocument {
+  id: string;
+  name: string;
+  date: string;
+  type: "exame" | "laudo" | "imagem" | "outro";
+}
+
 export interface Patient {
   id: string;
   name: string;
@@ -23,6 +30,7 @@ export interface Patient {
   referralSource?: string;
   diagnoses?: string[];
   drugAllergies?: string[];
+  documents?: PatientDocument[];
 }
 
 export type EncounterStatus = "recording" | "draft" | "reviewed" | "final";

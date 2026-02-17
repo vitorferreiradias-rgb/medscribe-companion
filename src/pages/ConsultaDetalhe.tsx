@@ -1,7 +1,7 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3, ClipboardPaste, CalendarDays, Pill, ArrowRightLeft, BrainCircuit, Loader2 } from "lucide-react";
+import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3, ClipboardPaste, CalendarDays, Pill, ArrowRightLeft, BrainCircuit, Loader2, AlertTriangle } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { updateEncounter, deleteEncounter } from "@/lib/store";
 import { updateUnifiedNote } from "@/lib/store";
@@ -184,6 +184,14 @@ export default function ConsultaDetalhe() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      {/* Allergy banner */}
+      {patient && (patient.drugAllergies?.length ?? 0) > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5">
+          <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+          <p className="text-sm text-destructive font-medium">Alergias: {patient.drugAllergies!.join(", ")}</p>
+        </div>
+      )}
+
       {/* Patient header card */}
       <Card className="glass-card">
         <CardContent className="p-5">
@@ -193,7 +201,11 @@ export default function ConsultaDetalhe() {
                 {patient?.name?.charAt(0) ?? "?"}
               </div>
               <div>
-                <h1 className="text-xl font-semibold">{patient?.name ?? "Paciente"}</h1>
+                <h1 className="text-xl font-semibold">
+                  {patient ? (
+                    <Link to={`/pacientes/${patient.id}`} className="hover:underline">{patient.name}</Link>
+                  ) : "Paciente"}
+                </h1>
                 <div className="flex flex-wrap items-center gap-2 mt-0.5 text-sm text-muted-foreground">
                   <span>{formatDateTimeBR(enc.startedAt)}</span>
                   <span>•</span>
