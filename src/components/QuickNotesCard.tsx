@@ -45,7 +45,7 @@ export function QuickNotesCard() {
   return (
     <div className="glass-card-orange rounded-xl p-4 space-y-2">
       <div className="flex items-center gap-2">
-        <StickyNote className="h-3.5 w-3.5 text-orange-500/70" />
+        <StickyNote className="h-3.5 w-3.5 text-primary/70" />
         <span className="text-xs font-medium text-muted-foreground">Notas rápidas</span>
       </div>
 
@@ -65,7 +65,7 @@ export function QuickNotesCard() {
                 }`}
               >
                 <span className={`h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 ${
-                  isDone ? "bg-orange-400/80 border-orange-400" : "border-orange-300/60"
+                  isDone ? "bg-primary/80 border-primary" : "border-primary/40"
                 }`}>
                   {isDone && <span className="text-white text-[10px]">✓</span>}
                 </span>
