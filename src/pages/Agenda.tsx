@@ -215,31 +215,17 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
   if (dayLoading) {
     return (
       <div className="space-y-5">
-        <div className="grid gap-5 lg:grid-cols-2">
-          <Skeleton className="h-[220px] rounded-xl" />
-          <Skeleton className="h-[220px] rounded-xl" />
-        </div>
         <div className="space-y-2">
-          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+          {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
         </div>
+        <Skeleton className="h-[360px] rounded-xl" />
       </div>
     );
   }
 
   return (
       <div className="space-y-5">
-      {/* TOP ROW: Calendar + News side by side */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        <MiniCalendar
-          currentDate={currentDate}
-          onDateSelect={() => setSelectedId(null)}
-          onSchedule={() => onNewSchedule()}
-          scheduleEvents={data.scheduleEvents ?? []}
-        />
-        <NewsCard />
-      </div>
-
-      {/* TIMELINE */}
+      {/* TIMELINE — principal, sempre primeiro */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-caption font-semibold text-muted-foreground uppercase tracking-wider">
@@ -277,7 +263,7 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
             </Card>
           </motion.div>
         ) : (
-          <Card className="glass-card rounded-xl overflow-hidden">
+          <Card className="glass-card rounded-xl overflow-hidden min-h-[420px]">
             <CardContent className="p-0">
               <div className="relative">
                 {/* Now indicator */}
@@ -442,6 +428,27 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
           </Card>
         )}
       </div>
+
+      {/* CARD ÚNICO: Calendário + Notícias lado a lado */}
+      <Card className="glass-card rounded-xl overflow-hidden">
+        <CardContent className="p-0">
+          <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border/30">
+            {/* Coluna A: Mini-calendário */}
+            <div className="p-4 flex flex-col">
+              <MiniCalendar
+                currentDate={currentDate}
+                onDateSelect={() => setSelectedId(null)}
+                onSchedule={() => onNewSchedule()}
+                scheduleEvents={data.scheduleEvents ?? []}
+              />
+            </div>
+            {/* Coluna B: Notícias */}
+            <div className="p-0 max-h-[400px] md:max-h-[380px] overflow-y-auto">
+              <NewsCard embedded />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       </div>
     );
 }
