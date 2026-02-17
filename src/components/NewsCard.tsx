@@ -47,7 +47,11 @@ const mockNews: Record<string, NewsItem[]> = {
   ],
 };
 
-export function NewsCard() {
+interface NewsCardProps {
+  embedded?: boolean;
+}
+
+export function NewsCard({ embedded = false }: NewsCardProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("hoje");
   const [loading, setLoading] = useState(false);
@@ -67,21 +71,19 @@ export function NewsCard() {
     if (clickTimer.current) {
       clearTimeout(clickTimer.current);
       clickTimer.current = null;
-      // Double click
       window.open(url, "_blank");
       return;
     }
     clickTimer.current = setTimeout(() => {
       clickTimer.current = null;
-      // Single click
       setExpandedIndex(index);
     }, 300);
   }, []);
 
   const expandedItem = expandedIndex !== null ? items[expandedIndex] : null;
 
-  return (
-    <Card className="glass-card rounded-xl">
+  const content = (
+    <>
       <CardHeader className="pb-2 px-4 pt-4">
         <CardTitle className="text-caption font-medium flex items-center gap-2">
           <Newspaper className="h-4 w-4 text-muted-foreground" />
@@ -168,6 +170,14 @@ export function NewsCard() {
           <ExternalLink className="ml-1.5 h-3 w-3" />
         </Button>
       </CardContent>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <Card className="glass-card rounded-xl">
+      {content}
     </Card>
   );
 }
