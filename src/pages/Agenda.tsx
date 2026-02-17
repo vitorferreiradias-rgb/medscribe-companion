@@ -24,6 +24,7 @@ import { ScheduleEvent } from "@/types";
 import { SOAP_TEMPLATE_ID } from "@/lib/soap-template";
 import { MiniCalendar } from "@/components/MiniCalendar";
 import { NewsCard } from "@/components/NewsCard";
+import { QuickNotesCard } from "@/components/QuickNotesCard";
 
 const statusConfig: Record<string, { label: string; className: string; stripBg: string; stripBorder: string }> = {
   scheduled: { label: "Agendado", className: "status-scheduled", stripBg: "bg-slate-100/60", stripBorder: "border-l-slate-400" },
@@ -428,6 +429,9 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
           </Card>
         )}
       </div>
+
+      {/* NOTAS RÁPIDAS — glass laranja */}
+      <QuickNotesCard />
 
       {/* CARD ÚNICO: Calendário + Notícias lado a lado */}
       <Card className="glass-card rounded-xl overflow-hidden">
