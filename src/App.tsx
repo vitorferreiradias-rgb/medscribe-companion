@@ -9,6 +9,7 @@ import AgendaPage from "@/pages/AgendaPage";
 import Consultas from "@/pages/Consultas";
 import ConsultaDetalhe from "@/pages/ConsultaDetalhe";
 import Pacientes from "@/pages/Pacientes";
+import PacienteDetalhe from "@/pages/PacienteDetalhe";
 import Perfil from "@/pages/Perfil";
 import NotFound from "@/pages/NotFound";
 import Noticias from "@/pages/Noticias";
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/consultas" element={<Consultas />} />
               <Route path="/consultas/:id" element={<ConsultaDetalhe />} />
               <Route path="/pacientes" element={<Pacientes />} />
+              <Route path="/pacientes/:id" element={<PacienteDetalhe />} />
               <Route path="/perfil" element={<Perfil />} />
               <Route path="/noticias" element={<Noticias />} />
             </Route>

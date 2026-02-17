@@ -144,7 +144,7 @@ export default function Pacientes() {
                         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
                           {p.name.charAt(0)}
                         </div>
-                        {p.name}
+                        <button onClick={() => navigate(`/pacientes/${p.id}`)} className="hover:underline hover:text-primary text-left">{p.name}</button>
                       </div>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">{p.birthDate ? formatDateBR(p.birthDate) : "—"}</TableCell>
