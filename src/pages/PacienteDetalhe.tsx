@@ -205,100 +205,102 @@ export default function PacienteDetalhe() {
         </DropdownMenu>
       </div>
 
-      {/* A) Identificação */}
+      {/* A) Identificação e Contato */}
       <Card className="glass-card">
         <CardHeader className="pb-3 pt-4 px-4">
-          <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Identificação</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2"><Users className="h-4 w-4 text-primary" /> Identificação e Contato</CardTitle>
         </CardHeader>
-        <CardContent className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {editing ? (
-            <>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Nome *</Label>
-                <Input value={draft.name} onChange={(e) => set("name", e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Data de nascimento</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !birthDateObj && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {birthDateObj ? format(birthDateObj, "dd/MM/yyyy") : "Selecionar"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={birthDateObj}
-                      onSelect={(d) => set("birthDate", d ? format(d, "yyyy-MM-dd") : "")}
-                      disabled={(d) => d > new Date()}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Sexo</Label>
-                <Select value={draft.sex} onValueChange={(v) => set("sex", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="M">Masculino</SelectItem>
-                    <SelectItem value="F">Feminino</SelectItem>
-                    <SelectItem value="O">Outro</SelectItem>
-                    <SelectItem value="NA">Não informado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>CPF</Label>
-                <Input value={draft.cpf} onChange={(e) => set("cpf", maskCPF(e.target.value))} placeholder="000.000.000-00" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>RG</Label>
-                <Input value={draft.rg} onChange={(e) => set("rg", e.target.value)} placeholder="RG" />
-              </div>
-            </>
-          ) : (
-            <>
-              <FieldView label="Nome" value={patient.name} />
-              <FieldView label="Data de nascimento" value={patient.birthDate ? format(parseISO(patient.birthDate), "dd/MM/yyyy") : undefined} />
-              <FieldView label="Sexo" value={{ M: "Masculino", F: "Feminino", O: "Outro", NA: "Não informado" }[patient.sex ?? "NA"]} />
-              <FieldView label="CPF" value={patient.cpf} />
-              <FieldView label="RG" value={patient.rg} />
-            </>
-          )}
-        </CardContent>
-      </Card>
+        <CardContent className="px-4 pb-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {editing ? (
+              <>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Nome *</Label>
+                  <Input value={draft.name} onChange={(e) => set("name", e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sexo</Label>
+                  <Select value={draft.sex} onValueChange={(v) => set("sex", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="M">Masculino</SelectItem>
+                      <SelectItem value="F">Feminino</SelectItem>
+                      <SelectItem value="O">Outro</SelectItem>
+                      <SelectItem value="NA">Não informado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Data de nascimento</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !birthDateObj && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {birthDateObj ? format(birthDateObj, "dd/MM/yyyy") : "Selecionar"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={birthDateObj}
+                        onSelect={(d) => set("birthDate", d ? format(d, "yyyy-MM-dd") : "")}
+                        disabled={(d) => d > new Date()}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>CPF</Label>
+                  <Input value={draft.cpf} onChange={(e) => set("cpf", maskCPF(e.target.value))} placeholder="000.000.000-00" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>RG</Label>
+                  <Input value={draft.rg} onChange={(e) => set("rg", e.target.value)} placeholder="RG" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Telefone</Label>
+                  <Input value={draft.phone} onChange={(e) => set("phone", e.target.value)} placeholder="(11) 99999-0000" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>CEP</Label>
+                  <Input value={draft.cep} onChange={(e) => set("cep", maskCEP(e.target.value))} placeholder="00000-000" />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label>Endereço</Label>
+                  <Input value={draft.addressLine} onChange={(e) => set("addressLine", e.target.value)} placeholder="Logradouro, número, complemento" />
+                </div>
+              </>
+            ) : (
+              <>
+                <FieldView label="Nome" value={patient.name} />
+                <FieldView label="Sexo" value={{ M: "Masculino", F: "Feminino", O: "Outro", NA: "Não informado" }[patient.sex ?? "NA"]} />
+                <FieldView label="Data de nascimento" value={patient.birthDate ? format(parseISO(patient.birthDate), "dd/MM/yyyy") : undefined} />
+                <FieldView label="CPF" value={patient.cpf} />
+                <FieldView label="RG" value={patient.rg} />
+                <FieldView label="Telefone" value={patient.phone} />
+                <FieldView label="CEP" value={patient.cep} />
+                <FieldView label="Endereço" value={patient.addressLine} />
+              </>
+            )}
+          </div>
 
-      {/* B) Contato e Endereço */}
-      <Card className="glass-card">
-        <CardHeader className="pb-3 pt-4 px-4">
-          <CardTitle className="text-sm flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> Contato e Endereço</CardTitle>
-        </CardHeader>
-        <CardContent className="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {editing ? (
-            <>
-              <div className="space-y-1.5">
-                <Label>Telefone</Label>
-                <Input value={draft.phone} onChange={(e) => set("phone", e.target.value)} placeholder="(11) 99999-0000" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>CEP</Label>
-                <Input value={draft.cep} onChange={(e) => set("cep", maskCEP(e.target.value))} placeholder="00000-000" />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Endereço</Label>
-                <Input value={draft.addressLine} onChange={(e) => set("addressLine", e.target.value)} placeholder="Logradouro, número, complemento" />
-              </div>
-            </>
-          ) : (
-            <>
-              <FieldView label="Telefone" value={patient.phone} />
-              <FieldView label="CEP" value={patient.cep} />
-              <FieldView label="Endereço" value={patient.addressLine} />
-            </>
-          )}
+          {/* Observações */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Observações</Label>
+            {editing ? (
+              <textarea
+                value={draft.notes}
+                onChange={(e) => set("notes", e.target.value)}
+                placeholder="Ex.: preferências do paciente, detalhes relevantes, avisos administrativos…"
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                rows={3}
+              />
+            ) : (
+              <p className="text-sm min-h-[1.5rem] whitespace-pre-wrap">{patient.notes || "—"}</p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
