@@ -1,59 +1,40 @@
 
 
-# Fluxo em etapas para Nova Consulta
+# Tornar a transcricao com IA opcional
 
-## Problema atual
+## Situacao atual
 
-A tela de Nova Consulta mostra tudo de uma vez: campos de identificacao (paciente, medico, queixa, local) junto com o editor manual e o painel de IA. O usuario espera um fluxo em dois passos, como era antes:
-
-1. Primeiro: selecionar paciente, medico e local
-2. Depois: ver o editor manual (esquerda) e a area de transcricao/IA (direita)
+Na Etapa 2 da Nova Consulta, o layout sempre mostra dois paineis: editor manual (esquerda) e prontuario IA (direita). O footer sempre exibe o botao "Finalizar e gerar prontuario". O usuario nao tem opcao de usar apenas o editor manual sem a parte de IA.
 
 ## Solucao
 
-Adicionar um state `step` (1 ou 2) na pagina `NovaConsulta.tsx`:
+Adicionar um toggle/switch na Etapa 1 (identificacao) para o usuario escolher se quer usar a IA ou nao. Quando desativado, a Etapa 2 mostra apenas o editor manual em tela cheia, sem o painel de IA nem a secao de gravacao/transcricao.
 
-### Etapa 1 - Identificacao
+### Mudancas na Etapa 1
 
-- Tela centralizada e limpa com os campos: Paciente, Medico, Queixa principal, Local
-- Botao "Criar paciente" inline (como ja existe)
-- Botao "Continuar" habilitado somente quando paciente e medico estiverem selecionados
-- Animacao de transicao suave para a etapa 2
+- Novo campo com Switch: "Usar transcricao com IA" (ativado por padrao)
+- Descricao breve: "Grave ou cole a transcricao da consulta para gerar o prontuario automaticamente"
 
-### Etapa 2 - Editor + Transcricao
+### Mudancas na Etapa 2
 
-- Layout atual de duas colunas (desktop) ou tabs (mobile)
-- Esquerda: editor manual com toolbar Markdown e modelos
-- Direita: painel de IA (placeholder ate gerar)
-- Gravacao/transcricao no painel colapsavel abaixo do editor
-- Footer sticky com botoes de salvar/gerar/unir
+**Quando IA desativada:**
+- Layout de coluna unica: apenas o editor manual ocupando toda a largura
+- Sem secao de gravacao/transcricao (collapsible removido)
+- Footer simplificado: apenas "Salvar rascunho" e "Salvar consulta" (salva direto sem chamar IA)
 
-### Mudancas no arquivo
-
-**`src/pages/NovaConsulta.tsx`**
-
-- Adicionar state `step` (1 ou 2), inicializando em 1
-- Na etapa 1: renderizar `identificationForm` centralizado num card com botao "Continuar"
-- Na etapa 2: renderizar o layout atual (colunas ou tabs) sem o `identificationForm` embutido
-- Mover o `identificationForm` para fora do editor pane
-- Mostrar resumo compacto do paciente/medico selecionado no header da etapa 2 (nome do paciente e medico como badges)
-- Botao "Continuar" desabilitado se `!patientId || !clinicianId`
+**Quando IA ativada:**
+- Comportamento atual mantido (duas colunas, gravacao, geracao IA)
 
 ### Secao tecnica
 
-O state `step` controla qual bloco e renderizado no main content area:
+Arquivo: `src/pages/NovaConsulta.tsx`
 
-```text
-step === 1:
-  Card centralizado (max-w-lg mx-auto)
-    - identificationForm (paciente, medico, queixa, local)
-    - Botao "Continuar" (disabled se falta paciente ou medico)
-
-step === 2:
-  Header compacto: "Paciente: Nome | Medico: Nome" (clicavel para voltar ao step 1)
-  Layout dual-pane atual (editor esquerda, IA direita)
-  Footer sticky com acoes
-```
-
-Nenhum arquivo novo sera criado. Apenas `NovaConsulta.tsx` sera modificado.
+- Novo state: `const [useAI, setUseAI] = useState(true)`
+- Na Etapa 1: adicionar componente `Switch` do shadcn abaixo dos campos de identificacao
+- Na Etapa 2:
+  - Se `!useAI`: renderizar `manualEditorPane` sem o `Collapsible` de gravacao, em largura total
+  - Se `useAI`: manter layout atual de duas colunas
+- No footer:
+  - Se `!useAI`: botao "Salvar consulta" que chama `handleMergeAndSave` diretamente (sem gerar IA)
+  - Se `useAI`: botoes atuais mantidos
 
