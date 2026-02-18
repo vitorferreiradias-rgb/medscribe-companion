@@ -432,7 +432,15 @@ export default function ConsultaDetalhe() {
             </TabsContent>
 
             <TabsContent value="receita" className="mt-3">
-              <ReceitaPlaceholder encounterId={enc.id} patientId={enc.patientId} />
+              <ReceitaPlaceholder
+                encounterId={enc.id}
+                patientId={enc.patientId}
+                clinicianName={clinician?.name}
+                clinicianCrm={clinician?.crm}
+                clinicianCpf={clinician?.cpf}
+                clinicAddress={clinician?.clinicAddress}
+                patientName={patient?.name}
+              />
             </TabsContent>
 
             <TabsContent value="dieta" className="mt-3">
