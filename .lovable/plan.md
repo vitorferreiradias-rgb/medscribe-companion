@@ -1,29 +1,67 @@
 
 
-# Simplificar fluxo de salvamento da Nova Consulta
+# Separar "Gerar prontuario IA" de "Finalizar consulta"
 
-## O que muda
+## Problema atual
 
-Remover o botao "Salvar rascunho" e o "Descartar rascunho". Manter apenas um botao principal de salvamento que, ao clicar, salva a consulta completa e redireciona automaticamente para a tela de visualizacao do prontuario (`/consultas/:id`), onde o usuario ja pode editar se necessario.
+No modo com IA, o botao "Finalizar e gerar prontuario" faz duas coisas ao mesmo tempo: gera a IA e e o unico caminho para encerrar. Depois de gerado, aparecem "Unir e salvar" e "Salvar sem unir" -- duas opcoes de encerramento que confundem.
 
-## Comportamento apos a mudanca
+## Nova logica
 
-1. Usuario preenche a identificacao (Etapa 1) e escreve no editor (Etapa 2)
-2. Clica em "Salvar consulta" (sem IA) ou "Finalizar e gerar prontuario" (com IA)
-3. O sistema salva o encounter + note e redireciona para `/consultas/:id`
-4. Na tela de detalhe, o usuario ja tem os botoes "Salvar", "Revisado", "Finalizar" e pode editar o texto livremente
+Separar em dois botoes com funcoes claras:
+
+- **Gerar prontuario** (secundario): aciona a IA para gerar o SOAP. Nao salva, nao redireciona. O usuario pode gerar, revisar e editar antes de finalizar.
+- **Finalizar consulta** (primario): salva tudo (com ou sem uniao do conteudo IA) e redireciona para `/consultas/:id`.
+
+### Footer no modo IA
+
+```text
+Antes de gerar:
+[Cancelar]              [Gerar prontuario]  [Finalizar consulta]
+
+Gerando:
+[Cancelar]              [Gerando...]        [Finalizar consulta]
+
+Apos gerar:
+[Cancelar]              [Gerar novamente]   [Finalizar consulta]
+```
+
+### Footer sem IA (sem mudanca)
+
+```text
+[Cancelar]                                  [Finalizar consulta]
+```
+
+O botao "Finalizar consulta" sempre chama `handleMergeAndSave`, que ja salva e redireciona. Se houver conteudo IA gerado, ele une automaticamente. Se nao houver, salva apenas o conteudo manual.
 
 ## Secao tecnica
 
-**Arquivo: `src/pages/NovaConsulta.tsx`**
+**Arquivo: `src/pages/NovaConsulta.tsx`** (linhas 665-692)
 
-- Remover a funcao `handleSaveDraft` (linhas 260-273)
-- Remover a funcao `handleDiscard` (linha 275)
-- No footer (linhas 676-721):
-  - Remover o DropdownMenu com "Cancelar consulta" e "Descartar rascunho"
-  - Substituir por um simples botao "Cancelar" (variant ghost) que faz `navigate(-1)`
-  - Manter os botoes de salvamento como estao (ja redirecionam para `/consultas/:id` via `handleMergeAndSave`)
-- No atalho de teclado Ctrl+S (linha 101): trocar `handleSaveDraft` por `handleMergeAndSave`
+Substituir o bloco de botoes `useAI ? (...)` por:
 
-O `handleMergeAndSave` ja faz `navigate(\`/consultas/\${enc.id}\`)`, entao o redirecionamento ja funciona. A tela `ConsultaDetalhe.tsx` ja possui os botoes de edicao, revisao e finalizacao.
+```tsx
+{useAI && (
+  <Button
+    variant="secondary"
+    size="sm"
+    onClick={handleGenerateAI}
+    disabled={isStreamingAI}
+    className="gap-1.5"
+  >
+    {isStreamingAI ? (
+      <><Sparkles className="h-4 w-4 animate-spin" /> Gerando...</>
+    ) : aiGenerated ? (
+      <><Sparkles className="h-4 w-4" /> Gerar novamente</>
+    ) : (
+      <><Sparkles className="h-4 w-4" /> Gerar prontuario</>
+    )}
+  </Button>
+)}
+<Button onClick={handleMergeAndSave} className="gap-1.5">
+  <CheckCircle2 className="h-4 w-4" /> Finalizar consulta
+</Button>
+```
+
+Remove-se o bloco condicional `aiGenerated` com "Unir e salvar" / "Salvar sem unir". Um unico botao "Finalizar consulta" resolve tudo.
 
