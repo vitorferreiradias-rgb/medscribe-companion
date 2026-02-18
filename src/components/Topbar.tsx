@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, ChevronLeft, ChevronRight, Stethoscope } from "lucide-react";
+import { Search, Plus, ChevronLeft, ChevronRight, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -89,9 +89,9 @@ export function Topbar({
 
       {/* CTA principal + Quick Actions */}
       <div className="flex items-center gap-1.5">
-        <Button size="sm" className="h-9 rounded-lg gap-1.5" onClick={onNewConsulta}>
-          <Stethoscope className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Nova consulta</span>
+        <Button size="sm" className="h-9 rounded-lg gap-1.5" onClick={onNewPaciente}>
+          <UserPlus className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Adicionar paciente</span>
         </Button>
 
         <QuickActionsMenu
