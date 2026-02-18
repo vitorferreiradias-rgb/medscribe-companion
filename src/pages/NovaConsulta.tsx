@@ -26,8 +26,9 @@ import {
   UserPlus, Plus, ChevronDown, MoreHorizontal,
   ClipboardPaste, FileText, Save, CheckCircle2, Sparkles,
   Bold, Italic, Heading2, List, Minus, Copy, ArrowDownToLine,
-  Merge, FileDown, Trash2
+  Merge, FileDown, Trash2, ArrowRight, Pencil
 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Utterance } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
@@ -44,6 +45,7 @@ export default function NovaConsulta() {
   const [complaint, setComplaint] = useState("");
   const [location, setLocation] = useState("");
   const [patientSearch, setPatientSearch] = useState("");
+  const [step, setStep] = useState<1 | 2>(() => searchParams.get("paciente") ? 2 : 1);
 
   // Quick new patient
   const [showNewPatient, setShowNewPatient] = useState(false);
@@ -582,27 +584,59 @@ export default function NovaConsulta() {
     </div>
   );
 
+  const selectedPatient = data.patients.find((p) => p.id === patientId);
+  const selectedClinician = data.clinicians.find((c) => c.id === clinicianId);
+
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* ── Sticky header ── */}
       <header className="sticky top-0 z-30 glass-topbar px-4 py-3 flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Voltar">
+        <Button variant="ghost" size="icon" onClick={() => step === 2 ? setStep(1) : navigate(-1)} aria-label="Voltar">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-semibold flex-1">Nova Consulta</h1>
+        {step === 2 && (
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="gap-1 text-xs cursor-pointer hover:bg-secondary/60" onClick={() => setStep(1)}>
+              <Pencil className="h-3 w-3" />
+              {selectedPatient?.name || "Paciente"}
+            </Badge>
+            <Badge variant="outline" className="gap-1 text-xs cursor-pointer hover:bg-accent/10" onClick={() => setStep(1)}>
+              {selectedClinician?.name || "Médico"}
+            </Badge>
+          </div>
+        )}
         {statusBadge}
       </header>
 
       {/* ── Main content ── */}
       <div className="flex-1 overflow-y-auto">
-        {isMobile ? (
+        {step === 1 ? (
+          <div className="flex items-center justify-center min-h-full py-12 px-4">
+            <Card className="w-full max-w-lg">
+              <CardHeader>
+                <CardTitle className="text-xl">Identificação da Consulta</CardTitle>
+                <CardDescription>Selecione o paciente, médico e preencha os dados iniciais.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {identificationForm}
+                <Button
+                  className="w-full gap-2 mt-4"
+                  disabled={!patientId || !clinicianId}
+                  onClick={() => setStep(2)}
+                >
+                  Continuar <ArrowRight className="h-4 w-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        ) : isMobile ? (
           <Tabs defaultValue="editor" className="px-4 py-4">
             <TabsList className="w-full">
               <TabsTrigger value="editor" className="flex-1">Editor Manual</TabsTrigger>
               <TabsTrigger value="ai" className="flex-1">Prontuário IA</TabsTrigger>
             </TabsList>
             <TabsContent value="editor" className="space-y-4 mt-4">
-              {identificationForm}
               {manualEditorPane}
             </TabsContent>
             <TabsContent value="ai" className="mt-4">
@@ -611,12 +645,9 @@ export default function NovaConsulta() {
           </Tabs>
         ) : (
           <div className="flex gap-5 px-5 py-5 max-w-[1600px] mx-auto h-full">
-            {/* Left: identification + editor */}
             <div className="w-1/2 space-y-5 flex flex-col">
-              {identificationForm}
               {manualEditorPane}
             </div>
-            {/* Right: AI pane */}
             <div className="w-1/2">
               {aiPane}
             </div>
@@ -624,46 +655,48 @@ export default function NovaConsulta() {
         )}
       </div>
 
-      {/* ── Sticky footer ── */}
-      <footer className="sticky bottom-0 z-30 glass-topbar px-4 py-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={handleSaveDraft} className="gap-1.5">
-            <Save className="h-3.5 w-3.5" /> Salvar rascunho
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={() => navigate(-1)}>Cancelar consulta</DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDiscard} className="text-destructive">Descartar rascunho</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <div className="flex items-center gap-2">
-          {aiGenerated && (
-            <Button onClick={handleMergeAndSave} className="gap-1.5" variant="default">
-              <Merge className="h-4 w-4" /> Unir e salvar
+      {/* ── Sticky footer (only on step 2) ── */}
+      {step === 2 && (
+        <footer className="sticky bottom-0 z-30 glass-topbar px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={handleSaveDraft} className="gap-1.5">
+              <Save className="h-3.5 w-3.5" /> Salvar rascunho
             </Button>
-          )}
-          <Button
-            onClick={aiGenerated ? handleMergeAndSave : handleGenerateAI}
-            disabled={isStreamingAI}
-            className="gap-1.5"
-            variant={aiGenerated ? "secondary" : "default"}
-          >
-            {isStreamingAI ? (
-              <><Sparkles className="h-4 w-4 animate-spin" /> Gerando…</>
-            ) : aiGenerated ? (
-              <><CheckCircle2 className="h-4 w-4" /> Salvar sem unir</>
-            ) : (
-              <><Sparkles className="h-4 w-4" /> Finalizar e gerar prontuário</>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => navigate(-1)}>Cancelar consulta</DropdownMenuItem>
+                <DropdownMenuItem onClick={handleDiscard} className="text-destructive">Descartar rascunho</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <div className="flex items-center gap-2">
+            {aiGenerated && (
+              <Button onClick={handleMergeAndSave} className="gap-1.5" variant="default">
+                <Merge className="h-4 w-4" /> Unir e salvar
+              </Button>
             )}
-          </Button>
-        </div>
-      </footer>
+            <Button
+              onClick={aiGenerated ? handleMergeAndSave : handleGenerateAI}
+              disabled={isStreamingAI}
+              className="gap-1.5"
+              variant={aiGenerated ? "secondary" : "default"}
+            >
+              {isStreamingAI ? (
+                <><Sparkles className="h-4 w-4 animate-spin" /> Gerando…</>
+              ) : aiGenerated ? (
+                <><CheckCircle2 className="h-4 w-4" /> Salvar sem unir</>
+              ) : (
+                <><Sparkles className="h-4 w-4" /> Finalizar e gerar prontuário</>
+              )}
+            </Button>
+          </div>
+        </footer>
+      )}
 
       {/* Save template dialog */}
       <Dialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate}>
