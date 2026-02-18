@@ -458,7 +458,13 @@ export default function ConsultaDetalhe() {
             <TabsContent value="historico" className="mt-3">
               <Card className="glass-card">
                 <CardContent className="pt-4">
-                  <ConsultaTimeline createdAt={enc.startedAt} sections={note?.sections ?? []} />
+                  <ConsultaTimeline
+                    patientId={enc.patientId}
+                    currentEncounterId={enc.id}
+                    encounters={data.encounters}
+                    notes={data.notes}
+                    prescriptions={allPrescriptions}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
