@@ -174,7 +174,7 @@ function ItemRow({
 
       <button
         onClick={onRemove}
-        className="h-4 w-4 rounded flex items-center justify-center opacity-0 group-hover:opacity-60 hover:!opacity-100 text-muted-foreground transition-opacity"
+        className="h-4 w-4 rounded flex items-center justify-center opacity-0 group-hover:opacity-60 hover:!opacity-100 text-red-400 hover:text-red-500 transition-all"
         aria-label="Remover"
       >
         <X className="h-3 w-3" />
