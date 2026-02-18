@@ -663,33 +663,26 @@ export default function NovaConsulta() {
             </Button>
           </div>
           <div className="flex items-center gap-2">
-            {useAI ? (
-              <>
-                {aiGenerated && (
-                  <Button onClick={handleMergeAndSave} className="gap-1.5" variant="default">
-                    <Merge className="h-4 w-4" /> Unir e salvar
-                  </Button>
+            {useAI && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleGenerateAI}
+                disabled={isStreamingAI}
+                className="gap-1.5"
+              >
+                {isStreamingAI ? (
+                  <><Sparkles className="h-4 w-4 animate-spin" /> Gerando…</>
+                ) : aiGenerated ? (
+                  <><Sparkles className="h-4 w-4" /> Gerar novamente</>
+                ) : (
+                  <><Sparkles className="h-4 w-4" /> Gerar prontuário</>
                 )}
-                <Button
-                  onClick={aiGenerated ? handleMergeAndSave : handleGenerateAI}
-                  disabled={isStreamingAI}
-                  className="gap-1.5"
-                  variant={aiGenerated ? "secondary" : "default"}
-                >
-                  {isStreamingAI ? (
-                    <><Sparkles className="h-4 w-4 animate-spin" /> Gerando…</>
-                  ) : aiGenerated ? (
-                    <><CheckCircle2 className="h-4 w-4" /> Salvar sem unir</>
-                  ) : (
-                    <><Sparkles className="h-4 w-4" /> Finalizar e gerar prontuário</>
-                  )}
-                </Button>
-              </>
-            ) : (
-              <Button onClick={handleMergeAndSave} className="gap-1.5">
-                <CheckCircle2 className="h-4 w-4" /> Salvar consulta
               </Button>
             )}
+            <Button onClick={handleMergeAndSave} className="gap-1.5">
+              <CheckCircle2 className="h-4 w-4" /> Finalizar consulta
+            </Button>
           </div>
         </footer>
       )}
