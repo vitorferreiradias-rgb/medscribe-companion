@@ -60,7 +60,7 @@ export default function NovaConsulta() {
   const [aiGenerated, setAiGenerated] = useState(false);
 
   // Recording
-  const [recordingOpen, setRecordingOpen] = useState(true);
+  const [recordingOpen, setRecordingOpen] = useState(false);
   const [recording, setRecording] = useState<"idle" | "recording" | "paused">("idle");
   const [timer, setTimer] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -417,7 +417,7 @@ export default function NovaConsulta() {
         value={editorContent}
         onChange={(e) => setEditorContent(e.target.value)}
         placeholder="Escreva livremente o prontuário ou insira um modelo acima…"
-        className="flex-1 min-h-[300px] resize-y font-mono text-sm leading-relaxed"
+        className="flex-1 min-h-[200px] resize-y font-mono text-sm leading-relaxed"
         onKeyDown={(e) => {
           if (e.ctrlKey || e.metaKey) {
             if (e.key === "b") { e.preventDefault(); insertMarkdown("**", "**"); }
@@ -610,15 +610,19 @@ export default function NovaConsulta() {
             </TabsContent>
           </Tabs>
         ) : (
-          <div className="flex gap-5 px-5 py-5 max-w-[1600px] mx-auto h-full">
-            {/* Left: identification + editor */}
-            <div className="w-1/2 space-y-5 flex flex-col">
-              {identificationForm}
-              {manualEditorPane}
-            </div>
-            {/* Right: AI pane */}
-            <div className="w-1/2">
-              {aiPane}
+          <div className="px-5 py-5 max-w-[1600px] mx-auto space-y-5">
+            {/* Identification form spanning full width */}
+            {identificationForm}
+            {/* Side-by-side columns */}
+            <div className="flex gap-5" style={{ minHeight: "calc(100vh - 280px)" }}>
+              {/* Left: manual editor */}
+              <div className="w-1/2 flex flex-col">
+                {manualEditorPane}
+              </div>
+              {/* Right: AI pane */}
+              <div className="w-1/2 flex flex-col">
+                {aiPane}
+              </div>
             </div>
           </div>
         )}
