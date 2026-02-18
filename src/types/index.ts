@@ -150,6 +150,29 @@ export interface CustomNoteTemplate {
   createdAt: string;
 }
 
+export interface MedicationEvent {
+  id: string;
+  patientId: string;
+  medicationName: string;
+  date: string;
+  status: "prescrito" | "suspenso" | "nao_renovado";
+  note?: string;
+  encounterId?: string;
+}
+
+export interface ClinicalDocument {
+  id: string;
+  patientId: string;
+  encounterId?: string;
+  type: "prescricao" | "atestado" | "solicitacao_exames" | "orientacoes" | "outro";
+  title?: string;
+  content: string;
+  createdAt: string;
+  signedAt?: string;
+  signedBy?: string;
+  status: "draft" | "signed";
+}
+
 export interface AppData {
   clinicians: Clinician[];
   patients: Patient[];

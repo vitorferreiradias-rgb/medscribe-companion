@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3, ClipboardPaste, CalendarDays, Pill, ArrowRightLeft, BrainCircuit, Loader2, AlertTriangle } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { updateEncounter, deleteEncounter } from "@/lib/store";
+import { MedicationHistorySheet } from "@/components/MedicationHistorySheet";
 import { updateUnifiedNote } from "@/lib/store";
 import { formatDateTimeBR, formatDuration, formatDateLongBR, formatMedicationsForNote, formatDateBR } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ export default function ConsultaDetalhe() {
   const [transcriptSearch, setTranscriptSearch] = useState("");
   const [aiSummary, setAiSummary] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [showMedHistory, setShowMedHistory] = useState(false);
   const enc = data.encounters.find((e) => e.id === id);
   const patient = enc ? data.patients.find((p) => p.id === enc.patientId) : undefined;
   const clinician = enc ? data.clinicians.find((c) => c.id === enc.clinicianId) : undefined;
@@ -196,29 +198,32 @@ export default function ConsultaDetalhe() {
       <Card className="glass-card">
         <CardContent className="p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary text-lg font-bold">
-                {patient?.name?.charAt(0) ?? "?"}
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold">
-                  {patient ? (
-                    <Link to={`/pacientes/${patient.id}`} className="hover:underline">{patient.name}</Link>
-                  ) : "Paciente"}
-                </h1>
-                <div className="flex flex-wrap items-center gap-2 mt-0.5 text-sm text-muted-foreground">
-                  <span>{formatDateTimeBR(enc.startedAt)}</span>
-                  <span>•</span>
-                  <span>{clinician?.name}</span>
-                  <span>•</span>
-                  <span>{formatDuration(enc.durationSec)}</span>
-                  <StatusBadge status={enc.status} />
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 text-primary text-lg font-bold">
+                  {patient?.name?.charAt(0) ?? "?"}
                 </div>
-                {enc.chiefComplaint && (
-                  <p className="text-sm text-muted-foreground mt-1">Queixa: {enc.chiefComplaint}</p>
-                )}
+                <div>
+                  <h1 className="text-xl font-semibold">
+                    {patient ? (
+                      <Link to={`/pacientes/${patient.id}`} className="hover:underline">{patient.name}</Link>
+                    ) : "Paciente"}
+                  </h1>
+                  <div className="flex flex-wrap items-center gap-2 mt-0.5 text-sm text-muted-foreground">
+                    <span>{formatDateTimeBR(enc.startedAt)}</span>
+                    <span>•</span>
+                    <span>{clinician?.name}</span>
+                    <span>•</span>
+                    <span>{formatDuration(enc.durationSec)}</span>
+                    <StatusBadge status={enc.status} />
+                  </div>
+                  {enc.chiefComplaint && (
+                    <p className="text-sm text-muted-foreground mt-1">Queixa: {enc.chiefComplaint}</p>
+                  )}
+                </div>
               </div>
-            </div>
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowMedHistory(true)} title="Histórico de medicações">
+                <Pill className="h-4 w-4 text-primary" />
+              </Button>
           </div>
         </CardContent>
       </Card>
@@ -484,6 +489,14 @@ export default function ConsultaDetalhe() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {patient && (
+        <MedicationHistorySheet
+          open={showMedHistory}
+          onOpenChange={setShowMedHistory}
+          patientId={enc.patientId}
+        />
+      )}
     </motion.div>
   );
 }
