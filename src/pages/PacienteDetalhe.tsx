@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/StatusBadge";
-import { NewEncounterDialog } from "@/components/NewEncounterDialog";
+
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Patient, PatientDocument } from "@/types";
@@ -110,7 +110,6 @@ export default function PacienteDetalhe() {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [newDiagnosis, setNewDiagnosis] = useState("");
   const [newAllergy, setNewAllergy] = useState("");
-  const [newEncounterOpen, setNewEncounterOpen] = useState(false);
   const [deleteEncId, setDeleteEncId] = useState<string | null>(null);
 
   // Tab Diagnósticos / Alergias standalone editing
@@ -543,7 +542,7 @@ export default function PacienteDetalhe() {
           )}
 
           {/* Nova consulta button */}
-          <Button onClick={() => setNewEncounterOpen(true)} className="w-full">
+          <Button onClick={() => navigate(`/consultas/nova?paciente=${patient.id}`)} className="w-full">
             <Plus className="mr-2 h-4 w-4" /> Nova consulta
           </Button>
 
@@ -620,7 +619,7 @@ export default function PacienteDetalhe() {
             <div className="text-center py-12 text-muted-foreground">
               <Stethoscope className="h-10 w-10 mx-auto mb-3 opacity-40" />
               <p className="text-sm">Nenhuma consulta encontrada.</p>
-              <Button variant="outline" className="mt-3" onClick={() => setNewEncounterOpen(true)}>
+              <Button variant="outline" className="mt-3" onClick={() => navigate(`/consultas/nova?paciente=${patient.id}`)}>
                 <Plus className="mr-2 h-4 w-4" /> Criar primeira consulta
               </Button>
             </div>
@@ -762,8 +761,6 @@ export default function PacienteDetalhe() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* New encounter dialog */}
-      <NewEncounterDialog open={newEncounterOpen} onOpenChange={setNewEncounterOpen} defaultPatientId={patient.id} />
     </div>
   );
 }

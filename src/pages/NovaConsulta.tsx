@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,11 +34,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 export default function NovaConsulta() {
   const data = useAppData();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
-  // Identification
-  const [patientId, setPatientId] = useState("");
+  // Identification - pre-select patient from query param
+  const [patientId, setPatientId] = useState(() => searchParams.get("paciente") || "");
   const [clinicianId, setClinicianId] = useState(data.clinicians[0]?.id ?? "");
   const [complaint, setComplaint] = useState("");
   const [location, setLocation] = useState("");

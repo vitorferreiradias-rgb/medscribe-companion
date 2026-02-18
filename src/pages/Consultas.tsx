@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { NewEncounterDialog } from "@/components/NewEncounterDialog";
+
 import { StatusBadge } from "@/components/StatusBadge";
 
 export default function Consultas() {
@@ -22,7 +22,6 @@ export default function Consultas() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("all");
-  const [showNew, setShowNew] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
@@ -70,10 +69,9 @@ export default function Consultas() {
         </div>
         <h2 className="text-xl font-semibold mb-2">Nenhuma consulta ainda</h2>
         <p className="text-muted-foreground mb-6 max-w-sm">Comece registrando sua primeira consulta para gerar prontuários automaticamente.</p>
-        <Button onClick={() => setShowNew(true)} size="lg">
+        <Button onClick={() => navigate("/consultas/nova")} size="lg">
           <Plus className="mr-2 h-4 w-4" /> Iniciar primeira consulta
         </Button>
-        <NewEncounterDialog open={showNew} onOpenChange={setShowNew} />
       </div>
     );
   }
@@ -82,7 +80,7 @@ export default function Consultas() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold">Consultas</h1>
-        <Button onClick={() => setShowNew(true)}>
+        <Button onClick={() => navigate("/consultas/nova")}>
           <Plus className="mr-2 h-4 w-4" /> Nova consulta
         </Button>
       </div>
@@ -194,7 +192,7 @@ export default function Consultas() {
         </Table>
       </div>
 
-      <NewEncounterDialog open={showNew} onOpenChange={setShowNew} />
+
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
