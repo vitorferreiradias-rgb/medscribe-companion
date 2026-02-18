@@ -56,6 +56,8 @@ export function NewEncounterDialog({ open, onOpenChange, defaultPatientId }: Pro
   const [newPatientPhone, setNewPatientPhone] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [patientSearch, setPatientSearch] = useState("");
+  const [manualNotes, setManualNotes] = useState("");
+  const [showRecorder, setShowRecorder] = useState(false);
 
   // Recording state
   const [recording, setRecording] = useState<"idle" | "recording" | "paused">("idle");
@@ -75,6 +77,7 @@ export function NewEncounterDialog({ open, onOpenChange, defaultPatientId }: Pro
       setStep(1); setDirection(1); setPatientId(defaultPatientId ?? ""); setClinicianId(data.clinicians[0]?.id ?? ""); setComplaint(""); setLocation("");
       setRecording("idle"); setTimer(0); setPastedText(""); setUseSpeech(true); setShowNewPatient(false);
       setNewPatientName(""); setNewPatientPhone(""); setIsGenerating(false); setPatientSearch("");
+      setManualNotes(""); setShowRecorder(false);
       speech.reset();
       if (timerRef.current) clearInterval(timerRef.current);
     }
@@ -114,11 +117,6 @@ export function NewEncounterDialog({ open, onOpenChange, defaultPatientId }: Pro
   const goToStep2 = () => { setDirection(1); setStep(2); };
 
   const handleFinish = () => {
-    if (totalUtterances > 0 && totalUtterances < 3) {
-      const ok = window.confirm("A transcrição tem menos de 3 falas. Deseja continuar assim mesmo?");
-      if (!ok) return;
-    }
-
     if (timerRef.current) clearInterval(timerRef.current);
     speech.stop();
     setIsGenerating(true);
@@ -130,6 +128,7 @@ export function NewEncounterDialog({ open, onOpenChange, defaultPatientId }: Pro
 
       const enc = addEncounter({ patientId, clinicianId, startedAt, endedAt, durationSec: timer || 60, status: "draft", chiefComplaint: complaint || undefined, location: location || undefined });
 
+      // Build utterances from speech or pasted text
       let utterances: Utterance[];
       let source: "pasted" | "mock" = "mock";
 
@@ -139,8 +138,17 @@ export function NewEncounterDialog({ open, onOpenChange, defaultPatientId }: Pro
       } else if (pastedText.trim()) {
         source = "pasted";
         utterances = pastedText.split("\n").filter(Boolean).map((line, i) => ({ speaker: i % 2 === 0 ? "medico" as const : "paciente" as const, text: line.trim(), tsSec: i * 10 }));
+      } else if (manualNotes.trim()) {
+        // Use manual notes as single utterance
+        source = "pasted";
+        utterances = [{ speaker: "medico" as const, text: manualNotes.trim(), tsSec: 0 }];
       } else {
         utterances = mockTranscriptContent;
+      }
+
+      // If we have both manual notes and transcription, prepend manual notes
+      if (manualNotes.trim() && (speech.utterances.length > 0 || pastedText.trim())) {
+        utterances = [{ speaker: "medico" as const, text: manualNotes.trim(), tsSec: 0 }, ...utterances];
       }
 
       const tr = addTranscript({ encounterId: enc.id, source, content: utterances });
@@ -150,7 +158,7 @@ export function NewEncounterDialog({ open, onOpenChange, defaultPatientId }: Pro
       const note = addNote({ encounterId: enc.id, templateId: "template_soap_v1", sections });
       updateEncounter(enc.id, { transcriptId: tr.id, noteId: note.id });
 
-      toast({ title: "Consulta criada com transcrição." });
+      toast({ title: "Consulta criada com sucesso." });
       onOpenChange(false);
       navigate(`/consultas/${enc.id}`);
     }, 400);
@@ -186,7 +194,7 @@ export function NewEncounterDialog({ open, onOpenChange, defaultPatientId }: Pro
           <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors duration-200 ${step >= 2 ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>2</div>
         </div>
         <p className="text-xs text-muted-foreground text-center -mt-1 mb-2">
-          {step === 1 ? "Identificação" : "Gravação"}
+          {step === 1 ? "Identificação" : "Prontuário"}
         </p>
 
         {isGenerating ? (
@@ -279,91 +287,115 @@ export function NewEncounterDialog({ open, onOpenChange, defaultPatientId }: Pro
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {!speechSupported && (
-                    <div className="flex items-center gap-2 rounded-xl glass-surface p-3 text-sm text-muted-foreground">
-                      <AlertTriangle className="h-4 w-4 shrink-0" />
-                      <span>Reconhecimento de voz não suportado. Use Chrome ou cole o texto abaixo.</span>
-                    </div>
-                  )}
-
-                  {/* Circular timer — softer colors */}
-                  <div className="flex flex-col items-center gap-3 py-2">
-                    <div className="relative">
-                      <svg width="112" height="112" className="-rotate-90">
-                        <circle cx="56" cy="56" r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth="5" />
-                        <circle
-                          cx="56" cy="56" r={radius} fill="none"
-                          stroke={recording === "recording" ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
-                          strokeWidth="5" strokeLinecap="round"
-                          strokeDasharray={circumference}
-                          strokeDashoffset={strokeOffset}
-                          className="transition-all duration-1000"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Mic className={`h-7 w-7 ${recording === "recording" ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
-                      </div>
-                    </div>
-                    <p className="text-3xl font-mono font-semibold tabular-nums">{formatTimer(timer)}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {recording === "idle" ? "Pronto para gravar" : recording === "recording" ? (speechSupported ? "Ouvindo…" : "Gravando…") : "Pausado"}
-                    </p>
-
-                    <div className="flex gap-2">
-                      {recording === "idle" && (
-                        <Button onClick={handleStart} className="bg-primary hover:bg-primary/90"><Play className="mr-2 h-4 w-4" /> Iniciar</Button>
-                      )}
-                      {recording === "recording" && (
-                        <>
-                          <Button onClick={handlePause} variant="secondary"><Pause className="mr-2 h-4 w-4" /> Pausar</Button>
-                          <Button onClick={handleFinish}><Square className="mr-2 h-4 w-4" /> Finalizar</Button>
-                        </>
-                      )}
-                      {recording === "paused" && (
-                        <>
-                          <Button onClick={handleResume} className="bg-primary hover:bg-primary/90"><Play className="mr-2 h-4 w-4" /> Retomar</Button>
-                          <Button onClick={handleFinish}><Square className="mr-2 h-4 w-4" /> Finalizar</Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Live transcript bubbles — 16px radius, micro shadow */}
-                  {speechSupported && (recording !== "idle" || speech.utterances.length > 0) && (
-                    <div className="space-y-2">
-                      <Label className="text-xs text-muted-foreground">Transcrição ao vivo</Label>
-                      <ScrollArea className="h-32 rounded-xl glass-surface p-3">
-                        <div className="space-y-2">
-                          {speech.utterances.map((u, i) => {
-                            const isDoc = u.speaker === "medico";
-                            return (
-                              <div key={i} className={`flex ${isDoc ? "justify-end" : "justify-start"}`}>
-                                <div className={`max-w-[80%] px-3 py-1.5 text-xs shadow-sm transition-shadow duration-150 hover:shadow-md ${isDoc ? "bg-primary/15 rounded-[16px] rounded-br-md" : "bg-muted rounded-[16px] rounded-bl-md"}`}>
-                                  {u.text}
-                                </div>
-                              </div>
-                            );
-                          })}
-                          {speech.interimText && (
-                            <p className="text-xs text-muted-foreground italic text-center">…{speech.interimText}</p>
-                          )}
-                          <div ref={transcriptEndRef} />
-                        </div>
-                      </ScrollArea>
-                    </div>
-                  )}
-
+                  {/* Main textarea for anamnesis/observations */}
                   <div className="space-y-2">
-                    <Label>Colar transcrição (opcional)</Label>
-                    <Textarea value={pastedText} onChange={(e) => setPastedText(e.target.value)} placeholder="Cole aqui a transcrição, uma frase por linha..." rows={3} />
-                    <p className="text-xs text-muted-foreground">Linhas ímpares = médico, pares = paciente.</p>
+                    <Label>Anamnese / Observações</Label>
+                    <Textarea
+                      value={manualNotes}
+                      onChange={(e) => setManualNotes(e.target.value)}
+                      placeholder="Descreva a anamnese, exame físico, hipóteses e plano..."
+                      className="min-h-[200px] resize-y"
+                    />
                   </div>
 
-                  {(recording === "idle" && !pastedText && speech.utterances.length === 0) ? null : (
-                    <Button className="w-full" onClick={handleFinish}>
-                      Finalizar e gerar prontuário
+                  {/* Toggle audio recorder */}
+                  <div className="space-y-3">
+                    <Button
+                      variant={showRecorder ? "secondary" : "outline"}
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => setShowRecorder(!showRecorder)}
+                    >
+                      <Mic className="h-3.5 w-3.5" />
+                      {showRecorder ? "Ocultar gravação" : "Gravar áudio"}
                     </Button>
-                  )}
+
+                    {showRecorder && (
+                      <div className="rounded-xl glass-surface p-4 space-y-3">
+                        {!speechSupported && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                            <span>Reconhecimento de voz não suportado. Use Chrome ou cole o texto abaixo.</span>
+                          </div>
+                        )}
+
+                        {/* Circular timer */}
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="relative">
+                            <svg width="80" height="80" className="-rotate-90">
+                              <circle cx="40" cy="40" r={32} fill="none" stroke="hsl(var(--muted))" strokeWidth="4" />
+                              <circle
+                                cx="40" cy="40" r={32} fill="none"
+                                stroke={recording === "recording" ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
+                                strokeWidth="4" strokeLinecap="round"
+                                strokeDasharray={2 * Math.PI * 32}
+                                strokeDashoffset={2 * Math.PI * 32 - (Math.min(timer, maxTime) / maxTime) * 2 * Math.PI * 32}
+                                className="transition-all duration-1000"
+                              />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <Mic className={`h-5 w-5 ${recording === "recording" ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
+                            </div>
+                          </div>
+                          <p className="text-xl font-mono font-semibold tabular-nums">{formatTimer(timer)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {recording === "idle" ? "Pronto para gravar" : recording === "recording" ? (speechSupported ? "Ouvindo…" : "Gravando…") : "Pausado"}
+                          </p>
+                          <div className="flex gap-2">
+                            {recording === "idle" && (
+                              <Button size="sm" onClick={handleStart}><Play className="mr-1 h-3.5 w-3.5" /> Iniciar</Button>
+                            )}
+                            {recording === "recording" && (
+                              <>
+                                <Button size="sm" onClick={handlePause} variant="secondary"><Pause className="mr-1 h-3.5 w-3.5" /> Pausar</Button>
+                                <Button size="sm" onClick={() => { speech.stop(); setRecording("idle"); }}><Square className="mr-1 h-3.5 w-3.5" /> Parar</Button>
+                              </>
+                            )}
+                            {recording === "paused" && (
+                              <>
+                                <Button size="sm" onClick={handleResume}><Play className="mr-1 h-3.5 w-3.5" /> Retomar</Button>
+                                <Button size="sm" onClick={() => { speech.stop(); setRecording("idle"); }}><Square className="mr-1 h-3.5 w-3.5" /> Parar</Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Live transcript */}
+                        {speechSupported && (recording !== "idle" || speech.utterances.length > 0) && (
+                          <ScrollArea className="h-28 rounded-lg bg-muted/30 p-2">
+                            <div className="space-y-1.5">
+                              {speech.utterances.map((u, i) => {
+                                const isDoc = u.speaker === "medico";
+                                return (
+                                  <div key={i} className={`flex ${isDoc ? "justify-end" : "justify-start"}`}>
+                                    <div className={`max-w-[80%] px-2.5 py-1 text-xs shadow-sm ${isDoc ? "bg-primary/15 rounded-xl rounded-br-md" : "bg-muted rounded-xl rounded-bl-md"}`}>
+                                      {u.text}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {speech.interimText && (
+                                <p className="text-xs text-muted-foreground italic text-center">…{speech.interimText}</p>
+                              )}
+                              <div ref={transcriptEndRef} />
+                            </div>
+                          </ScrollArea>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Paste transcript */}
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <ClipboardPaste className="h-3 w-3" /> Colar transcrição (opcional)
+                    </Label>
+                    <Textarea value={pastedText} onChange={(e) => setPastedText(e.target.value)} placeholder="Cole aqui a transcrição, uma frase por linha..." rows={2} />
+                  </div>
+
+                  <Button className="w-full" onClick={handleFinish} disabled={!manualNotes.trim() && !pastedText.trim() && speech.utterances.length === 0}>
+                    Finalizar e gerar prontuário
+                  </Button>
                 </div>
               )}
             </motion.div>
