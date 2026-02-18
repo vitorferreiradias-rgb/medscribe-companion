@@ -228,7 +228,6 @@ export default function ConsultaDetalhe() {
         <div className="flex flex-wrap gap-2">
           {!isFinal && (
             <>
-              <Button variant="secondary" size="sm" onClick={handleSave}><Save className="mr-1.5 h-3.5 w-3.5" /> Salvar</Button>
               <Button size="sm" onClick={handleReview}><CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Revisado/Salvar</Button>
               <Button variant="outline" size="sm" onClick={handlePrint}><Printer className="mr-1.5 h-3.5 w-3.5" /> Exportar</Button>
             </>
