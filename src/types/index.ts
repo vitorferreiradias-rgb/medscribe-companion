@@ -134,6 +134,22 @@ export interface Medication {
   usageInstructions: string;
 }
 
+export interface TranscriptArchive {
+  id: string;
+  date: string;
+  patientName: string;
+  patientId: string;
+  encounterId?: string;
+  content: string;
+}
+
+export interface CustomNoteTemplate {
+  id: string;
+  name: string;
+  content: string;
+  createdAt: string;
+}
+
 export interface AppData {
   clinicians: Clinician[];
   patients: Patient[];
