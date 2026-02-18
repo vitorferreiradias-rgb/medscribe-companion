@@ -532,7 +532,7 @@ export default function NovaConsulta() {
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
             <Sparkles className="h-8 w-8 text-muted-foreground/40 mb-3" />
             <p className="text-sm text-muted-foreground max-w-[240px]">
-              O prontuário gerado pela IA aparecerá aqui após clicar em "Finalizar e gerar"
+              A anamnese gerada pela IA aparecerá aqui após clicar em "Gerar prontuário IA"
             </p>
           </div>
         ) : (
@@ -681,7 +681,7 @@ export default function NovaConsulta() {
               </Button>
             )}
             <Button onClick={handleMergeAndSave} className="gap-1.5">
-              <CheckCircle2 className="h-4 w-4" /> Finalizar consulta
+              <CheckCircle2 className="h-4 w-4" /> Finalizar anamnese
             </Button>
           </div>
         </footer>
