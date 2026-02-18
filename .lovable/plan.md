@@ -1,61 +1,77 @@
 
 
-# Card "Notas Rapidas" com Liquid Glass Laranja
+# Melhorias no Formulario de Paciente e Fluxo de Nova Consulta
 
-## Resumo
-Criar um card de notas rapidas com efeito glass laranja elegante na pagina da Agenda, com textarea auto-expansivel e persistencia em localStorage.
+## Problema 1: Formulario de novo paciente incompleto
 
-## Onde sera posicionado
-Na pagina `src/pages/Agenda.tsx`, abaixo do card de timeline e acima do card de Calendario+Noticias (ou entre eles, conforme melhor fluxo visual).
+O dialog "Novo Paciente" no `AppLayout.tsx` so tem 4 campos (nome, nascimento, sexo, telefone). Faltam todos os campos que ja existem no detalhe do paciente.
 
-## Implementacao
+### Solucao
 
-### 1. Novo componente: `src/components/QuickNotesCard.tsx`
+Expandir o dialog de novo paciente em `AppLayout.tsx` para incluir todos os campos disponiveis:
 
-**Visual (glass laranja):**
-- Background: `rgba(255,255,255,0.55)` com `backdrop-filter: blur(20px) saturate(180%)`
-- Borda: `1px solid rgba(255,140,80,0.35)`
-- Highlight interno: `inset 0 1px 0 rgba(255,255,255,0.85)`
-- Sombra: `0 14px 30px rgba(15,23,42,0.10)`
-- Glow laranja sutil: `0 0 0 1px rgba(255,140,80,0.35), 0 10px 30px rgba(255,140,80,0.18)`
-- Ao focar textarea: intensificar glow em ~15%
+- Nome (obrigatorio)
+- Sexo
+- Data de nascimento (com date picker)
+- CPF (com mascara)
+- RG
+- Telefone
+- E-mail
+- CEP (com mascara)
+- Endereco
+- Observacoes
 
-**Conteudo:**
-- Titulo "Notas rapidas" (texto pequeno, muted)
-- Textarea com:
-  - `min-height: 44px` (1 linha)
-  - Auto-grow via JS (ajusta height ao scrollHeight)
-  - `max-height: 260px`, depois scroll interno
-  - Placeholder: "Digite aqui lembretes, tarefas e compromissos rapidos..."
-  - Background transparente, sem borda visivel (integrado ao card)
+O dialog sera um pouco maior (`sm:max-w-lg`) com scroll se necessario, organizado em grid de 2 colunas igual ao detalhe do paciente.
 
-**Checklist inline (opcional mas incluso):**
-- Linhas iniciadas com `"- "` sao renderizadas como itens de checklist
-- Ao clicar, alterna entre concluido (line-through) e pendente
-- Estado salvo no mesmo campo de texto (prefixo `"- [x] "` para concluidos)
+**Arquivo:** `src/components/AppLayout.tsx`
 
-**Persistencia:**
-- localStorage key: `notes_quick_v1`
-- Debounce de 400ms no save
-- Carrega valor ao montar
+## Problema 2: Botao principal da Topbar
 
-**Acessibilidade:**
-- `aria-label="Notas rapidas"` no textarea
-- Focus visible com ring laranja
+Trocar o botao CTA principal da Topbar de "Nova consulta" para "Adicionar paciente".
 
-### 2. CSS: `src/index.css`
-- Adicionar classe `.glass-card-orange` com os tokens de glow laranja
-- Variante focus: `.glass-card-orange:focus-within` com glow intensificado
+**Arquivo:** `src/components/Topbar.tsx`
+- Trocar o texto do botao de "Nova consulta" para "Adicionar paciente"
+- Trocar o icone de `Stethoscope` para `UserPlus`
+- Trocar o onClick de `onNewConsulta` para `onNewPaciente`
 
-### 3. Integracao: `src/pages/Agenda.tsx`
-- Importar e renderizar `<QuickNotesCard />` entre o card de timeline e o card de calendario+noticias
+## Problema 3: Fluxo da nova consulta (step 2)
+
+Atualmente, ao clicar "Continuar" na nova consulta, o step 2 mostra apenas a gravacao de audio. O usuario quer ver o prontuario (editor de texto) como elemento principal, com a gravacao como opcao secundaria.
+
+### Solucao
+
+Reestruturar o step 2 do `NewEncounterDialog.tsx`:
+
+**Layout novo do step 2:**
+1. **Area principal**: Textarea grande para anamnese/observacoes (campo de texto livre onde o medico escreve diretamente)
+   - Placeholder: "Descreva a anamnese, exame fisico, hipoteses e plano..."
+   - min-height de 200px, redimensionavel
+   - Esse texto sera salvo como conteudo inicial do prontuario
+
+2. **Botao "Gravar audio"**: Botao secundario que expande/recolhe a area de gravacao
+   - Ao clicar, mostra o timer circular e controles de gravacao (o que existe hoje)
+   - O audio transcrito e a digitacao coexistem: o texto da transcricao e concatenado ao texto digitado
+
+3. **Area de colagem**: Manter o campo "Colar transcricao" como opcao alternativa (ja existe)
+
+4. **Botao "Finalizar"**: Cria o encounter e gera o prontuario com:
+   - O texto digitado manualmente como base
+   - A transcricao (se houver) como complemento
+   - Navega para `/consultas/:id` com o prontuario completo
+
+**Arquivo:** `src/components/NewEncounterDialog.tsx`
 
 ## Arquivos modificados
-1. `src/components/QuickNotesCard.tsx` (novo)
-2. `src/index.css` (adicionar classe glass-card-orange)
-3. `src/pages/Agenda.tsx` (importar e posicionar o card)
+
+1. `src/components/AppLayout.tsx` - Expandir formulario de novo paciente com todos os campos
+2. `src/components/Topbar.tsx` - Trocar CTA de "Nova consulta" para "Adicionar paciente"
+3. `src/components/NewEncounterDialog.tsx` - Reestruturar step 2 com editor de texto principal + gravacao opcional
 
 ## O que NAO sera alterado
-- Nenhum componente existente modificado (alem do import na Agenda)
-- Layout geral, sidebar, topbar
-- Store principal, tipos, seed data
+
+- Nenhuma pagina existente (PacienteDetalhe, ConsultaDetalhe, etc.)
+- Store, tipos, seed data
+- QuickActionsMenu (mantem todas as opcoes no dropdown +)
+- CommandBar
+- Layout geral, sidebar
+
