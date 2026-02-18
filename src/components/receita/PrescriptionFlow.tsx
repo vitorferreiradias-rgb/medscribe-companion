@@ -2,9 +2,12 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText, Plus, ShieldCheck, ShieldAlert, ChevronRight, Check,
-  ScrollText, AlertTriangle, Image, Signature, FileStack, CalendarDays
+  ScrollText, AlertTriangle, Image, Signature, FileStack, CalendarDays, History
 } from "lucide-react";
 import { formatDateLongBR } from "@/lib/format";
+import { addMedicationEvent } from "@/lib/medication-history";
+import { addDocument } from "@/lib/clinical-documents";
+import { LastDocumentsSheet } from "@/components/LastDocumentsSheet";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -68,6 +71,7 @@ export function PrescriptionFlow({ encounterId, patientId }: PrescriptionFlowPro
   const [showTypeDialog, setShowTypeDialog] = useState(false);
   const [showSignDialog, setShowSignDialog] = useState(false);
   const [signMode, setSignMode] = useState<"all" | "single">("all");
+  const [showLastDocs, setShowLastDocs] = useState(false);
 
   useEffect(() => {
     savePrescriptions(prescriptions);
@@ -98,10 +102,43 @@ export function PrescriptionFlow({ encounterId, patientId }: PrescriptionFlowPro
   };
 
   const signPrescriptions = (mode: "all" | "single") => {
+    const now = new Date().toISOString();
     setPrescriptions((prev) =>
       prev.map((p) => {
-        if (mode === "all") return { ...p, signed: true };
-        if (p.id === activeId) return { ...p, signed: true };
+        const shouldSign = mode === "all" || p.id === activeId;
+        if (shouldSign && !p.signed) {
+          // Auto-register medication events
+          if (patientId) {
+            for (const med of p.medications) {
+              const name = med.isCompounded
+                ? `Fórmula: ${med.compoundedFormula || "manipulada"}`
+                : med.commercialName || med.activeCompound;
+              if (name) {
+                addMedicationEvent({
+                  patientId,
+                  medicationName: name,
+                  date: now,
+                  status: "prescrito",
+                  encounterId,
+                });
+              }
+            }
+            // Save as ClinicalDocument
+            addDocument({
+              patientId,
+              encounterId,
+              type: "prescricao",
+              content: p.content || p.medications.map((m) =>
+                m.isCompounded ? m.compoundedFormula : `${m.commercialName} ${m.concentration} - ${m.usageInstructions}`
+              ).join("\n"),
+              createdAt: now,
+              signedAt: now,
+              signedBy: "Dr. Mock",
+              status: "signed",
+            });
+          }
+          return { ...p, signed: true };
+        }
         return p;
       })
     );
@@ -160,6 +197,15 @@ export function PrescriptionFlow({ encounterId, patientId }: PrescriptionFlowPro
           <Plus className="h-4 w-4" />
           <span className="text-[10px] font-medium">Nova Receita</span>
         </button>
+        {patientId && (
+          <button
+            onClick={() => setShowLastDocs(true)}
+            className="flex-shrink-0 w-36 rounded-xl border border-border/40 flex flex-col items-center justify-center gap-1.5 py-3 text-muted-foreground hover:border-primary/30 hover:text-primary transition-colors"
+          >
+            <History className="h-4 w-4" />
+            <span className="text-[10px] font-medium">Últimos docs</span>
+          </button>
+        )}
       </div>
 
       {/* RDC 1.000/2025 Banner */}
@@ -397,6 +443,18 @@ export function PrescriptionFlow({ encounterId, patientId }: PrescriptionFlowPro
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {patientId && (
+        <LastDocumentsSheet
+          open={showLastDocs}
+          onOpenChange={setShowLastDocs}
+          patientId={patientId}
+          encounterId={encounterId}
+          onEditContent={(content) => {
+            if (active) updateActive({ content });
+          }}
+        />
+      )}
     </motion.div>
   );
 }
