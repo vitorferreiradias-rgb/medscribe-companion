@@ -44,8 +44,8 @@ const mockTranscript2 = [
 
 export function createSeedData(): AppData {
   const clinicians = [
-    { id: "cli_1", name: "Dr. Ricardo Mendes", specialty: "Clínica Geral", crm: "CRM/SP 123456" },
-    { id: "cli_2", name: "Dra. Ana Beatriz Costa", specialty: "Cardiologia", crm: "CRM/SP 654321" },
+    { id: "cli_1", name: "Dr. Ricardo Mendes", specialty: "Clínica Geral", crm: "CRM 123456/SP", cpf: "123.456.789-00", clinicAddress: "Clínica Saúde Total — Av. Paulista 1000, São Paulo-SP" },
+    { id: "cli_2", name: "Dra. Ana Beatriz Costa", specialty: "Cardiologia", crm: "CRM 654321/SP", cpf: "987.654.321-00", clinicAddress: "Instituto Cardio — Rua Augusta 500, São Paulo-SP" },
   ];
 
   const patients = [

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText, Plus, ShieldCheck, ShieldAlert, ChevronRight, Check,
-  ScrollText, AlertTriangle, Image, Signature, FileStack, CalendarDays, History
+  ScrollText, AlertTriangle, Image, Signature, FileStack, CalendarDays, History, Printer
 } from "lucide-react";
 import { formatDateLongBR } from "@/lib/format";
 import { addMedicationEvent } from "@/lib/medication-history";
@@ -48,9 +48,14 @@ function savePrescriptions(prescriptions: Prescription[]) {
 interface PrescriptionFlowProps {
   encounterId?: string;
   patientId?: string;
+  clinicianName?: string;
+  clinicianCrm?: string;
+  clinicianCpf?: string;
+  clinicAddress?: string;
+  patientName?: string;
 }
 
-export function PrescriptionFlow({ encounterId, patientId }: PrescriptionFlowProps) {
+export function PrescriptionFlow({ encounterId, patientId, clinicianName, clinicianCrm, clinicianCpf, clinicAddress, patientName }: PrescriptionFlowProps) {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>(() => {
     const loaded = loadPrescriptions();
     if (loaded.length === 0) {
@@ -72,6 +77,7 @@ export function PrescriptionFlow({ encounterId, patientId }: PrescriptionFlowPro
   const [showSignDialog, setShowSignDialog] = useState(false);
   const [signMode, setSignMode] = useState<"all" | "single">("all");
   const [showLastDocs, setShowLastDocs] = useState(false);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
 
   useEffect(() => {
     savePrescriptions(prescriptions);
@@ -143,6 +149,63 @@ export function PrescriptionFlow({ encounterId, patientId }: PrescriptionFlowPro
       })
     );
     setShowSignDialog(false);
+  };
+
+  const handlePrintPrescription = (withSignature: boolean) => {
+    if (!active) return;
+    setShowPrintDialog(false);
+
+    const medsHtml = active.medications.length > 0
+      ? `<h3 style="margin-top:24px;font-size:14px;font-weight:600;">Medicamentos</h3><ul style="font-size:13px;line-height:1.8;">${
+        active.medications.map((m) => {
+          if (m.isCompounded) return `<li>Fórmula Manipulada — ${m.compoundedFormula || "sem descrição"}</li>`;
+          const name = [m.commercialName, m.concentration, m.presentation].filter(Boolean).join(" ");
+          return `<li>${name} — ${m.usageInstructions || "sem posologia"}</li>`;
+        }).join("")
+      }</ul>`
+      : "";
+
+    const dateStr = new Date(active.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+
+    const signatureHtml = withSignature && active.signed
+      ? `<div style="margin-top:32px;padding:12px;border:2px solid #16a34a;border-radius:8px;text-align:center;color:#16a34a;font-size:12px;">
+           <strong>✓ Assinatura Digital</strong><br/>Documento assinado eletronicamente — ICP-Brasil (simulação)
+         </div>`
+      : "";
+
+    const isSpecial = active.type === "special";
+    let footerLines = `<strong>${clinicianName || "Médico"}</strong><br/>${clinicianCrm || "CRM não informado"}`;
+    if (isSpecial) {
+      if (clinicianCpf) footerLines += `<br/>CPF: ${clinicianCpf}`;
+      if (clinicAddress) footerLines += `<br/>${clinicAddress}`;
+    }
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Receita ${isSpecial ? "Especial" : "Simples"}</title>
+      <style>
+        @media print { @page { margin: 20mm 15mm 40mm 15mm; } }
+        body { font-family: Arial, sans-serif; color: #1a1a1a; padding: 20px; position: relative; min-height: 100vh; }
+        .content { padding-bottom: 120px; }
+        .footer-stamp { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; padding: 16px; border-top: 1px solid #ccc; font-size: 13px; line-height: 1.6; }
+        h2 { font-size: 16px; color: #333; margin-bottom: 4px; }
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-simple { background: #e0f2fe; color: #0369a1; }
+        .badge-special { background: #fef3c7; color: #b45309; }
+      </style></head><body>
+      <div class="content">
+        <h2>Receita ${isSpecial ? "Especial" : "Simples"}</h2>
+        <span class="badge ${isSpecial ? "badge-special" : "badge-simple"}">${isSpecial ? "Controlado" : "Simples"}</span>
+        ${patientName ? `<p style="margin-top:16px;font-size:13px;"><strong>Paciente:</strong> ${patientName}</p>` : ""}
+        <div style="margin-top:16px;font-size:13px;white-space:pre-wrap;">${active.content || "<em>Sem conteúdo de prescrição</em>"}</div>
+        ${medsHtml}
+        <p style="margin-top:24px;font-size:12px;color:#555;">Data: ${dateStr}</p>
+        ${signatureHtml}
+      </div>
+      <div class="footer-stamp">${footerLines}</div>
+      <script>window.onload=function(){window.print();}<\/script>
+    </body></html>`;
+
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(html); w.document.close(); }
   };
 
   const unsignedCount = prescriptions.filter((p) => !p.signed).length;
@@ -328,7 +391,7 @@ export function PrescriptionFlow({ encounterId, patientId }: PrescriptionFlowPro
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -357,6 +420,22 @@ export function PrescriptionFlow({ encounterId, patientId }: PrescriptionFlowPro
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent className="text-[11px]">Assinatura coletiva de todas as receitas</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={() => setShowPrintDialog(true)}
+                      >
+                        <Printer className="mr-1.5 h-3.5 w-3.5" /> Imprimir
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="text-[11px]">Imprimir receita com carimbo do médico</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
@@ -441,6 +520,51 @@ export function PrescriptionFlow({ encounterId, patientId }: PrescriptionFlowPro
               <ShieldCheck className="mr-1 h-3 w-3" /> Confirmar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Print dialog */}
+      <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <Printer className="h-4 w-4 text-primary" />
+              Imprimir Receita
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <button
+              onClick={() => handlePrintPrescription(false)}
+              className="w-full rounded-xl border border-border/50 p-4 text-left hover:border-primary/30 hover:bg-primary/3 transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-muted/40 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                  <Printer className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Imprimir sem assinatura</p>
+                  <p className="text-[11px] text-muted-foreground">Receita com carimbo do médico, sem selo digital</p>
+                </div>
+                <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
+              </div>
+            </button>
+
+            <button
+              onClick={() => handlePrintPrescription(true)}
+              className="w-full rounded-xl border border-primary/25 p-4 text-left hover:border-primary/50 hover:bg-primary/3 transition-colors group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <ShieldCheck className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Imprimir com assinatura digital</p>
+                  <p className="text-[11px] text-muted-foreground">Inclui selo de assinatura eletrônica ICP-Brasil</p>
+                </div>
+                <ChevronRight className="h-4 w-4 ml-auto text-muted-foreground" />
+              </div>
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
 

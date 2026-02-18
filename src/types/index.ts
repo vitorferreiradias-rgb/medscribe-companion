@@ -3,6 +3,8 @@ export interface Clinician {
   name: string;
   specialty: string;
   crm: string;
+  cpf?: string;
+  clinicAddress?: string;
 }
 
 export interface PatientDocument {
