@@ -672,11 +672,11 @@ export default function NovaConsulta() {
                 className="gap-1.5"
               >
                 {isStreamingAI ? (
-                  <><Sparkles className="h-4 w-4 animate-spin" /> Gerando…</>
+                  <><Sparkles className="h-4 w-4 animate-spin" /> Gerando IA…</>
                 ) : aiGenerated ? (
-                  <><Sparkles className="h-4 w-4" /> Gerar novamente</>
+                  <><Sparkles className="h-4 w-4" /> Gerar prontuário IA</>
                 ) : (
-                  <><Sparkles className="h-4 w-4" /> Gerar prontuário</>
+                  <><Sparkles className="h-4 w-4" /> Gerar prontuário IA</>
                 )}
               </Button>
             )}
