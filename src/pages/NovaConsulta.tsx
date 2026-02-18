@@ -98,7 +98,7 @@ export default function NovaConsulta() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") { e.preventDefault(); navigate(-1); }
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); handleSaveDraft(); }
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); handleMergeAndSave(); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -257,22 +257,6 @@ export default function NovaConsulta() {
     navigate(`/consultas/${enc.id}`);
   }, [patientId, clinicianId, complaint, location, timer, editorContent, aiSoapContent, pastedText, speech.utterances, data]);
 
-  const handleSaveDraft = useCallback(() => {
-    const now = new Date();
-    const startedAt = new Date(now.getTime() - timer * 1000).toISOString();
-    addEncounter({
-      patientId: patientId || "unknown",
-      clinicianId,
-      startedAt,
-      durationSec: timer || 0,
-      status: "draft",
-      chiefComplaint: complaint || undefined,
-      location: location || undefined,
-    });
-    toast({ title: "Rascunho salvo." });
-  }, [patientId, clinicianId, complaint, location, timer]);
-
-  const handleDiscard = () => { toast({ title: "Rascunho descartado." }); navigate(-1); };
 
   const handleSaveTemplateSubmit = () => {
     if (!templateName.trim() || !editorContent.trim()) return;
@@ -674,20 +658,9 @@ export default function NovaConsulta() {
       {step === 2 && (
         <footer className="sticky bottom-0 z-30 glass-topbar px-4 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={handleSaveDraft} className="gap-1.5">
-              <Save className="h-3.5 w-3.5" /> Salvar rascunho
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
+              Cancelar
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => navigate(-1)}>Cancelar consulta</DropdownMenuItem>
-                <DropdownMenuItem onClick={handleDiscard} className="text-destructive">Descartar rascunho</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
           <div className="flex items-center gap-2">
             {useAI ? (
