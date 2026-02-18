@@ -1,94 +1,137 @@
 
-# Redesenhar aba "Historico" com Timeline de Consultas do Paciente
+
+# Historico de Medicacoes + Ultimos Documentos
 
 ## Resumo
 
-Substituir a timeline atual (que mostra edições de seções) por uma timeline completa do paciente, listando todas as consultas e prescrições salvas, com separação visual e ícones para visualizar resumo e medicações.
+Duas funcionalidades novas na experiencia de consulta:
 
-## O que muda visualmente
+**A) Historico de Medicacoes** — Icone no header que abre um Sheet lateral com timeline de eventos por medicamento (prescrito/suspenso/nao renovado), com busca e observacoes livres.
+
+**B) Ultimos Documentos** — Botao na aba Receita para listar documentos anteriores do paciente, com acoes "Repetir e renovar assinatura" e "Editar para assinar".
+
+---
+
+## A) Historico de Medicacoes
+
+### Modelo de dados
+
+Novo tipo `MedicationEvent` e nova chave localStorage `medscribe_medication_history`:
 
 ```text
-HISTÓRICO DO PACIENTE
-─────────────────────
-● 15/02/2026 — Consulta (revisado)        [📋 Resumo] [💊 Medicações]
-  Queixa: dor lombar
-─────────────────────────────────────────
-● 10/02/2026 — Consulta (final)            [📋 Resumo] [💊 Medicações]
-  Queixa: cefaleia
-─────────────────────────────────────────
-◆ 08/02/2026 — Interconsulta               [💊 Medicações]
-  (cor índigo, prescrição sem consulta)
-─────────────────────────────────────────
-● 01/02/2026 — Consulta (draft)            [📋 Resumo]
-  Queixa: acompanhamento
+MedicationEvent:
+  id: string
+  patientId: string
+  medicationName: string
+  date: string (ISO)
+  status: "prescrito" | "suspenso" | "nao_renovado"
+  note?: string
+  encounterId?: string
 ```
 
-- Consultas aparecem com bolinha azul (primary) e cards brancos
-- Interconsultas (prescrições sem `encounterId`) aparecem com bolinha índigo e fundo índigo claro
-- Cada item é separado por uma linha horizontal (`Separator`)
-- Não aparece mais "seção X editada" — somente consultas e prescrições salvas
-- Ícones de olho/clipboard para expandir resumo e medicações inline
+### Novo arquivo: `src/lib/medication-history.ts`
 
-## Comportamento dos ícones
+- Funcoes CRUD: `loadMedicationHistory()`, `saveMedicationHistory()`, `addMedicationEvent()`, `getMedicationHistoryForPatient(patientId)`
+- Persistencia em `localStorage` com chave `medscribe_medication_history`
 
-- **Resumo** (ícone `FileText`): ao clicar, expande/colapsa mostrando o conteúdo das seções do prontuário daquela consulta
-- **Medicações** (ícone `Pill`): ao clicar, expande/colapsa mostrando a lista de medicamentos prescritos naquela consulta
-- Se não houver prontuário ou medicações, o ícone correspondente não aparece
+### Novo componente: `src/components/MedicationHistorySheet.tsx`
 
-## Seção técnica
+- Sheet lateral (lado direito)
+- Titulo: "Historico de medicacoes e observacoes"
+- Campo de busca no topo para filtrar por nome de medicamento
+- Lista agrupada por medicamento (usando Collapsible/Accordion)
+- Dentro de cada grupo: timeline de eventos ordenada por data desc
+- Cada evento mostra: data (dd/mm/aaaa), Badge de status (Prescrito=verde, Suspenso=vermelho, Nao renovado=amarelo), observacao opcional
+- Botao para adicionar evento manualmente (suspender, nao renovar, com observacao)
 
-### 1. Reescrever `src/components/ConsultaTimeline.tsx`
+### Integracao em `ConsultaDetalhe.tsx`
 
-**Nova interface de props:**
-```tsx
-interface Props {
-  patientId: string;
-  currentEncounterId: string;
-  encounters: Encounter[];
-  notes: Note[];
-  prescriptions: Prescription[];
-}
+- Icone `ClipboardList` (ou `Pill`) no header card do paciente, ao lado das informacoes
+- Ao clicar, abre o `MedicationHistorySheet` passando `patientId`
+
+### Auto-registro de eventos
+
+- No `PrescriptionFlow.tsx`, ao assinar uma receita, registrar automaticamente um evento "prescrito" para cada medicamento da receita no historico do paciente
+
+---
+
+## B) Ultimos Documentos
+
+### Modelo de dados
+
+Novo tipo `ClinicalDocument` e nova chave localStorage `medscribe_documents`:
+
+```text
+ClinicalDocument:
+  id: string
+  patientId: string
+  encounterId?: string
+  type: "prescricao" | "atestado" | "solicitacao_exames" | "orientacoes" | "outro"
+  title?: string
+  content: string
+  createdAt: string (ISO)
+  signedAt?: string (ISO)
+  signedBy?: string
+  status: "draft" | "signed"
 ```
 
-**Lógica:**
-- Filtrar `encounters` pelo `patientId`, excluindo a consulta atual
-- Filtrar `prescriptions` pelo `patientId` sem `encounterId` (interconsultas)
-- Montar array unificado ordenado por data decrescente (mais recente primeiro)
-- Cada item tem tipo `"consulta"` ou `"interconsulta"`
-- Estado local `expandedId` para controlar qual item está expandido (resumo ou meds)
+### Novo arquivo: `src/lib/clinical-documents.ts`
 
-**Renderização:**
-- Para cada consulta: data, status badge, queixa, botões de expandir resumo/medicações
-- Para cada interconsulta: data, lista de medicamentos, cor índigo
-- `Separator` entre cada item
-- Consulta atual destacada ou omitida (já visível no prontuário principal)
+- `loadDocuments()`, `saveDocuments()`, `addDocument()`, `getDocumentsForPatient(patientId)` — ultimos 20, ordenados por `createdAt` desc
 
-### 2. Atualizar `src/pages/ConsultaDetalhe.tsx`
+### Novo componente: `src/components/LastDocumentsSheet.tsx`
 
-- Passar as novas props ao componente `ConsultaTimeline`
-- Passar `allPrescriptions` (já carregado no componente) como prop
-- Passar `data.encounters`, `data.notes`, `enc.patientId` e `enc.id`
+- Sheet lateral ou Dialog
+- Titulo: "Ultimos documentos"
+- Lista dos documentos do paciente com: tipo (badge), data, preview de 1 linha do conteudo, status (draft/signed)
+- Duas acoes por documento:
+  - **"Repetir e renovar"**: cria novo documento com novo id, nova data, marca como signed (mock), toast de confirmacao
+  - **"Editar para assinar"**: copia conteudo para o editor de prescricao ativo, toast informando
 
-**Alteração na linha 461:**
-```tsx
-// De:
-<ConsultaTimeline createdAt={enc.startedAt} sections={note?.sections ?? []} />
+### Integracao em `PrescriptionFlow.tsx`
 
-// Para:
-<ConsultaTimeline
-  patientId={enc.patientId}
-  currentEncounterId={enc.id}
-  encounters={data.encounters}
-  notes={data.notes}
-  prescriptions={allPrescriptions}
-/>
-```
+- Botao "Ultimos documentos" adicionado ao lado do botao "Nova Receita" ou na area de acoes da prescricao
+- Ao assinar receita, salvar automaticamente como `ClinicalDocument` do tipo "prescricao"
 
-### 3. Imports necessários no ConsultaTimeline
+### Assinatura simulada
 
-- `FileText`, `Pill`, `Eye`, `ChevronDown` de `lucide-react`
-- `StatusBadge` para exibir status
-- `Separator` de `@/components/ui/separator`
-- `formatDateTimeBR` de `@/lib/format`
-- `Button` de `@/components/ui/button`
-- Tipos `Encounter`, `Note`, `Prescription` (usar o tipo existente de PrescriptionFlow)
+- Campos `signedAt` e `signedBy` preenchidos com data atual e nome do clinico mock
+- Documento assinado fica travado para edicao (somente duplicar como novo)
+
+---
+
+## Arquivos impactados
+
+| Arquivo | Acao |
+|---------|------|
+| `src/lib/medication-history.ts` | Novo — CRUD localStorage |
+| `src/lib/clinical-documents.ts` | Novo — CRUD localStorage |
+| `src/components/MedicationHistorySheet.tsx` | Novo — Sheet com timeline |
+| `src/components/LastDocumentsSheet.tsx` | Novo — Sheet com lista de docs |
+| `src/pages/ConsultaDetalhe.tsx` | Adicionar icone do historico no header |
+| `src/components/receita/PrescriptionFlow.tsx` | Adicionar botao "Ultimos documentos" + auto-registro de eventos ao assinar |
+| `src/types/index.ts` | Adicionar tipos `MedicationEvent` e `ClinicalDocument` |
+
+---
+
+## Secao tecnica
+
+### Fluxo de auto-registro ao assinar
+
+No `PrescriptionFlow.tsx`, na funcao `signPrescriptions`:
+1. Para cada medicamento da(s) receita(s) assinada(s), chamar `addMedicationEvent({ patientId, medicationName, date: now, status: "prescrito", encounterId })`
+2. Criar um `ClinicalDocument` com `type: "prescricao"`, `content` = texto da receita, `status: "signed"`, `signedAt` e `signedBy` preenchidos
+
+### Fluxo "Repetir e renovar"
+
+1. Clonar documento selecionado com novo `id`, nova `createdAt`, `signedAt = now`, `signedBy = "Dr. Mock"`, `encounterId = consulta atual`
+2. Salvar no localStorage
+3. Toast: "Documento repetido e renovado com sucesso."
+
+### Fluxo "Editar para assinar"
+
+1. Copiar `content` do documento selecionado para o `content` da prescricao ativa no `PrescriptionFlow`
+2. Fechar o Sheet
+3. Toast: "Conteudo carregado para edicao."
+4. Medico edita e assina normalmente pelo fluxo existente
+
