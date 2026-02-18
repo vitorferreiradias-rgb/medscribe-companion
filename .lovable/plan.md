@@ -1,24 +1,57 @@
 
+# Ajustes de nomenclatura e fluxo NovaConsulta + ConsultaDetalhe
 
-# Renomear botao "Gerar prontuario" para "Gerar prontuario IA"
+## Resumo das alteracoes
 
-Alteracao simples de texto no arquivo `src/pages/NovaConsulta.tsx` para deixar claro que a funcao usa inteligencia artificial.
+### 1. Renomear "Finalizar consulta" para "Finalizar anamnese"
+**Arquivo:** `src/pages/NovaConsulta.tsx` (linha 684)
+- Trocar o texto do botao primario de "Finalizar consulta" para "Finalizar anamnese"
 
-## O que muda
+### 2. Corrigir texto placeholder do painel IA
+**Arquivo:** `src/pages/NovaConsulta.tsx` (linha 535)
+- Texto atual: `O prontuário gerado pela IA aparecerá aqui após clicar em "Finalizar e gerar"`
+- Novo texto: `A anamnese gerada pela IA aparecerá aqui após clicar em "Gerar prontuário IA"`
 
-Os tres estados do botao passam a incluir "IA" no label:
+### 3. Simplificar barra de acoes na pagina de detalhe (ConsultaDetalhe)
+**Arquivo:** `src/pages/ConsultaDetalhe.tsx` (linhas 229-236)
 
-- "Gerar prontuario" → **"Gerar prontuario IA"**
-- "Gerar novamente" → **"Gerar novamente IA"** (opcional, mas mantem consistencia)
-- "Gerando..." → **"Gerando IA..."**
+Substituir os tres botoes atuais:
+
+```text
+[Salvar]  [Revisado]  [Finalizar]  [Exportar]
+```
+
+Por apenas dois:
+
+```text
+[Salvar]  [Revisado e exportar]
+```
+
+- **Salvar**: mantem o comportamento atual (salva o prontuario)
+- **Revisado e exportar**: marca como revisado, salva, e abre a janela de impressao/exportacao (combina `handleReview` + `handlePrint`)
+- Remove o botao "Finalizar" (Lock) separado
+
+A pagina de detalhe (`/consultas/:id`) ja possui na coluna lateral as abas: Transcricao, Receita, Dieta, Checklist e Historico -- entao ao finalizar a anamnese e ser redirecionado para la, o usuario ja tera acesso a todas essas funcionalidades para dar sequencia a consulta (gerar resumo IA, prescrever, dieta, etc).
 
 ## Secao tecnica
 
-**Arquivo: `src/pages/NovaConsulta.tsx`** (linhas ~675-681)
+**NovaConsulta.tsx linha 535:**
+```
+"A anamnese gerada pela IA aparecerá aqui após clicar em \"Gerar prontuário IA\""
+```
 
-Trocar os textos dentro do botao secundario:
+**NovaConsulta.tsx linha 684:**
+```
+<CheckCircle2 className="h-4 w-4" /> Finalizar anamnese
+```
 
-- `Gerando…` → `Gerando IA…`
-- `Gerar novamente` → `Gerar prontuario IA`
-- `Gerar prontuário` → `Gerar prontuario IA`
-
+**ConsultaDetalhe.tsx linhas 229-236:**
+Remover os botoes Revisado e Finalizar separados. Manter Salvar e adicionar "Revisado e exportar":
+```tsx
+<Button variant="secondary" size="sm" onClick={handleSave}>
+  <Save className="mr-1.5 h-3.5 w-3.5" /> Salvar
+</Button>
+<Button size="sm" onClick={() => { handleReview(); handlePrint(); }}>
+  <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Revisado e exportar
+</Button>
+```
