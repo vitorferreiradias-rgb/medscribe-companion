@@ -1,40 +1,29 @@
 
 
-# Tornar a transcricao com IA opcional
+# Simplificar fluxo de salvamento da Nova Consulta
 
-## Situacao atual
+## O que muda
 
-Na Etapa 2 da Nova Consulta, o layout sempre mostra dois paineis: editor manual (esquerda) e prontuario IA (direita). O footer sempre exibe o botao "Finalizar e gerar prontuario". O usuario nao tem opcao de usar apenas o editor manual sem a parte de IA.
+Remover o botao "Salvar rascunho" e o "Descartar rascunho". Manter apenas um botao principal de salvamento que, ao clicar, salva a consulta completa e redireciona automaticamente para a tela de visualizacao do prontuario (`/consultas/:id`), onde o usuario ja pode editar se necessario.
 
-## Solucao
+## Comportamento apos a mudanca
 
-Adicionar um toggle/switch na Etapa 1 (identificacao) para o usuario escolher se quer usar a IA ou nao. Quando desativado, a Etapa 2 mostra apenas o editor manual em tela cheia, sem o painel de IA nem a secao de gravacao/transcricao.
+1. Usuario preenche a identificacao (Etapa 1) e escreve no editor (Etapa 2)
+2. Clica em "Salvar consulta" (sem IA) ou "Finalizar e gerar prontuario" (com IA)
+3. O sistema salva o encounter + note e redireciona para `/consultas/:id`
+4. Na tela de detalhe, o usuario ja tem os botoes "Salvar", "Revisado", "Finalizar" e pode editar o texto livremente
 
-### Mudancas na Etapa 1
+## Secao tecnica
 
-- Novo campo com Switch: "Usar transcricao com IA" (ativado por padrao)
-- Descricao breve: "Grave ou cole a transcricao da consulta para gerar o prontuario automaticamente"
+**Arquivo: `src/pages/NovaConsulta.tsx`**
 
-### Mudancas na Etapa 2
+- Remover a funcao `handleSaveDraft` (linhas 260-273)
+- Remover a funcao `handleDiscard` (linha 275)
+- No footer (linhas 676-721):
+  - Remover o DropdownMenu com "Cancelar consulta" e "Descartar rascunho"
+  - Substituir por um simples botao "Cancelar" (variant ghost) que faz `navigate(-1)`
+  - Manter os botoes de salvamento como estao (ja redirecionam para `/consultas/:id` via `handleMergeAndSave`)
+- No atalho de teclado Ctrl+S (linha 101): trocar `handleSaveDraft` por `handleMergeAndSave`
 
-**Quando IA desativada:**
-- Layout de coluna unica: apenas o editor manual ocupando toda a largura
-- Sem secao de gravacao/transcricao (collapsible removido)
-- Footer simplificado: apenas "Salvar rascunho" e "Salvar consulta" (salva direto sem chamar IA)
-
-**Quando IA ativada:**
-- Comportamento atual mantido (duas colunas, gravacao, geracao IA)
-
-### Secao tecnica
-
-Arquivo: `src/pages/NovaConsulta.tsx`
-
-- Novo state: `const [useAI, setUseAI] = useState(true)`
-- Na Etapa 1: adicionar componente `Switch` do shadcn abaixo dos campos de identificacao
-- Na Etapa 2:
-  - Se `!useAI`: renderizar `manualEditorPane` sem o `Collapsible` de gravacao, em largura total
-  - Se `useAI`: manter layout atual de duas colunas
-- No footer:
-  - Se `!useAI`: botao "Salvar consulta" que chama `handleMergeAndSave` diretamente (sem gerar IA)
-  - Se `useAI`: botoes atuais mantidos
+O `handleMergeAndSave` ja faz `navigate(\`/consultas/\${enc.id}\`)`, entao o redirecionamento ja funciona. A tela `ConsultaDetalhe.tsx` ja possui os botoes de edicao, revisao e finalizacao.
 
