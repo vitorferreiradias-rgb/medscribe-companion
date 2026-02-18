@@ -29,6 +29,7 @@ import {
   Merge, FileDown, Trash2, ArrowRight, Pencil
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Utterance } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
@@ -46,6 +47,7 @@ export default function NovaConsulta() {
   const [location, setLocation] = useState("");
   const [patientSearch, setPatientSearch] = useState("");
   const [step, setStep] = useState<1 | 2>(() => searchParams.get("paciente") ? 2 : 1);
+  const [useAI, setUseAI] = useState(true);
 
   // Quick new patient
   const [showNewPatient, setShowNewPatient] = useState(false);
@@ -428,106 +430,108 @@ export default function NovaConsulta() {
         }}
       />
 
-      {/* Recording collapsible */}
-      <Collapsible open={recordingOpen} onOpenChange={setRecordingOpen}>
-        <CollapsibleTrigger asChild>
-          <button className="flex items-center w-full text-left py-2 px-3 rounded-lg glass-surface hover:bg-accent/10 transition-colors text-sm font-medium gap-2">
-            <Mic className="h-4 w-4 text-muted-foreground" />
-            <span className="flex-1">Gravação / Transcrição</span>
-            <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${recordingOpen ? "rotate-0" : "-rotate-90"}`} />
-            {recording === "recording" && <span className="h-2 w-2 rounded-full bg-destructive animate-pulse" />}
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-3 space-y-4">
-          {!speechSupported && (
-            <div className="flex items-start gap-2 text-sm text-muted-foreground p-3 rounded-lg glass-surface">
-              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>Reconhecimento de voz não suportado. Use Chrome ou cole o texto abaixo.</span>
-            </div>
-          )}
+      {/* Recording collapsible - only when AI is enabled */}
+      {useAI && (
+        <Collapsible open={recordingOpen} onOpenChange={setRecordingOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="flex items-center w-full text-left py-2 px-3 rounded-lg glass-surface hover:bg-accent/10 transition-colors text-sm font-medium gap-2">
+              <Mic className="h-4 w-4 text-muted-foreground" />
+              <span className="flex-1">Gravação / Transcrição</span>
+              <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${recordingOpen ? "rotate-0" : "-rotate-90"}`} />
+              {recording === "recording" && <span className="h-2 w-2 rounded-full bg-destructive animate-pulse" />}
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-3 space-y-4">
+            {!speechSupported && (
+              <div className="flex items-start gap-2 text-sm text-muted-foreground p-3 rounded-lg glass-surface">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>Reconhecimento de voz não suportado. Use Chrome ou cole o texto abaixo.</span>
+              </div>
+            )}
 
-          {/* Timer + controls */}
-          <div className="flex items-center gap-4">
-            <div className="relative shrink-0">
-              <svg width="64" height="64" className="-rotate-90">
-                <circle cx="32" cy="32" r={24} fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
-                <circle cx="32" cy="32" r={24} fill="none"
-                  stroke={recording === "recording" ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
-                  strokeWidth="3" strokeLinecap="round"
-                  strokeDasharray={2 * Math.PI * 24} strokeDashoffset={2 * Math.PI * 24 - (Math.min(timer, maxTime) / maxTime) * 2 * Math.PI * 24}
-                  className="transition-all duration-1000" />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Mic className={`h-4 w-4 ${recording === "recording" ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
+            {/* Timer + controls */}
+            <div className="flex items-center gap-4">
+              <div className="relative shrink-0">
+                <svg width="64" height="64" className="-rotate-90">
+                  <circle cx="32" cy="32" r={24} fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
+                  <circle cx="32" cy="32" r={24} fill="none"
+                    stroke={recording === "recording" ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))"}
+                    strokeWidth="3" strokeLinecap="round"
+                    strokeDasharray={2 * Math.PI * 24} strokeDashoffset={2 * Math.PI * 24 - (Math.min(timer, maxTime) / maxTime) * 2 * Math.PI * 24}
+                    className="transition-all duration-1000" />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Mic className={`h-4 w-4 ${recording === "recording" ? "text-primary animate-pulse" : "text-muted-foreground"}`} />
+                </div>
+              </div>
+              <div>
+                <p className="text-xl font-mono font-semibold tabular-nums">{formatTimer(timer)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {recording === "idle" ? "Pronto" : recording === "recording" ? "Ouvindo…" : "Pausado"}
+                </p>
+              </div>
+              <div className="flex gap-2 ml-auto">
+                {recording === "idle" && (
+                  <Button size="sm" onClick={handleStart} className="gap-1.5">
+                    <Play className="h-3.5 w-3.5" /> Iniciar
+                  </Button>
+                )}
+                {recording === "recording" && (
+                  <>
+                    <Button variant="secondary" size="sm" onClick={handlePause}><Pause className="h-3.5 w-3.5" /></Button>
+                    <Button variant="destructive" size="sm" onClick={handleStopRecording}><Square className="h-3.5 w-3.5" /></Button>
+                  </>
+                )}
+                {recording === "paused" && (
+                  <>
+                    <Button size="sm" onClick={handleResume}><Play className="h-3.5 w-3.5" /></Button>
+                    <Button variant="destructive" size="sm" onClick={handleStopRecording}><Square className="h-3.5 w-3.5" /></Button>
+                  </>
+                )}
               </div>
             </div>
-            <div>
-              <p className="text-xl font-mono font-semibold tabular-nums">{formatTimer(timer)}</p>
-              <p className="text-xs text-muted-foreground">
-                {recording === "idle" ? "Pronto" : recording === "recording" ? "Ouvindo…" : "Pausado"}
-              </p>
-            </div>
-            <div className="flex gap-2 ml-auto">
-              {recording === "idle" && (
-                <Button size="sm" onClick={handleStart} className="gap-1.5">
-                  <Play className="h-3.5 w-3.5" /> Iniciar
-                </Button>
-              )}
-              {recording === "recording" && (
-                <>
-                  <Button variant="secondary" size="sm" onClick={handlePause}><Pause className="h-3.5 w-3.5" /></Button>
-                  <Button variant="destructive" size="sm" onClick={handleStopRecording}><Square className="h-3.5 w-3.5" /></Button>
-                </>
-              )}
-              {recording === "paused" && (
-                <>
-                  <Button size="sm" onClick={handleResume}><Play className="h-3.5 w-3.5" /></Button>
-                  <Button variant="destructive" size="sm" onClick={handleStopRecording}><Square className="h-3.5 w-3.5" /></Button>
-                </>
-              )}
-            </div>
-          </div>
 
-          {/* Transcript bubbles */}
-          <ScrollArea className="h-[150px] rounded-lg glass-surface p-3">
-            {speech.utterances.length === 0 && !speech.interimText && (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma transcrição ainda.</p>
-            )}
-            <div className="space-y-2">
-              {speech.utterances.map((u, i) => (
-                <div key={i} className={`flex ${u.speaker === "medico" ? "justify-end" : "justify-start"}`}>
-                  <div className={`max-w-[85%] rounded-lg px-3 py-1.5 text-sm ${u.speaker === "medico" ? "bg-primary/10" : "bg-secondary"}`}>
-                    <span className="text-[10px] font-medium text-muted-foreground block mb-0.5">
-                      {u.speaker === "medico" ? "Médico" : "Paciente"}
-                    </span>
-                    {u.text}
-                  </div>
-                </div>
-              ))}
-              {speech.interimText && (
-                <div className="flex justify-end">
-                  <div className="max-w-[85%] rounded-lg px-3 py-1.5 text-sm bg-primary/5 text-muted-foreground italic">
-                    {speech.interimText}…
-                  </div>
-                </div>
+            {/* Transcript bubbles */}
+            <ScrollArea className="h-[150px] rounded-lg glass-surface p-3">
+              {speech.utterances.length === 0 && !speech.interimText && (
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhuma transcrição ainda.</p>
               )}
-              <div ref={transcriptEndRef} />
-            </div>
-          </ScrollArea>
+              <div className="space-y-2">
+                {speech.utterances.map((u, i) => (
+                  <div key={i} className={`flex ${u.speaker === "medico" ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[85%] rounded-lg px-3 py-1.5 text-sm ${u.speaker === "medico" ? "bg-primary/10" : "bg-secondary"}`}>
+                      <span className="text-[10px] font-medium text-muted-foreground block mb-0.5">
+                        {u.speaker === "medico" ? "Médico" : "Paciente"}
+                      </span>
+                      {u.text}
+                    </div>
+                  </div>
+                ))}
+                {speech.interimText && (
+                  <div className="flex justify-end">
+                    <div className="max-w-[85%] rounded-lg px-3 py-1.5 text-sm bg-primary/5 text-muted-foreground italic">
+                      {speech.interimText}…
+                    </div>
+                  </div>
+                )}
+                <div ref={transcriptEndRef} />
+              </div>
+            </ScrollArea>
 
-          {/* Paste */}
-          <div className="space-y-1.5">
-            <Label className="text-xs flex items-center gap-1.5"><ClipboardPaste className="h-3 w-3" /> Colar transcrição</Label>
-            <Textarea
-              value={pastedText}
-              onChange={(e) => setPastedText(e.target.value)}
-              placeholder="Cole aqui o texto da transcrição (uma fala por linha)…"
-              className="min-h-[60px] resize-y text-sm"
-              rows={2}
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+            {/* Paste */}
+            <div className="space-y-1.5">
+              <Label className="text-xs flex items-center gap-1.5"><ClipboardPaste className="h-3 w-3" /> Colar transcrição</Label>
+              <Textarea
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                placeholder="Cole aqui o texto da transcrição (uma fala por linha)…"
+                className="min-h-[60px] resize-y text-sm"
+                rows={2}
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
     </div>
   );
 
@@ -620,6 +624,13 @@ export default function NovaConsulta() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {identificationForm}
+                <div className="flex items-center justify-between rounded-lg border p-3 mt-2">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Usar transcrição com IA</Label>
+                    <p className="text-xs text-muted-foreground">Grave ou cole a transcrição para gerar o prontuário automaticamente</p>
+                  </div>
+                  <Switch checked={useAI} onCheckedChange={setUseAI} />
+                </div>
                 <Button
                   className="w-full gap-2 mt-4"
                   disabled={!patientId || !clinicianId}
@@ -629,6 +640,10 @@ export default function NovaConsulta() {
                 </Button>
               </CardContent>
             </Card>
+          </div>
+        ) : !useAI ? (
+          <div className="px-5 py-5 max-w-[1000px] mx-auto h-full">
+            {manualEditorPane}
           </div>
         ) : isMobile ? (
           <Tabs defaultValue="editor" className="px-4 py-4">
@@ -675,25 +690,33 @@ export default function NovaConsulta() {
             </DropdownMenu>
           </div>
           <div className="flex items-center gap-2">
-            {aiGenerated && (
-              <Button onClick={handleMergeAndSave} className="gap-1.5" variant="default">
-                <Merge className="h-4 w-4" /> Unir e salvar
+            {useAI ? (
+              <>
+                {aiGenerated && (
+                  <Button onClick={handleMergeAndSave} className="gap-1.5" variant="default">
+                    <Merge className="h-4 w-4" /> Unir e salvar
+                  </Button>
+                )}
+                <Button
+                  onClick={aiGenerated ? handleMergeAndSave : handleGenerateAI}
+                  disabled={isStreamingAI}
+                  className="gap-1.5"
+                  variant={aiGenerated ? "secondary" : "default"}
+                >
+                  {isStreamingAI ? (
+                    <><Sparkles className="h-4 w-4 animate-spin" /> Gerando…</>
+                  ) : aiGenerated ? (
+                    <><CheckCircle2 className="h-4 w-4" /> Salvar sem unir</>
+                  ) : (
+                    <><Sparkles className="h-4 w-4" /> Finalizar e gerar prontuário</>
+                  )}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={handleMergeAndSave} className="gap-1.5">
+                <CheckCircle2 className="h-4 w-4" /> Salvar consulta
               </Button>
             )}
-            <Button
-              onClick={aiGenerated ? handleMergeAndSave : handleGenerateAI}
-              disabled={isStreamingAI}
-              className="gap-1.5"
-              variant={aiGenerated ? "secondary" : "default"}
-            >
-              {isStreamingAI ? (
-                <><Sparkles className="h-4 w-4 animate-spin" /> Gerando…</>
-              ) : aiGenerated ? (
-                <><CheckCircle2 className="h-4 w-4" /> Salvar sem unir</>
-              ) : (
-                <><Sparkles className="h-4 w-4" /> Finalizar e gerar prontuário</>
-              )}
-            </Button>
           </div>
         </footer>
       )}
