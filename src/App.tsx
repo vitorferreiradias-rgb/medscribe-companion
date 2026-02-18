@@ -13,6 +13,7 @@ import PacienteDetalhe from "@/pages/PacienteDetalhe";
 import Perfil from "@/pages/Perfil";
 import NotFound from "@/pages/NotFound";
 import Noticias from "@/pages/Noticias";
+import NovaConsulta from "@/pages/NovaConsulta";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Navigate to="/agenda" replace />} />
+            <Route path="/consultas/nova" element={<NovaConsulta />} />
             <Route element={<AppLayout />}>
               <Route path="/agenda" element={<AgendaPage />} />
               <Route path="/consultas" element={<Consultas />} />

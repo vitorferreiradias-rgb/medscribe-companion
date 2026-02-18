@@ -1,10 +1,9 @@
 import { useState, useCallback } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Topbar } from "./Topbar";
 import { CommandBar } from "./CommandBar";
-import { NewEncounterDialog } from "./NewEncounterDialog";
 import { NewScheduleDialog } from "./NewScheduleDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,11 +17,11 @@ import { useToast } from "@/hooks/use-toast";
 
 export function AppLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const data = useAppData();
   const { toast } = useToast();
 
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [showNewConsulta, setShowNewConsulta] = useState(false);
   const [showNewPaciente, setShowNewPaciente] = useState(false);
   const [showNewSchedule, setShowNewSchedule] = useState(false);
   const [showCommandBar, setShowCommandBar] = useState(false);
@@ -66,7 +65,7 @@ export function AppLayout() {
     resetPatientForm();
   };
 
-  const onNewConsulta = useCallback(() => setShowNewConsulta(true), []);
+  const onNewConsulta = useCallback(() => navigate("/consultas/nova"), [navigate]);
   const onNewPaciente = useCallback(() => setShowNewPaciente(true), []);
   const onNewSchedule = useCallback(() => setShowNewSchedule(true), []);
   const onOpenCommandBar = useCallback(() => setShowCommandBar(true), []);
@@ -102,8 +101,8 @@ export function AppLayout() {
         onNewPaciente={onNewPaciente}
       />
 
-      <NewEncounterDialog open={showNewConsulta} onOpenChange={setShowNewConsulta} />
       <NewScheduleDialog open={showNewSchedule} onOpenChange={setShowNewSchedule} defaultDate={currentDate.toISOString().slice(0, 10)} />
+
 
       {/* Quick new patient dialog */}
       <Dialog open={showNewPaciente} onOpenChange={(v) => { setShowNewPaciente(v); if (!v) resetPatientForm(); }}>
