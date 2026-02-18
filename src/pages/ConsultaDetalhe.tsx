@@ -229,7 +229,7 @@ export default function ConsultaDetalhe() {
           {!isFinal && (
             <>
               <Button variant="secondary" size="sm" onClick={handleSave}><Save className="mr-1.5 h-3.5 w-3.5" /> Salvar</Button>
-              <Button size="sm" onClick={() => { handleReview(); handlePrint(); }}><CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Revisado e exportar</Button>
+              <Button size="sm" onClick={() => { handleReview(); handlePrint(); }}><CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Revisado/Salvar e Exportar</Button>
             </>
           )}
           <Button variant="ghost" size="sm" onClick={() => setShowDelete(true)}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
