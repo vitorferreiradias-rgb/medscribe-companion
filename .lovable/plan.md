@@ -1,37 +1,59 @@
 
-# Corrigir navegacao para Nova Consulta
 
-## Problema
+# Fluxo em etapas para Nova Consulta
 
-A pagina full-screen `/consultas/nova` ja existe e funciona, porem dois arquivos ainda usam o dialog modal antigo (`NewEncounterDialog`):
+## Problema atual
 
-1. **`src/pages/Consultas.tsx`** - botao "Nova consulta" abre o dialog antigo
-2. **`src/pages/PacienteDetalhe.tsx`** - botao "Nova consulta" abre o dialog antigo
+A tela de Nova Consulta mostra tudo de uma vez: campos de identificacao (paciente, medico, queixa, local) junto com o editor manual e o painel de IA. O usuario espera um fluxo em dois passos, como era antes:
 
-O `AppLayout.tsx` ja foi corrigido anteriormente e navega para `/consultas/nova`.
+1. Primeiro: selecionar paciente, medico e local
+2. Depois: ver o editor manual (esquerda) e a area de transcricao/IA (direita)
 
-## Correcoes
+## Solucao
 
-### 1. `src/pages/Consultas.tsx`
+Adicionar um state `step` (1 ou 2) na pagina `NovaConsulta.tsx`:
 
-- Remover import de `NewEncounterDialog`
-- Remover state `showNew` e os dois componentes `<NewEncounterDialog>`
-- Adicionar `useNavigate`
-- Alterar os botoes "Nova consulta" para `navigate("/consultas/nova")`
+### Etapa 1 - Identificacao
 
-### 2. `src/pages/PacienteDetalhe.tsx`
+- Tela centralizada e limpa com os campos: Paciente, Medico, Queixa principal, Local
+- Botao "Criar paciente" inline (como ja existe)
+- Botao "Continuar" habilitado somente quando paciente e medico estiverem selecionados
+- Animacao de transicao suave para a etapa 2
 
-- Remover import de `NewEncounterDialog`
-- Remover state `newEncounterOpen` e o componente `<NewEncounterDialog>`
-- Adicionar `navigate` (ja deve existir)
-- Alterar botao "Nova consulta" para `navigate("/consultas/nova?paciente=" + patient.id)`
-- Na pagina `NovaConsulta.tsx`, ler o query param `paciente` e pre-selecionar o paciente automaticamente
+### Etapa 2 - Editor + Transcricao
 
-### 3. `src/pages/NovaConsulta.tsx` (pequeno ajuste)
+- Layout atual de duas colunas (desktop) ou tabs (mobile)
+- Esquerda: editor manual com toolbar Markdown e modelos
+- Direita: painel de IA (placeholder ate gerar)
+- Gravacao/transcricao no painel colapsavel abaixo do editor
+- Footer sticky com botoes de salvar/gerar/unir
 
-- Ler query param `paciente` da URL via `useSearchParams`
-- Se presente, setar `patientId` com o valor recebido (pre-seleciona o paciente)
+### Mudancas no arquivo
 
-## Resultado
+**`src/pages/NovaConsulta.tsx`**
 
-Todos os pontos de entrada para "Nova Consulta" vao navegar para a tela full-screen `/consultas/nova`, eliminando completamente o uso do dialog modal antigo.
+- Adicionar state `step` (1 ou 2), inicializando em 1
+- Na etapa 1: renderizar `identificationForm` centralizado num card com botao "Continuar"
+- Na etapa 2: renderizar o layout atual (colunas ou tabs) sem o `identificationForm` embutido
+- Mover o `identificationForm` para fora do editor pane
+- Mostrar resumo compacto do paciente/medico selecionado no header da etapa 2 (nome do paciente e medico como badges)
+- Botao "Continuar" desabilitado se `!patientId || !clinicianId`
+
+### Secao tecnica
+
+O state `step` controla qual bloco e renderizado no main content area:
+
+```text
+step === 1:
+  Card centralizado (max-w-lg mx-auto)
+    - identificationForm (paciente, medico, queixa, local)
+    - Botao "Continuar" (disabled se falta paciente ou medico)
+
+step === 2:
+  Header compacto: "Paciente: Nome | Medico: Nome" (clicavel para voltar ao step 1)
+  Layout dual-pane atual (editor esquerda, IA direita)
+  Footer sticky com acoes
+```
+
+Nenhum arquivo novo sera criado. Apenas `NovaConsulta.tsx` sera modificado.
+
