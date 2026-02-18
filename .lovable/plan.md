@@ -1,137 +1,112 @@
 
 
-# Historico de Medicacoes + Ultimos Documentos
+# Impressao de Receita com Carimbo do Medico
 
 ## Resumo
 
-Duas funcionalidades novas na experiencia de consulta:
+Adicionar botao "Imprimir" na area de prescricao com duas opcoes: imprimir sem assinatura digital ou com assinatura digital. A impressao inclui carimbo do medico prescritor centralizado na margem inferior, com formato diferente para receita simples vs. especial.
 
-**A) Historico de Medicacoes** — Icone no header que abre um Sheet lateral com timeline de eventos por medicamento (prescrito/suspenso/nao renovado), com busca e observacoes livres.
+## O que muda visualmente
 
-**B) Ultimos Documentos** — Botao na aba Receita para listar documentos anteriores do paciente, com acoes "Repetir e renovar assinatura" e "Editar para assinar".
+Na secao de Assinatura Digital do PrescriptionFlow, um novo botao **"Imprimir"** (icone Printer) aparece ao lado dos botoes existentes. Ao clicar, abre um Dialog com duas opcoes:
 
----
+- **Imprimir sem assinatura** — gera a pagina de impressao sem selo digital
+- **Imprimir com assinatura digital** — gera a pagina com selo de assinatura (mock)
 
-## A) Historico de Medicacoes
-
-### Modelo de dados
-
-Novo tipo `MedicationEvent` e nova chave localStorage `medscribe_medication_history`:
+A pagina de impressao (via `window.print()`) mostra:
 
 ```text
-MedicationEvent:
-  id: string
-  patientId: string
-  medicationName: string
-  date: string (ISO)
-  status: "prescrito" | "suspenso" | "nao_renovado"
-  note?: string
-  encounterId?: string
++------------------------------------------+
+|                                          |
+|   [Conteudo da prescricao]               |
+|   [Lista de medicamentos]                |
+|                                          |
+|   Data: 18 de fevereiro de 2026          |
+|                                          |
+|   [Selo de assinatura digital - se       |
+|    opcao com assinatura selecionada]     |
+|                                          |
+|                                          |
+|------------------------------------------|
+|        CARIMBO (centralizado)            |
+|                                          |
+|  Receita Simples:                        |
+|  Dr. Vitor Ferreira Dias                 |
+|  CRM 23311/DF                            |
+|                                          |
+|  Receita Especial:                       |
+|  Dr. Vitor Ferreira Dias                 |
+|  CRM 23311/DF                            |
+|  CPF: 123.456.789-00                     |
+|  Clinica Exemplo - SQN 123, Brasilia-DF  |
++------------------------------------------+
 ```
 
-### Novo arquivo: `src/lib/medication-history.ts`
+## Dados necessarios no tipo Clinician
 
-- Funcoes CRUD: `loadMedicationHistory()`, `saveMedicationHistory()`, `addMedicationEvent()`, `getMedicationHistoryForPatient(patientId)`
-- Persistencia em `localStorage` com chave `medscribe_medication_history`
+O tipo `Clinician` atual tem `name`, `specialty`, `crm`. Para o carimbo especial precisamos adicionar:
 
-### Novo componente: `src/components/MedicationHistorySheet.tsx`
+- `cpf?: string` — CPF do medico
+- `clinicAddress?: string` — endereco da clinica
 
-- Sheet lateral (lado direito)
-- Titulo: "Historico de medicacoes e observacoes"
-- Campo de busca no topo para filtrar por nome de medicamento
-- Lista agrupada por medicamento (usando Collapsible/Accordion)
-- Dentro de cada grupo: timeline de eventos ordenada por data desc
-- Cada evento mostra: data (dd/mm/aaaa), Badge de status (Prescrito=verde, Suspenso=vermelho, Nao renovado=amarelo), observacao opcional
-- Botao para adicionar evento manualmente (suspender, nao renovar, com observacao)
+Os dados seed serao atualizados para incluir esses campos.
 
-### Integracao em `ConsultaDetalhe.tsx`
+## Secao tecnica
 
-- Icone `ClipboardList` (ou `Pill`) no header card do paciente, ao lado das informacoes
-- Ao clicar, abre o `MedicationHistorySheet` passando `patientId`
+### 1. Atualizar `src/types/index.ts` — tipo Clinician
 
-### Auto-registro de eventos
+Adicionar campos opcionais `cpf` e `clinicAddress`.
 
-- No `PrescriptionFlow.tsx`, ao assinar uma receita, registrar automaticamente um evento "prescrito" para cada medicamento da receita no historico do paciente
+### 2. Atualizar `src/lib/seed.ts` — dados mock
 
----
+Preencher `cpf` e `clinicAddress` nos clinicians existentes para que o carimbo funcione.
 
-## B) Ultimos Documentos
+### 3. Atualizar `src/components/receita/PrescriptionFlow.tsx`
 
-### Modelo de dados
+**Novas props:**
+- `clinicianName?: string`
+- `clinicianCrm?: string`
+- `clinicianCpf?: string`
+- `clinicAddress?: string`
+- `patientName?: string`
 
-Novo tipo `ClinicalDocument` e nova chave localStorage `medscribe_documents`:
+**Novo estado:**
+- `showPrintDialog` — controla o dialog de opcoes de impressao
 
-```text
-ClinicalDocument:
-  id: string
-  patientId: string
-  encounterId?: string
-  type: "prescricao" | "atestado" | "solicitacao_exames" | "orientacoes" | "outro"
-  title?: string
-  content: string
-  createdAt: string (ISO)
-  signedAt?: string (ISO)
-  signedBy?: string
-  status: "draft" | "signed"
-```
+**Novo botao "Imprimir"** na area de acoes (ao lado de "Assinar esta" e "Assinar todas"):
+- Icone `Printer`
+- Abre dialog com duas opcoes
 
-### Novo arquivo: `src/lib/clinical-documents.ts`
+**Nova funcao `handlePrint(withSignature: boolean)`:**
+1. Monta HTML da receita em uma nova janela (`window.open`)
+2. Conteudo: texto da prescricao + lista de medicamentos formatada
+3. Data formatada
+4. Se `withSignature` e receita ja assinada: exibe selo de assinatura digital (mock)
+5. Rodape fixo na margem inferior com carimbo:
+   - **Simples**: nome completo + CRM com estado (ex: "Dr. Vitor Ferreira Dias — CRM 23311/DF")
+   - **Especial**: nome completo + CRM + CPF + endereco da clinica
+6. CSS `@media print` para centralizar carimbo e garantir layout correto
+7. Chama `window.print()` automaticamente
 
-- `loadDocuments()`, `saveDocuments()`, `addDocument()`, `getDocumentsForPatient(patientId)` — ultimos 20, ordenados por `createdAt` desc
+### 4. Atualizar `src/pages/ConsultaDetalhe.tsx`
 
-### Novo componente: `src/components/LastDocumentsSheet.tsx`
+Passar os dados do clinician como props ao PrescriptionFlow:
+- `clinicianName={clinician?.name}`
+- `clinicianCrm={clinician?.crm}`
+- `clinicianCpf={clinician?.cpf}`
+- `clinicAddress={clinician?.clinicAddress}`
+- `patientName={patient?.name}`
 
-- Sheet lateral ou Dialog
-- Titulo: "Ultimos documentos"
-- Lista dos documentos do paciente com: tipo (badge), data, preview de 1 linha do conteudo, status (draft/signed)
-- Duas acoes por documento:
-  - **"Repetir e renovar"**: cria novo documento com novo id, nova data, marca como signed (mock), toast de confirmacao
-  - **"Editar para assinar"**: copia conteudo para o editor de prescricao ativo, toast informando
+### 5. Formato do CRM no carimbo
 
-### Integracao em `PrescriptionFlow.tsx`
-
-- Botao "Ultimos documentos" adicionado ao lado do botao "Nova Receita" ou na area de acoes da prescricao
-- Ao assinar receita, salvar automaticamente como `ClinicalDocument` do tipo "prescricao"
-
-### Assinatura simulada
-
-- Campos `signedAt` e `signedBy` preenchidos com data atual e nome do clinico mock
-- Documento assinado fica travado para edicao (somente duplicar como novo)
-
----
+O campo `crm` do seed ja tem formato "CRM/SP 123456". Para o carimbo, sera exibido como esta armazenado. Se o usuario quiser formato "CRM 23311/DF", os dados seed serao ajustados.
 
 ## Arquivos impactados
 
 | Arquivo | Acao |
 |---------|------|
-| `src/lib/medication-history.ts` | Novo — CRUD localStorage |
-| `src/lib/clinical-documents.ts` | Novo — CRUD localStorage |
-| `src/components/MedicationHistorySheet.tsx` | Novo — Sheet com timeline |
-| `src/components/LastDocumentsSheet.tsx` | Novo — Sheet com lista de docs |
-| `src/pages/ConsultaDetalhe.tsx` | Adicionar icone do historico no header |
-| `src/components/receita/PrescriptionFlow.tsx` | Adicionar botao "Ultimos documentos" + auto-registro de eventos ao assinar |
-| `src/types/index.ts` | Adicionar tipos `MedicationEvent` e `ClinicalDocument` |
-
----
-
-## Secao tecnica
-
-### Fluxo de auto-registro ao assinar
-
-No `PrescriptionFlow.tsx`, na funcao `signPrescriptions`:
-1. Para cada medicamento da(s) receita(s) assinada(s), chamar `addMedicationEvent({ patientId, medicationName, date: now, status: "prescrito", encounterId })`
-2. Criar um `ClinicalDocument` com `type: "prescricao"`, `content` = texto da receita, `status: "signed"`, `signedAt` e `signedBy` preenchidos
-
-### Fluxo "Repetir e renovar"
-
-1. Clonar documento selecionado com novo `id`, nova `createdAt`, `signedAt = now`, `signedBy = "Dr. Mock"`, `encounterId = consulta atual`
-2. Salvar no localStorage
-3. Toast: "Documento repetido e renovado com sucesso."
-
-### Fluxo "Editar para assinar"
-
-1. Copiar `content` do documento selecionado para o `content` da prescricao ativa no `PrescriptionFlow`
-2. Fechar o Sheet
-3. Toast: "Conteudo carregado para edicao."
-4. Medico edita e assina normalmente pelo fluxo existente
+| `src/types/index.ts` | Adicionar `cpf` e `clinicAddress` ao Clinician |
+| `src/lib/seed.ts` | Preencher novos campos nos clinicians mock |
+| `src/components/receita/PrescriptionFlow.tsx` | Botao imprimir + dialog + funcao de impressao com carimbo |
+| `src/pages/ConsultaDetalhe.tsx` | Passar dados do clinician ao PrescriptionFlow |
 
