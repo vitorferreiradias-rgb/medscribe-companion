@@ -1,104 +1,182 @@
 
-
-# Nova Consulta em Tela Cheia
+# Nova Consulta -- Prontuario Manual + Prontuario IA lado a lado
 
 ## Resumo
 
-Substituir o dialog modal de "Nova Consulta" por uma pagina full-screen dedicada na rota `/consultas/nova`. O prontuario fica visivel imediatamente apos selecionar o paciente, gravacao e opcional e nao bloqueia a escrita, e o botao "Finalizar" fica sempre visivel numa barra sticky no rodape.
+Reformular a tela de Nova Consulta para que o medico tenha duas areas distintas: um **editor manual rico** (esquerda) onde escreve livremente com barra de ferramentas e pode inserir modelos SOAP ou modelos personalizados salvos, e um **prontuario gerado pela IA** (direita) montado automaticamente a partir da transcricao de audio pelo Cloud (Gemini). Ao final, o medico pode unir ambos num unico prontuario. A transcricao bruta e arquivada separadamente com data e nome do paciente.
 
-## Layout da nova tela
+## Fluxo do usuario
 
 ```text
-+----------------------------------------------------------+
-| [<- Voltar]   Nova Consulta        [Badge: Rascunho]     |  <- sticky top
-+----------------------------------------------------------+
-|                                                          |
-|  COLUNA ESQUERDA (65%)      |  COLUNA DIREITA (35%)      |
-|                             |                            |
-|  Paciente: [select]         |  [Iniciar gravacao] (mic)  |
-|  Medico: [select]           |                            |
-|  Queixa: [input]            |  Timer circular            |
-|  Local: [input]             |  Pausar | Parar            |
-|                             |                            |
-|  --- Anamnese / Obs ---     |  --- Transcricao ---       |
-|  [   textarea grande   ]    |  [chat bubbles scroll]     |
-|                             |                            |
-|  --- Secoes SOAP ---        |  [Colar transcricao]       |
-|  > QP  [editavel]           |                            |
-|  > HDA [editavel]           |  [Ocultar gravacao]        |
-|  > AP  [editavel]           |                            |
-|  > ... (colapsaveis)        |                            |
-|                             |                            |
-+----------------------------------------------------------+
-| [Salvar rascunho]    [...] | [Finalizar e gerar pront.]  |  <- sticky bottom
-+----------------------------------------------------------+
+1. Medico abre "Nova Consulta"
+2. Preenche identificacao (paciente, medico, queixa, local)
+3. Escreve manualmente no editor da esquerda (com toolbar)
+   - Pode inserir modelo SOAP padrao ou modelo salvo por ele
+4. Opcionalmente grava audio (painel inferior ou tab mobile)
+5. Clica "Finalizar e gerar prontuario"
+   - Transcricao e enviada ao Cloud (Gemini) que retorna SOAP estruturado
+   - Resultado aparece na coluna DIREITA
+   - Transcricao bruta e salva em arquivo separado (localStorage)
+6. Medico revisa os dois lados e clica "Unir prontuarios"
+   - O conteudo da IA e mesclado ao texto manual
+   - Resultado final e salvo como prontuario da consulta
+7. Navega para /consultas/:id com o documento final
 ```
 
-No mobile: Tabs "Prontuario" e "Gravacao" substituem as 2 colunas.
+## Layout da tela (apos finalizar)
+
+```text
++------------------------------------------------------------------+
+| [<- Voltar]   Nova Consulta               [Badge: Rascunho]      |
++------------------------------------------------------------------+
+|                                                                  |
+|  ESQUERDA (50%)                  |  DIREITA (50%)                |
+|  Prontuario Manual               |  Prontuario IA (Cloud)        |
+|                                  |                               |
+|  [B] [I] [H1] [H2] [Lista] ...  |  (aparece apos finalizar)     |
+|  +----------------------------+  |  +-------------------------+  |
+|  | Editor com toolbar         |  |  | SOAP gerado pela IA    |  |
+|  | (texto livre ou modelo)    |  |  | (stream em tempo real)  |  |
+|  |                            |  |  |                         |  |
+|  +----------------------------+  |  +-------------------------+  |
+|                                  |                               |
+|  [Inserir modelo v]              |  [Copiar] [Inserir no manual] |
+|   - SOAP padrao                  |                               |
+|   - Meus modelos salvos          |                               |
+|   - Salvar modelo atual          |                               |
+|                                  |                               |
+|  === Gravacao (colapsavel) ===   |                               |
+|  [Iniciar gravacao] Timer        |                               |
+|  Transcricao ao vivo             |                               |
+|                                  |                               |
++------------------------------------------------------------------+
+| [Salvar rascunho]  [...] | [Unir prontuarios] [Finalizar e gerar]|
++------------------------------------------------------------------+
+```
+
+No mobile: 3 tabs -- "Editor Manual", "Prontuario IA", "Gravacao"
 
 ## Mudancas por arquivo
 
-### 1. `src/pages/NovaConsulta.tsx` (NOVO)
+### 1. `supabase/functions/generate-soap/index.ts` (NOVO)
 
-Pagina full-screen (sem AppLayout), dividida em:
+Nova edge function que recebe a transcricao bruta e gera prontuario SOAP completo usando Gemini.
 
-**Header sticky (top):**
-- Botao "Voltar" (navega para pagina anterior)
-- Titulo "Nova Consulta"
-- Badge "Rascunho" ou "Gravando..." (condicional)
+- Recebe: `{ transcription: string, patientName: string, chiefComplaint: string }`
+- System prompt instrui a IA a gerar SOAP completo (QP, HDA, AP, Medicamentos, Alergias, Exame Fisico, Hipoteses, Plano, Prescricoes, Orientacoes, CID)
+- Streaming SSE (mesmo padrao do clinical-summary existente)
+- Trata erros 429/402
 
-**Corpo - layout unico (sem fases separadas):**
-- Formulario de identificacao (paciente, medico, queixa, local) fica no topo da coluna esquerda, sempre acessivel
-- Abaixo do formulario: textarea "Anamnese / Observacoes" (min-h-[200px])
-- Abaixo: secoes SOAP do template como textareas menores colapsaveis (Collapsible do shadcn), pre-preenchidas com placeholder "(revise e edite)"
-- Coluna direita: painel de gravacao (botao "Iniciar gravacao", timer SVG circular, controles play/pause/stop, transcricao ao vivo em chat bubbles, campo "colar transcricao")
-- Botao "Ocultar gravacao" colapsa a coluna direita, dando 100% ao prontuario
-- Mobile: componente Tabs do shadcn com 2 abas
+### 2. `supabase/config.toml`
 
-**Footer sticky (bottom):**
-- "Salvar rascunho" (Button variant="secondary") - cria encounter com status "draft"
-- "Finalizar consulta e gerar prontuario" (Button primario) - sempre visivel
-- Menu "..." (DropdownMenu) com "Cancelar consulta" e "Descartar rascunho"
-- Toast em cada acao
-
-**Atalhos:**
-- Esc: navega de volta
-- Ctrl/Cmd+S: salva rascunho
-
-**Ao finalizar:**
-- Cria encounter, transcript, note (mesma logica do handleFinish existente)
-- Mostra skeleton de geracao brevemente
-- Navega para `/consultas/:id` com prontuario completo
-
-Reutiliza: `useSpeechRecognition`, `parseTranscriptToSections`, `addEncounter`, `addTranscript`, `addNote`, `updateEncounter`, `formatTimer`, `soapTemplate`, Collapsible e Tabs do shadcn.
-
-### 2. `src/App.tsx`
-
-- Importar `NovaConsulta`
-- Adicionar rota FORA do bloco `<Route element={<AppLayout />}>`:
-
+Adicionar:
 ```
-<Route path="/consultas/nova" element={<NovaConsulta />} />
+[functions.generate-soap]
+verify_jwt = false
 ```
 
-Posicionar antes do bloco AppLayout para que nao herde sidebar/topbar.
+### 3. `src/lib/ai-soap.ts` (NOVO)
 
-### 3. `src/components/AppLayout.tsx`
+Cliente frontend para chamar a edge function `generate-soap` com streaming, no mesmo padrao de `ai-summary.ts`.
 
-- Importar `useNavigate`
-- Alterar `onNewConsulta` para fazer `navigate("/consultas/nova")` em vez de `setShowNewConsulta(true)`
-- Remover o state `showNewConsulta` e o componente `<NewEncounterDialog>`
-- Remover imports nao usados (NewEncounterDialog)
+### 4. `src/lib/transcript-archive.ts` (NOVO)
 
-### 4. `src/components/CommandBar.tsx`
+Modulo para salvar e listar transcricoes brutas no localStorage:
+- Chave: `medscribe_transcriptions`
+- Cada registro: `{ id, date, patientName, patientId, encounterId, content: string }`
+- Funcoes: `saveTranscription(...)`, `listTranscriptions()`, `getTranscription(id)`
 
-- Verificar se `onNewConsulta` callback funciona (ja recebe do AppLayout, deve funcionar automaticamente com a mudanca no passo 3)
+### 5. `src/lib/note-templates.ts` (NOVO)
+
+Modulo para gerenciar modelos de prontuario personalizados:
+- Chave: `medscribe_note_templates`
+- Cada modelo: `{ id, name, content: string, createdAt: string }`
+- Funcoes: `saveTemplate(name, content)`, `listTemplates()`, `deleteTemplate(id)`
+- Modelo SOAP padrao ja disponivel como opcao fixa (gerado a partir do soap-template existente)
+
+### 6. `src/pages/NovaConsulta.tsx` (REESCREVER)
+
+Mudancas principais:
+
+**Editor manual (esquerda):**
+- Substituir a textarea simples por uma textarea com barra de ferramentas (Markdown shortcuts):
+  - Botoes: Negrito (Ctrl+B), Italico (Ctrl+I), Titulo H2, Lista, Separador
+  - Cada botao insere marcacao Markdown na posicao do cursor
+- Dropdown "Inserir modelo" com opcoes:
+  - "Modelo SOAP padrao" -- insere todas as secoes SOAP como headers `## Secao`
+  - Modelos salvos pelo usuario (listados do localStorage)
+  - "Salvar modelo atual" -- salva o conteudo corrente como modelo reutilizavel
+- Remover as secoes SOAP colapsaveis individuais (substituidas pelo editor unificado)
+
+**Gravacao (abaixo do editor manual, colapsavel):**
+- Mover gravacao para um painel colapsavel ABAIXO do editor manual (nao mais na coluna direita)
+- Mesma funcionalidade: mic, timer, transcricao ao vivo, colar texto
+
+**Coluna direita (prontuario IA):**
+- Inicialmente vazia com placeholder "O prontuario gerado pela IA aparecera aqui apos finalizar"
+- Apos clicar "Finalizar e gerar":
+  1. Transcricao bruta e salva no arquivo (transcript-archive)
+  2. Transcricao e enviada para `generate-soap` edge function
+  3. Resposta aparece em streaming no painel direito (texto SOAP formatado)
+- Botoes no rodape do painel IA:
+  - "Copiar" -- copia o SOAP gerado
+  - "Inserir no editor" -- concatena o texto gerado ao editor manual
+
+**Footer sticky:**
+- "Salvar rascunho" (secundario)
+- "Finalizar e gerar prontuario" -- envia transcricao ao Cloud, mostra resultado na direita
+- "Unir e salvar" (aparece apos IA gerar) -- mescla esquerda + direita e salva como prontuario final
+- Menu "..." com cancelar/descartar
+
+**Fluxo de finalizacao:**
+- "Finalizar e gerar" chama a edge function com a transcricao
+- Transcricao bruta e salva no archive com data + nome do paciente
+- Resultado IA aparece na direita em streaming
+- "Unir e salvar" combina o texto manual + texto IA, cria o encounter/note e navega para `/consultas/:id`
+
+### 7. `src/types/index.ts`
+
+Adicionar tipos:
+```typescript
+export interface TranscriptArchive {
+  id: string;
+  date: string;
+  patientName: string;
+  patientId: string;
+  encounterId?: string;
+  content: string; // texto bruto da transcricao
+}
+
+export interface CustomNoteTemplate {
+  id: string;
+  name: string;
+  content: string;
+  createdAt: string;
+}
+```
 
 ## O que NAO muda
 
-- `ConsultaDetalhe` (visualizacao pos-finalizacao)
-- Store, tipos, parser, soap-template
+- ConsultaDetalhe (pagina de visualizacao pos-finalizacao)
+- clinical-summary edge function (resumo GenAI separado, continua funcionando)
+- Store, tipos existentes, parser (mantido como fallback)
 - Sidebar, Topbar, demais paginas
-- Dialog de novo paciente (continua separado no AppLayout)
-- `NewEncounterDialog.tsx` permanece no disco mas nao e mais importado pelo AppLayout
+- Fluxo de prescricoes
 
+## Secao tecnica
+
+### Edge function generate-soap
+
+O system prompt vai instruir a IA a receber a transcricao bruta medico-paciente e produzir um prontuario SOAP completo com os mesmos headers do template existente. Streaming SSE para feedback instantaneo.
+
+### Barra de ferramentas do editor
+
+Implementada com botoes que manipulam a textarea via `selectionStart`/`selectionEnd`, inserindo marcacao Markdown (ex: `**texto**` para negrito, `## ` para titulo). Nao requer bibliotecas de rich text editor -- mantemos simplicidade com Markdown.
+
+### Arquivo de transcricoes
+
+Persistido em `localStorage` com chave propria (`medscribe_transcriptions`), separado dos dados principais do app. Cada entrada contem a data, nome do paciente e texto integral da transcricao para consulta futura.
+
+### Modelos de prontuario
+
+O modelo SOAP padrao e gerado programaticamente a partir do `soapTemplate` existente. Modelos personalizados sao salvos pelo usuario a partir do conteudo atual do editor, armazenados em localStorage com chave `medscribe_note_templates`.
