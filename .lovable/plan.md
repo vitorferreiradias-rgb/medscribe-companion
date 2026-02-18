@@ -1,33 +1,27 @@
 
 
-# Separar em dois botoes: "Revisado/Salvar" e "Exportar"
+# Remover botão "Salvar" avulso da barra de ações
 
 ## O que muda
 
 **Arquivo:** `src/pages/ConsultaDetalhe.tsx` (linha 231)
 
-Substituir o botao unico "Revisado/Salvar e Exportar" por dois botoes distintos:
+Remover o botão "Salvar" (secundário), mantendo apenas:
 
 ```text
-[Salvar]  [Revisado/Salvar]  [Exportar]
+[Revisado/Salvar]  [Exportar]
 ```
 
-- **Salvar** (secundario): mantem como esta, salva o prontuario sem marcar como revisado
-- **Revisado/Salvar**: chama `handleReview()` (que ja salva e marca como revisado)
-- **Exportar**: chama `handlePrint()` para abrir a janela de impressao/exportacao
+- **Revisado/Salvar**: salva e marca como revisado (`handleReview()`)
+- **Exportar**: abre impressão/exportação (`handlePrint()`)
 
-## Secao tecnica
+## Seção técnica
 
-**ConsultaDetalhe.tsx linha 231 — substituir o botao atual por:**
+**ConsultaDetalhe.tsx linha 231** — remover a linha:
 
 ```tsx
-<Button size="sm" onClick={handleReview}>
-  <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Revisado/Salvar
-</Button>
-<Button variant="outline" size="sm" onClick={handlePrint}>
-  <Printer className="mr-1.5 h-3.5 w-3.5" /> Exportar
-</Button>
+<Button variant="secondary" size="sm" onClick={handleSave}><Save className="mr-1.5 h-3.5 w-3.5" /> Salvar</Button>
 ```
 
-Sera necessario adicionar `Printer` ao import de `lucide-react` caso nao esteja importado.
+O import de `Save` pode ser mantido caso seja usado em outro lugar do arquivo, ou removido se não houver mais uso.
 
