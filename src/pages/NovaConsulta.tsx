@@ -26,7 +26,7 @@ import {
   UserPlus, Plus, ChevronDown, MoreHorizontal,
   ClipboardPaste, FileText, Save, CheckCircle2, Sparkles,
   Bold, Italic, Heading2, List, Minus, Copy, ArrowDownToLine,
-  Merge, FileDown, Trash2, ArrowRight, Pencil
+  Merge, FileDown, Trash2, ArrowRight, Pencil, Home
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -581,6 +581,9 @@ export default function NovaConsulta() {
       <header className="sticky top-0 z-30 glass-topbar px-4 py-3 flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => step === 2 ? setStep(1) : navigate(-1)} aria-label="Voltar">
           <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <Button variant="ghost" size="icon" onClick={() => navigate("/agenda")} aria-label="Início">
+          <Home className="h-5 w-5" />
         </Button>
         <h1 className="text-lg font-semibold flex-1">Nova Consulta</h1>
         {step === 2 && (
