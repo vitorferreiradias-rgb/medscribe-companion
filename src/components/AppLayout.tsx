@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { Plus, X } from "lucide-react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
@@ -37,6 +38,9 @@ export function AppLayout() {
   const [patCep, setPatCep] = useState("");
   const [patAddress, setPatAddress] = useState("");
   const [patNotes, setPatNotes] = useState("");
+  const [patPetName, setPatPetName] = useState("");
+  const [patChildren, setPatChildren] = useState<string[]>([]);
+  const [patReferral, setPatReferral] = useState("");
 
   const maskCpf = (v: string) => v.replace(/\D/g, "").slice(0, 11).replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
   const maskCep = (v: string) => v.replace(/\D/g, "").slice(0, 8).replace(/(\d{5})(\d)/, "$1-$2");
@@ -44,6 +48,7 @@ export function AppLayout() {
   const resetPatientForm = () => {
     setPatName(""); setPatBirth(""); setPatSex("NA"); setPatPhone("");
     setPatCpf(""); setPatRg(""); setPatEmail(""); setPatCep(""); setPatAddress(""); setPatNotes("");
+    setPatPetName(""); setPatChildren([]); setPatReferral("");
   };
 
   const handleNewPaciente = () => {
@@ -59,6 +64,9 @@ export function AppLayout() {
       cep: patCep.replace(/\D/g, "") || undefined,
       addressLine: patAddress || undefined,
       notes: patNotes || undefined,
+      petName: patPetName || undefined,
+      children: patChildren.length > 0 ? patChildren : undefined,
+      referralSource: patReferral || undefined,
     });
     toast({ title: "Paciente adicionado." });
     setShowNewPaciente(false);
@@ -137,6 +145,34 @@ export function AppLayout() {
               <div className="space-y-2"><Label>Endereço</Label><Input value={patAddress} onChange={(e) => setPatAddress(e.target.value)} placeholder="Rua, número, bairro" /></div>
             </div>
             <div className="space-y-2"><Label>Observações</Label><Textarea value={patNotes} onChange={(e) => setPatNotes(e.target.value)} placeholder="Alergias, condições especiais, etc." rows={2} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2"><Label>Animal de estimação</Label><Input value={patPetName} onChange={(e) => setPatPetName(e.target.value)} placeholder="Nome do pet" /></div>
+              <div className="space-y-2"><Label>Como conheceu a clínica?</Label>
+                <Select value={patReferral} onValueChange={setPatReferral}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Instagram">Instagram</SelectItem>
+                    <SelectItem value="Google">Google</SelectItem>
+                    <SelectItem value="Indicação">Indicação</SelectItem>
+                    <SelectItem value="Evento">Evento</SelectItem>
+                    <SelectItem value="Retorno">Retorno</SelectItem>
+                    <SelectItem value="Outros">Outros</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Filhos</Label>
+              <div className="space-y-2">
+                {patChildren.map((child, i) => (
+                  <div key={i} className="flex gap-2">
+                    <Input value={child} onChange={(e) => { const c = [...patChildren]; c[i] = e.target.value; setPatChildren(c); }} placeholder={`Nome do filho(a) ${i + 1}`} />
+                    <Button type="button" variant="ghost" size="icon" className="h-10 w-10 shrink-0" onClick={() => setPatChildren(patChildren.filter((_, j) => j !== i))}><X className="h-4 w-4" /></Button>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setPatChildren([...patChildren, ""])}><Plus className="h-3.5 w-3.5" />Adicionar filho(a)</Button>
+              </div>
+            </div>
             <Button className="w-full" disabled={!patName.trim()} onClick={handleNewPaciente}>Adicionar paciente</Button>
           </div>
         </DialogContent>

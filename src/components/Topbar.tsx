@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, ChevronLeft, ChevronRight, UserPlus } from "lucide-react";
+import { Search, Plus, ChevronLeft, ChevronRight, UserPlus, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -58,6 +58,15 @@ export function Topbar({
   return (
     <header className="glass-topbar sticky top-0 z-20 flex items-center gap-4 px-5 h-[72px]">
       <SidebarTrigger className="h-8 w-8" />
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigate("/agenda")} aria-label="Início">
+            <Home className="h-4 w-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Início</TooltipContent>
+      </Tooltip>
 
       {/* Search */}
       <div className="relative flex-1 max-w-sm">
