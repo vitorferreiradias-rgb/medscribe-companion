@@ -99,11 +99,30 @@ export function useSpeechRecognition(opts: UseSpeechRecognitionOptions = {}) {
     recognition.onend = () => {
       // Auto-restart if we haven't explicitly stopped
       if (shouldRestartRef.current) {
-        try {
-          recognition.start();
-        } catch {
-          // Ignore if already started
-        }
+        setTimeout(() => {
+          if (!shouldRestartRef.current) return;
+          try {
+            recognition.start();
+          } catch {
+            // If start fails, create a fresh instance
+            try {
+              const freshSR = getSpeechRecognition();
+              if (freshSR && shouldRestartRef.current) {
+                const fresh = new freshSR();
+                fresh.lang = lang;
+                fresh.continuous = true;
+                fresh.interimResults = true;
+                fresh.onresult = recognition.onresult;
+                fresh.onerror = recognition.onerror;
+                fresh.onend = recognition.onend;
+                recognitionRef.current = fresh;
+                fresh.start();
+              }
+            } catch {
+              setIsListening(false);
+            }
+          }
+        }, 250);
       }
     };
 
