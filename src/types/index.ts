@@ -1,10 +1,28 @@
+export interface Clinic {
+  id: string;
+  name: string;
+  address: string;
+}
+
 export interface Clinician {
   id: string;
   name: string;
   specialty: string;
   crm: string;
   cpf?: string;
+  email?: string;
   clinicAddress?: string;
+  clinics?: Clinic[];
+}
+
+export interface TimeBlock {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  reason: string;
+  recurrence: "none" | "daily" | "weekly";
+  clinicianId: string;
 }
 
 export interface PatientDocument {
@@ -182,5 +200,6 @@ export interface AppData {
   transcripts: Transcript[];
   notes: Note[];
   scheduleEvents: ScheduleEvent[];
+  timeBlocks: TimeBlock[];
   settings: AppSettings;
 }

@@ -6,6 +6,7 @@ import { AppSidebar } from "./AppSidebar";
 import { Topbar } from "./Topbar";
 import { CommandBar } from "./CommandBar";
 import { NewScheduleDialog } from "./NewScheduleDialog";
+import { NewTimeBlockDialog } from "./NewTimeBlockDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,8 @@ export function AppLayout() {
   const [showNewPaciente, setShowNewPaciente] = useState(false);
   const [showNewSchedule, setShowNewSchedule] = useState(false);
   const [showCommandBar, setShowCommandBar] = useState(false);
+  const [showTimeBlock, setShowTimeBlock] = useState(false);
+  const [editScheduleEvent, setEditScheduleEvent] = useState<import("@/types").ScheduleEvent | null>(null);
 
   // New patient form
   const [patName, setPatName] = useState("");
@@ -75,8 +78,13 @@ export function AppLayout() {
 
   const onNewConsulta = useCallback(() => navigate("/consultas/nova"), [navigate]);
   const onNewPaciente = useCallback(() => setShowNewPaciente(true), []);
-  const onNewSchedule = useCallback(() => setShowNewSchedule(true), []);
+  const onNewSchedule = useCallback(() => { setEditScheduleEvent(null); setShowNewSchedule(true); }, []);
   const onOpenCommandBar = useCallback(() => setShowCommandBar(true), []);
+  const onNewTimeBlock = useCallback(() => setShowTimeBlock(true), []);
+  const onReschedule = useCallback((eventId: string) => {
+    const evt = data.scheduleEvents?.find((e) => e.id === eventId);
+    if (evt) { setEditScheduleEvent(evt); setShowNewSchedule(true); }
+  }, [data.scheduleEvents]);
 
   return (
     <SidebarProvider>
@@ -93,7 +101,7 @@ export function AppLayout() {
           />
           <div className="flex-1 px-5 py-5 md:px-6 md:py-6 max-w-[1440px]">
             {location.pathname.startsWith("/agenda") ? (
-              <Outlet context={{ currentDate, onNewSchedule }} />
+              <Outlet context={{ currentDate, onNewSchedule, onReschedule, onNewTimeBlock }} />
             ) : (
               <Outlet />
             )}
@@ -109,8 +117,8 @@ export function AppLayout() {
         onNewPaciente={onNewPaciente}
       />
 
-      <NewScheduleDialog open={showNewSchedule} onOpenChange={setShowNewSchedule} defaultDate={currentDate.toISOString().slice(0, 10)} />
-
+      <NewScheduleDialog open={showNewSchedule} onOpenChange={(v) => { setShowNewSchedule(v); if (!v) setEditScheduleEvent(null); }} editEvent={editScheduleEvent} defaultDate={currentDate.toISOString().slice(0, 10)} />
+      <NewTimeBlockDialog open={showTimeBlock} onOpenChange={setShowTimeBlock} defaultDate={currentDate.toISOString().slice(0, 10)} />
 
       {/* Quick new patient dialog */}
       <Dialog open={showNewPaciente} onOpenChange={(v) => { setShowNewPaciente(v); if (!v) resetPatientForm(); }}>
