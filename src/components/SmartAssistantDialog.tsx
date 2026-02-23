@@ -24,7 +24,7 @@ const EXAMPLES = [
 interface SmartAssistantDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSchedule?: (defaults: { patientId?: string; date?: string; startTime?: string }) => void;
+  onSchedule?: (defaults: { patientId?: string; date?: string; startTime?: string; endTime?: string }) => void;
   onReschedule?: (eventId: string) => void;
   onPrescription?: (text: string) => void;
   onNavigate?: (path: string) => void;
@@ -82,10 +82,18 @@ export function SmartAssistantDialog({
     switch (intent.intent) {
       case "agendar": {
         handleClose();
+        // Calculate endTime = startTime + 30min
+        let endTime: string | undefined;
+        if (intent.time) {
+          const [h, m] = intent.time.split(":").map(Number);
+          const totalMin = h * 60 + m + 30;
+          endTime = `${String(Math.floor(totalMin / 60) % 24).padStart(2, "0")}:${String(totalMin % 60).padStart(2, "0")}`;
+        }
         onSchedule?.({
           patientId: intent.patientId,
           date: intent.date,
           startTime: intent.time,
+          endTime,
         });
         toast({ title: "Abrindo agendamento…", description: intent.patientName ? `Paciente: ${intent.patientName}` : undefined });
         break;
