@@ -473,6 +473,16 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
                                   <TooltipContent>Ver prontuário</TooltipContent>
                                 </Tooltip>
                               )}
+                              {(evt.status === "no_show" || evt.status === "rescheduled") && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleRemove(evt); }}>
+                                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Remover da agenda</TooltipContent>
+                                </Tooltip>
+                              )}
                             </motion.div>
                           )}
                           {isSelected && i === filteredEvents.length - 1 && (
