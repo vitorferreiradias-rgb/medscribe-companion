@@ -1,55 +1,84 @@
 
-# Adicionar botoes "Remover" e "Adicionar" na agenda
+# Atualizar tema para "Premium Liquid Glass" com acento AI ambar
 
-## O que muda
+## Resumo
 
-1. **Botao "Remover da agenda"** (icone de lixeira/Trash2) -- aparece nos botoes de acao ao selecionar qualquer card com status `scheduled` ou `confirmed`. Ao clicar, remove o agendamento da lista usando `deleteScheduleEvent` que ja existe em `store.ts`.
+Atualizar tokens de cores, adicionar novos acentos (Aqua/Violet), refinar estados, criar tokens exclusivos para o modulo Assistente/IA (ambar sutil), e renomear "Assistente" para "One Click" em toda a interface. Sem mudancas de estrutura de paginas.
 
-2. **Botao "Adicionar consulta"** (icone de PlusCircle) -- aparece apenas no ultimo card da lista do dia, ao ser selecionado. Ao clicar, abre o dialog de novo agendamento (`onNewSchedule`).
+## Arquivos a alterar
 
-## Detalhes Tecnicos
+### 1. `src/index.css` -- Tokens CSS
 
-### Arquivo: `src/pages/Agenda.tsx`
+Atualizar/adicionar variaveis CSS:
 
-**Imports**: Adicionar `Trash2` e `PlusCircle` do lucide-react, e `deleteScheduleEvent` do store.
+- **Novos tokens de cor**:
+  - `--primary-soft-bg: 216 100% 96%` (#EAF2FF)
+  - `--aqua: 181 77% 35%` (#0EA5A8)
+  - `--aqua-light: 187 82% 54%` (#22D3EE)
+  - `--violet: 263 70% 50%` (#6D28D9)
+  - `--violet-light: 263 70% 58%` (#7C3AED)
 
-**Handler novo** `handleRemove`:
-```typescript
-const handleRemove = (evt: ScheduleEvent) => {
-  deleteScheduleEvent(evt.id);
-  setSelectedId(null);
-  toast({ title: "Agendamento removido." });
-};
-```
+- **Estados refinados**:
+  - `--success: 142 64% 36%` (#15803D)
+  - `--warning: 30 65% 48%` (#C9772A)
+  - `--destructive: 347 77% 50%` (#E11D48)
 
-**Botao Remover**: Dentro do bloco de acoes para status `scheduled`/`confirmed` (linhas 403-429), adicionar apos o botao "Marcar falta":
-```tsx
-<Tooltip>
-  <TooltipTrigger asChild>
-    <Button variant="ghost" size="icon" className="h-7 w-7"
-      onClick={(e) => { e.stopPropagation(); handleRemove(evt); }}>
-      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-    </Button>
-  </TooltipTrigger>
-  <TooltipContent>Remover da agenda</TooltipContent>
-</Tooltip>
-```
+- **Tokens IA exclusivos**:
+  - `--ai-accent: 30 80% 72%` (#F2C28B)
+  - `--ai-accent-hover: 25 74% 68%` (#E8AE72)
+  - `--ai-soft-bg: rgba(242,194,139,0.14)`
+  - `--ai-ring: rgba(242,194,139,0.28)`
+  - `--ai-bloom: rgba(242,194,139,0.16)`
 
-**Botao Adicionar**: Apos o fechamento do bloco de acoes contextuais (linha 461), adicionar condicional para o ultimo item:
-```tsx
-{isSelected && i === filteredEvents.length - 1 && (
-  <motion.div className="flex gap-1 mt-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs"
-          onClick={(e) => { e.stopPropagation(); onNewSchedule(); }}>
-          <PlusCircle className="h-3.5 w-3.5 text-primary" /> Agendar
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>Adicionar consulta</TooltipContent>
-    </Tooltip>
-  </motion.div>
-)}
-```
+- Remover `--bloom-warm` e `--bloom-warm-subtle` (substituidos pelos tokens AI)
 
-Resultado: 4 botoes para agendamentos pendentes (Iniciar, Remarcar, Falta, Remover) e um botao extra "Agendar" no ultimo card.
+- **Nova classe `.glass-card-ai`** (substitui `.glass-card-orange`):
+  - Border com ai-accent em vez de azul
+  - Box-shadow com glow ambar sutil
+  - Focus-within com ai-ring
+
+- **Nova classe `.ai-dialog-bloom`**: radial-gradient sutil ambar para dialogs do assistente
+
+- Atualizar `.status-draft` e `.status-rescheduled` para usar a nova cor de warning
+- Atualizar `.status-recording` e `.status-no_show` para usar a nova cor destructive
+
+### 2. `tailwind.config.ts` -- Novos tokens Tailwind
+
+Adicionar ao `extend.colors`:
+- `primary.soft` com `--primary-soft-bg`
+- `aqua.DEFAULT` e `aqua.light`
+- `violet.DEFAULT` e `violet.light`
+- `ai.DEFAULT`, `ai.hover`, `ai.soft`, `ai.ring`, `ai.bloom`
+
+### 3. `src/components/SmartAssistantDialog.tsx` -- Identidade AI
+
+- Renomear titulo "Assistente Inteligente" para "One Click"
+- Trocar cor do icone Sparkles de `text-primary` para `text-ai` (ambar)
+- Aplicar classe `ai-dialog-bloom` no DialogContent
+- Aplicar `ai-ring` no focus do Textarea (ring ambar)
+- Badge de exemplos com hover ambar em vez de azul (`hover:bg-ai-soft`)
+- Botao "Processar comando" manter azul (primary) -- e a cor dominante da app
+
+### 4. `src/pages/Agenda.tsx` -- Renomear botao
+
+- Linha 254: trocar texto "Assistente" por "One Click"
+
+### 5. `src/components/QuickActionsMenu.tsx` -- Renomear menu item
+
+- Trocar texto "Assistente inteligente" por "One Click"
+
+### 6. `src/components/CommandBar.tsx` -- Renomear command item
+
+- Trocar texto "Assistente inteligente" por "One Click"
+
+### 7. `src/components/QuickNotesCard.tsx` -- Usar nova classe
+
+- Trocar `glass-card-orange` por `glass-card-ai`
+
+## O que NAO muda
+
+- Estrutura de paginas e rotas
+- Sidebar/Topbar continuam glass com neutros frios (sem ambar)
+- Botoes primarios continuam azuis
+- Dark mode nao sera adicionado
+- Tipografia Inter mantida
