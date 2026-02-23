@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, FileText, CalendarClock, XCircle, CheckCircle2,
-  CalendarDays, Lock, Calendar, LayoutGrid,
+  CalendarDays, Lock, Calendar, LayoutGrid, Sparkles,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import {
@@ -49,6 +49,7 @@ interface AgendaProps {
   onNewSchedule: () => void;
   onReschedule: (eventId: string) => void;
   onNewTimeBlock: () => void;
+  onSmartPrescription?: (text?: string) => void;
 }
 
 const mockTranscript = [
@@ -57,7 +58,7 @@ const mockTranscript = [
   { speaker: "medico" as const, text: "Vou solicitar exames. Retorno em 7 dias.", tsSec: 15 },
 ];
 
-export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNewTimeBlock }: AgendaProps) {
+export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNewTimeBlock, onSmartPrescription }: AgendaProps) {
   const data = useAppData();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -241,6 +242,11 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
           </TabsList>
         </Tabs>
         <div className="flex gap-2">
+          {onSmartPrescription && (
+            <Button variant="outline" size="sm" onClick={() => onSmartPrescription()} className="gap-1.5 text-xs">
+              <Sparkles className="h-3.5 w-3.5" /> Prescrição
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={onNewTimeBlock} className="gap-1.5 text-xs">
             <Lock className="h-3.5 w-3.5" /> Bloquear
           </Button>

@@ -7,6 +7,7 @@ import { Topbar } from "./Topbar";
 import { CommandBar } from "./CommandBar";
 import { NewScheduleDialog } from "./NewScheduleDialog";
 import { NewTimeBlockDialog } from "./NewTimeBlockDialog";
+import { SmartPrescriptionDialog } from "./smart-prescription/SmartPrescriptionDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,8 @@ export function AppLayout() {
   const [showNewSchedule, setShowNewSchedule] = useState(false);
   const [showCommandBar, setShowCommandBar] = useState(false);
   const [showTimeBlock, setShowTimeBlock] = useState(false);
+  const [showSmartPrescription, setShowSmartPrescription] = useState(false);
+  const [smartPrescriptionText, setSmartPrescriptionText] = useState("");
   const [editScheduleEvent, setEditScheduleEvent] = useState<import("@/types").ScheduleEvent | null>(null);
 
   // New patient form
@@ -81,6 +84,10 @@ export function AppLayout() {
   const onNewSchedule = useCallback(() => { setEditScheduleEvent(null); setShowNewSchedule(true); }, []);
   const onOpenCommandBar = useCallback(() => setShowCommandBar(true), []);
   const onNewTimeBlock = useCallback(() => setShowTimeBlock(true), []);
+  const onSmartPrescription = useCallback((text?: string) => {
+    setSmartPrescriptionText(text || "");
+    setShowSmartPrescription(true);
+  }, []);
   const onReschedule = useCallback((eventId: string) => {
     const evt = data.scheduleEvents?.find((e) => e.id === eventId);
     if (evt) { setEditScheduleEvent(evt); setShowNewSchedule(true); }
@@ -98,10 +105,11 @@ export function AppLayout() {
             onNewPaciente={onNewPaciente}
             onNewAgendamento={onNewSchedule}
             onOpenCommandBar={onOpenCommandBar}
+            onSmartPrescription={onSmartPrescription}
           />
           <div className="flex-1 px-5 py-5 md:px-6 md:py-6 max-w-[1440px]">
             {location.pathname.startsWith("/agenda") ? (
-              <Outlet context={{ currentDate, onNewSchedule, onReschedule, onNewTimeBlock }} />
+              <Outlet context={{ currentDate, onNewSchedule, onReschedule, onNewTimeBlock, onSmartPrescription }} />
             ) : (
               <Outlet />
             )}
@@ -115,6 +123,7 @@ export function AppLayout() {
         onNewConsulta={onNewConsulta}
         onNewAgendamento={onNewSchedule}
         onNewPaciente={onNewPaciente}
+        onSmartPrescription={onSmartPrescription}
       />
 
       <NewScheduleDialog open={showNewSchedule} onOpenChange={(v) => { setShowNewSchedule(v); if (!v) setEditScheduleEvent(null); }} editEvent={editScheduleEvent} defaultDate={currentDate.toISOString().slice(0, 10)} />
@@ -185,6 +194,12 @@ export function AppLayout() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <SmartPrescriptionDialog
+        open={showSmartPrescription}
+        onOpenChange={setShowSmartPrescription}
+        initialText={smartPrescriptionText}
+      />
     </SidebarProvider>
   );
 }
