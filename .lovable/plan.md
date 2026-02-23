@@ -1,21 +1,27 @@
 
 
-# Corrigir timezone na extração de datas
+# Corrigir timezone em todo o projeto
 
 ## Problema
 
-A função `fmt()` em `intent-parser.ts` usa `d.toISOString().slice(0, 10)` para formatar datas. O `toISOString()` converte para **UTC**, não para o horário local do usuário. 
+O bug de timezone que corrigimos em `intent-parser.ts` e `holidays.ts` existe em **mais 9 arquivos**. Todas as chamadas a `toISOString().slice(0, 10)` convertem para UTC, causando deslocamento de data para usuarios no Brasil (UTC-3).
 
-No Brasil (UTC-3), isso causa um deslocamento: se são 22h do dia 22 em São Paulo, o UTC já é 01h do dia 23. Resultado: "hoje" vira dia 23 e "amanhã" vira dia 24, quando o usuário esperava 22 e 23 respectivamente.
+Isso afeta:
+- A data exibida na agenda (o dia "hoje" pode estar errado)
+- A data usada ao criar agendamentos (cai no dia errado)
+- A comparacao "isToday" (pode falhar a noite)
+- A seed de dados de exemplo
 
-O mesmo problema existe em `src/lib/holidays.ts` que tem a mesma função `fmt`.
+## Solucao
 
-## Solução
+Criar uma funcao utilitaria `toLocalDateStr(d: Date)` em `src/lib/format.ts` e substituir todas as ocorrencias de `toISOString().slice(0, 10)` por essa funcao.
 
-Trocar `toISOString()` por formatação local usando `getFullYear()`, `getMonth()`, `getDate()`:
+## Arquivos a alterar
 
-```
-function fmt(d: Date): string {
+### 1. `src/lib/format.ts` — adicionar funcao utilitaria
+
+```typescript
+export function toLocalDateStr(d: Date = new Date()): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -23,28 +29,24 @@ function fmt(d: Date): string {
 }
 ```
 
-## Detalhes Tecnicos
+### 2. Substituir em todos os arquivos
 
-### Arquivo: `src/lib/intent-parser.ts`
+| Arquivo | Ocorrencias | O que muda |
+|---------|-------------|------------|
+| `src/pages/Agenda.tsx` | 3 | `dateStr`, `prevDateRef`, `isToday` |
+| `src/components/AppLayout.tsx` | 2 | `defaultDate` para dialogs |
+| `src/components/NewScheduleDialog.tsx` | 2 | Estado inicial e reset de `date` |
+| `src/components/NewTimeBlockDialog.tsx` | 2 | Estado inicial e reset de `date` |
+| `src/components/SmartAssistantDialog.tsx` | 2 | Busca de eventos para remarcar/cancelar |
+| `src/components/AgendaWeekView.tsx` | 2 | `todayStr` e `dateStr` por dia |
+| `src/components/AgendaMonthView.tsx` | 2 | `todayStr` e `dateStr` por dia |
+| `src/components/AlertsCard.tsx` | 1 | Comparacao `isToday` |
+| `src/lib/seed.ts` | 2 | `todayStr()` e `offsetDate()` |
 
-Alterar a função `fmt` (linha 267-269) para usar componentes locais em vez de `toISOString()`:
+Cada substituicao segue o mesmo padrao:
+- `new Date().toISOString().slice(0, 10)` vira `toLocalDateStr()`
+- `someDate.toISOString().slice(0, 10)` vira `toLocalDateStr(someDate)`
+- Adicionar `import { toLocalDateStr } from "@/lib/format"` no topo
 
-**Antes:**
-```typescript
-function fmt(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-```
-
-**Depois:**
-```typescript
-function fmt(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-```
-
-Isso garante que a data retornada corresponde ao fuso horário do navegador do usuário (America/Sao_Paulo ou qualquer outro), não ao UTC.
+Total: **18 ocorrencias** em 9 arquivos, todas substituidas pela mesma funcao centralizada.
 
