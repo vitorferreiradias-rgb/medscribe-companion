@@ -28,13 +28,13 @@ function extractDate(text: string): string | undefined {
   const today = new Date();
 
   // "hoje"
-  if (/\bhoje\b/i.test(text)) return fmt(today);
+  if (/\bhoje(?![a-zA-ZÀ-ÿ])/i.test(text)) return fmt(today);
+
+  // "depois de amanhã" (must come before "amanhã")
+  if (/\bdepois\s+de\s+amanh[ãa](?![a-zA-ZÀ-ÿ])/i.test(text)) return fmt(addDays(today, 2));
 
   // "amanhã" / "amanha"
-  if (/\bamanh[ãa]\b/i.test(text)) return fmt(addDays(today, 1));
-
-  // "depois de amanhã"
-  if (/\bdepois\s+de\s+amanh[ãa]\b/i.test(text)) return fmt(addDays(today, 2));
+  if (/\bamanh[ãa](?![a-zA-ZÀ-ÿ])/i.test(text)) return fmt(addDays(today, 1));
 
   // Day of week
   const weekdays: Record<string, number> = {
