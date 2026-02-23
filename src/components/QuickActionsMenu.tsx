@@ -1,4 +1,4 @@
-import { Plus, CalendarPlus, UserPlus, ClipboardPaste, Stethoscope } from "lucide-react";
+import { Plus, CalendarPlus, UserPlus, ClipboardPaste, Stethoscope, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ interface QuickActionsMenuProps {
   onNewAgendamento: () => void;
   onNewPaciente: () => void;
   onPasteTranscript?: () => void;
+  onSmartPrescription?: () => void;
 }
 
 export function QuickActionsMenu({
@@ -20,6 +21,7 @@ export function QuickActionsMenu({
   onNewAgendamento,
   onNewPaciente,
   onPasteTranscript,
+  onSmartPrescription,
 }: QuickActionsMenuProps) {
   return (
     <DropdownMenu>
@@ -43,6 +45,12 @@ export function QuickActionsMenu({
           <UserPlus className="mr-2 h-4 w-4" />
           Novo paciente
         </DropdownMenuItem>
+        {onSmartPrescription && (
+          <DropdownMenuItem onClick={onSmartPrescription}>
+            <Sparkles className="mr-2 h-4 w-4" />
+            Prescrição inteligente
+          </DropdownMenuItem>
+        )}
         {onPasteTranscript && (
           <>
             <DropdownMenuSeparator />

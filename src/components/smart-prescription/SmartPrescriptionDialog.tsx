@@ -1,9 +1,10 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Mic, MicOff, Sparkles, Send } from "lucide-react";
+import { Mic, MicOff, Sparkles, Send, Search, User } from "lucide-react";
 import { parsePrescriptionInput } from "@/lib/smart-prescription-parser";
 import { findMedication, findDosePattern, type MedicationKnowledge, type DoseVariant } from "@/lib/medication-knowledge";
 import { classifyPrescription, type ComplianceResult } from "@/lib/compliance-router";
@@ -12,6 +13,9 @@ import { PosologyPrompt } from "./PosologyPrompt";
 import { DivergenceConfirmation } from "./DivergenceConfirmation";
 import { VariantSelector } from "./VariantSelector";
 import { SmartPrescriptionPreview, type PrescriptionItem } from "./SmartPrescriptionPreview";
+import { getData } from "@/lib/store";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const EXAMPLES = [
   "Prescrever Mounjaro 2,5 mg",
@@ -20,13 +24,13 @@ const EXAMPLES = [
   "Renovar última prescrição",
 ];
 
-type FlowStep = "input" | "posology" | "divergence" | "variants" | "preview";
+type FlowStep = "select-patient" | "input" | "posology" | "divergence" | "variants" | "preview";
 
 interface SmartPrescriptionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  patient: { id: string; name: string };
-  prescriber: { name: string; crm: string };
+  patient?: { id: string; name: string };
+  prescriber?: { name: string; crm: string };
   encounterId?: string;
   initialText?: string;
 }
@@ -34,13 +38,37 @@ interface SmartPrescriptionDialogProps {
 export function SmartPrescriptionDialog({
   open,
   onOpenChange,
-  patient,
-  prescriber,
+  patient: patientProp,
+  prescriber: prescriberProp,
   encounterId,
   initialText = "",
 }: SmartPrescriptionDialogProps) {
   const [inputText, setInputText] = useState(initialText);
-  const [step, setStep] = useState<FlowStep>("input");
+  const [step, setStep] = useState<FlowStep>(patientProp ? "input" : "select-patient");
+  const [patientSearch, setPatientSearch] = useState("");
+  const [selectedPatient, setSelectedPatient] = useState<{ id: string; name: string } | null>(null);
+
+  // Resolve patient & prescriber
+  const patient = patientProp || selectedPatient;
+  const prescriber = useMemo(() => {
+    if (prescriberProp) return prescriberProp;
+    const d = getData();
+    const c = d.clinicians[0];
+    return c ? { name: c.name, crm: c.crm } : { name: "Médico", crm: "000000" };
+  }, [prescriberProp]);
+
+  // Patient list for selection
+  const patients = useMemo(() => {
+    if (patientProp) return [];
+    const d = getData();
+    return d.patients;
+  }, [patientProp, open]);
+
+  const filteredPatients = useMemo(() => {
+    if (!patientSearch.trim()) return patients;
+    const q = patientSearch.toLowerCase();
+    return patients.filter((p) => p.name.toLowerCase().includes(q));
+  }, [patients, patientSearch]);
 
   // Flow state
   const [parsedMedName, setParsedMedName] = useState("");
@@ -65,8 +93,10 @@ export function SmartPrescriptionDialog({
   });
 
   const resetFlow = useCallback(() => {
-    setStep("input");
+    setStep(patientProp ? "input" : "select-patient");
     setInputText(initialText);
+    setSelectedPatient(null);
+    setPatientSearch("");
     setParsedMedName("");
     setParsedConcentration("");
     setDoctorDosage(null);
@@ -78,9 +108,10 @@ export function SmartPrescriptionDialog({
     setFoundMed(null);
     setCompliance(null);
     setItems([]);
-  }, [initialText]);
+  }, [initialText, patientProp]);
 
   const proceedToPreview = useCallback((dosage: string, duration?: string, quantity?: string, form?: string, concentration?: string) => {
+    if (!patient) return;
     const finalConc = concentration || parsedConcentration;
     const finalItem: PrescriptionItem = {
       medicationName: parsedMedName,
@@ -102,17 +133,15 @@ export function SmartPrescriptionDialog({
   }, [parsedMedName, parsedConcentration, patient, prescriber]);
 
   const handleSubmit = useCallback(() => {
-    if (!inputText.trim()) return;
+    const fullText = isListening && interimText ? inputText + " " + interimText : inputText;
+    if (!fullText.trim()) return;
     if (isListening) stopListening();
+    setInputText(fullText);
 
-    const parsed = parsePrescriptionInput(inputText);
+    const parsed = parsePrescriptionInput(fullText);
     setParsedAction(parsed.action);
 
-    if (parsed.action === "renovar") {
-      // For now just show a message — could integrate with LastDocumentsSheet
-      return;
-    }
-
+    if (parsed.action === "renovar") return;
     if (!parsed.medicationName) return;
 
     const medName = parsed.medicationName;
@@ -123,30 +152,29 @@ export function SmartPrescriptionDialog({
     setFoundMed(med);
 
     if (parsed.action === "suspender") {
-      // Go directly to preview for suspension
       const item: PrescriptionItem = {
         medicationName: medName,
         concentration: parsed.concentration || "",
         dosage: "SUSPENDER — " + (parsed.note || "conforme orientação médica"),
       };
       setItems([item]);
-      const compResult = classifyPrescription({
-        items: [{ medicationName: medName, concentration: parsed.concentration || undefined }],
-        patient,
-        prescriber,
-      });
-      setCompliance(compResult);
+      if (patient) {
+        const compResult = classifyPrescription({
+          items: [{ medicationName: medName, concentration: parsed.concentration || undefined }],
+          patient,
+          prescriber,
+        });
+        setCompliance(compResult);
+      }
       setStep("preview");
       return;
     }
 
-    // Check for variants when no dosage specified
     if (med?.variants && med.variants.length > 0 && !parsed.dosage) {
       setStep("variants");
       return;
     }
 
-    // If no dosage from doctor
     if (!parsed.dosage) {
       if (med) {
         const pattern = findDosePattern(med, parsed.concentration || undefined);
@@ -167,7 +195,6 @@ export function SmartPrescriptionDialog({
       return;
     }
 
-    // Doctor specified dosage — check for divergence
     if (med) {
       const pattern = findDosePattern(med, parsed.concentration || undefined);
       if (pattern && parsed.dosage.toLowerCase() !== pattern.dosage.toLowerCase()) {
@@ -181,14 +208,19 @@ export function SmartPrescriptionDialog({
       }
     }
 
-    // No divergence — proceed
     proceedToPreview(
       parsed.dosage,
       parsed.duration || (med ? findDosePattern(med, parsed.concentration || undefined)?.duration : undefined),
       parsed.quantity || (med ? findDosePattern(med, parsed.concentration || undefined)?.quantity : undefined),
       med?.commonForms[0]
     );
-  }, [inputText, isListening, stopListening, patient, prescriber, proceedToPreview]);
+  }, [inputText, isListening, interimText, stopListening, patient, prescriber, proceedToPreview]);
+
+  const handleStopAndProcess = useCallback(() => {
+    if (isListening) stopListening();
+    // Small delay to let final utterance land
+    setTimeout(() => handleSubmit(), 150);
+  }, [isListening, stopListening, handleSubmit]);
 
   const handleVariantSelect = useCallback((variant: DoseVariant) => {
     proceedToPreview(
@@ -205,6 +237,11 @@ export function SmartPrescriptionDialog({
     onOpenChange(false);
   };
 
+  const handleSelectPatient = (p: { id: string; name: string }) => {
+    setSelectedPatient(p);
+    setStep("input");
+  };
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(true); }}>
       <DialogContent className="max-w-lg">
@@ -214,12 +251,69 @@ export function SmartPrescriptionDialog({
             Prescrição Inteligente
           </DialogTitle>
           <DialogDescription>
-            Digite ou fale a prescrição. O sistema identifica automaticamente o tipo de receita.
+            {step === "select-patient"
+              ? "Selecione o paciente para iniciar a prescrição."
+              : "Digite ou fale a prescrição. O sistema identifica automaticamente o tipo de receita."}
           </DialogDescription>
         </DialogHeader>
 
+        {step === "select-patient" && (
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Buscar paciente…"
+                value={patientSearch}
+                onChange={(e) => setPatientSearch(e.target.value)}
+                className="pl-9"
+                autoFocus
+              />
+            </div>
+            <ScrollArea className="h-[280px]">
+              <div className="space-y-1">
+                {filteredPatients.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-8">Nenhum paciente encontrado.</p>
+                )}
+                {filteredPatients.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => handleSelectPatient({ id: p.id, name: p.name })}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-secondary/60 transition-colors text-left"
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                        {p.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{p.name}</p>
+                      {p.birthDate && (
+                        <p className="text-xs text-muted-foreground">{p.birthDate}</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+
         {step === "input" && (
           <div className="space-y-4">
+            {/* Show selected patient chip when not from prop */}
+            {!patientProp && selectedPatient && (
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">{selectedPatient.name}</span>
+                <button
+                  onClick={() => { setSelectedPatient(null); setStep("select-patient"); }}
+                  className="text-xs text-muted-foreground hover:text-foreground underline ml-auto"
+                >
+                  Trocar
+                </button>
+              </div>
+            )}
+
             <div className="relative">
               <Textarea
                 placeholder="Digite ou fale a prescrição…"
@@ -248,7 +342,18 @@ export function SmartPrescriptionDialog({
             </div>
 
             {isListening && (
-              <p className="text-xs text-primary animate-pulse">🎙️ Ouvindo...</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-primary animate-pulse flex-1">🎙️ Ouvindo...</p>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="gap-1.5"
+                  onClick={handleStopAndProcess}
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Parar e processar
+                </Button>
+              </div>
             )}
 
             {/* Example chips */}
@@ -302,7 +407,7 @@ export function SmartPrescriptionDialog({
           />
         )}
 
-        {step === "preview" && compliance && (
+        {step === "preview" && compliance && patient && (
           <SmartPrescriptionPreview
             items={items}
             compliance={compliance}
