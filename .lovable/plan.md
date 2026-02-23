@@ -1,43 +1,50 @@
 
 
-# Corrigir extração de data "amanhã" no Assistente Inteligente
+# Corrigir timezone na extração de datas
 
 ## Problema
 
-Ao dizer "agendar Maria amanhã às 14h", o sistema agenda para **hoje** em vez de amanhã.
+A função `fmt()` em `intent-parser.ts` usa `d.toISOString().slice(0, 10)` para formatar datas. O `toISOString()` converte para **UTC**, não para o horário local do usuário. 
 
-**Causa raiz**: O regex `\bamanh[ãa]\b` falha com caracteres acentuados no JavaScript. O `\b` (word boundary) do JS so reconhece `[a-zA-Z0-9_]` como "word characters" -- o `ã` e tratado como non-word, fazendo o `\b` final nao corresponder. Resultado: `extractDate` retorna `undefined`, e o fallback na linha 256 aplica a data de hoje.
+No Brasil (UTC-3), isso causa um deslocamento: se são 22h do dia 22 em São Paulo, o UTC já é 01h do dia 23. Resultado: "hoje" vira dia 23 e "amanhã" vira dia 24, quando o usuário esperava 22 e 23 respectivamente.
 
-O mesmo problema afeta **todos os regex com acentos**: "terça", "sábado", "después de amanhã".
+O mesmo problema existe em `src/lib/holidays.ts` que tem a mesma função `fmt`.
 
-## Solucao
+## Solução
 
-Substituir `\b` por alternativas que funcionem com caracteres acentuados em todos os regex da funcao `extractDate`.
+Trocar `toISOString()` por formatação local usando `getFullYear()`, `getMonth()`, `getDate()`:
+
+```
+function fmt(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+```
 
 ## Detalhes Tecnicos
 
 ### Arquivo: `src/lib/intent-parser.ts`
 
-Alterar os regex em `extractDate` para usar `(?:\s|$)` ou `(?![a-zA-ZÀ-ÿ])` no lugar de `\b` no final dos padroes com acentos:
+Alterar a função `fmt` (linha 267-269) para usar componentes locais em vez de `toISOString()`:
 
-1. **Linha 34** - "amanhã": trocar `\bamanh[ãa]\b` por `\bamanh[ãa](?!\w)`
-2. **Linha 37** - "depois de amanhã": trocar `\bdepois\s+de\s+amanh[ãa]\b` por `\bdepois\s+de\s+amanh[ãa](?!\w)`  
-3. **Linha 37 deve vir ANTES da linha 34** - "depois de amanhã" precisa ser testado antes de "amanhã", senao "depois de amanhã" casaria com "amanhã" e retornaria D+1 em vez de D+2
-4. **Linha 41** - "terça" e "sábado": o matching por `includes()` ja funciona, nao usa `\b`
-
-A correcao mais simples e robusta: trocar o `\b` final por `(?![a-zA-ZÀ-ÿ])` (negative lookahead para letras incluindo acentuadas), garantindo que funciona com qualquer caractere Unicode.
-
-Mudancas concretas:
-
-```
-// ANTES (bugado):
-if (/\bdepois\s+de\s+amanh[ãa]\b/i.test(text)) ...
-if (/\bamanh[ãa]\b/i.test(text)) ...
-
-// DEPOIS (corrigido + ordem trocada):
-if (/\bdepois\s+de\s+amanh[ãa](?![a-zA-ZÀ-ÿ])/i.test(text)) ...
-if (/\bamanh[ãa](?![a-zA-ZÀ-ÿ])/i.test(text)) ...
+**Antes:**
+```typescript
+function fmt(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
 ```
 
-Tambem corrigir o `\b` final em "hoje" (linha 31) pelo mesmo motivo de consistencia, embora "hoje" nao tenha acentos no final.
+**Depois:**
+```typescript
+function fmt(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+```
+
+Isso garante que a data retornada corresponde ao fuso horário do navegador do usuário (America/Sao_Paulo ou qualquer outro), não ao UTC.
 
