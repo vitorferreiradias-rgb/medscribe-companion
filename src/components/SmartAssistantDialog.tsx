@@ -10,6 +10,7 @@ import { useSpeechRecognition, isSpeechRecognitionSupported } from "@/hooks/useS
 import { addQuickNoteExternal } from "@/components/QuickNotesCard";
 import { getData, updateScheduleEvent } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
+import { toLocalDateStr } from "@/lib/format";
 
 const EXAMPLES = [
   "Agendar Maria amanhã às 14h",
@@ -103,7 +104,7 @@ export function SmartAssistantDialog({
         const data = getData();
         const events = data.scheduleEvents ?? [];
         // Find next upcoming event for this patient
-        const today = new Date().toISOString().slice(0, 10);
+        const today = toLocalDateStr();
         const evt = events.find((e) =>
           intent.patientId
             ? e.patientId === intent.patientId && e.date >= today && e.status !== "done" && e.status !== "no_show"
@@ -127,7 +128,7 @@ export function SmartAssistantDialog({
       case "cancelar": {
         const data = getData();
         const events = data.scheduleEvents ?? [];
-        const targetDate = intent.date || new Date().toISOString().slice(0, 10);
+        const targetDate = intent.date || toLocalDateStr();
         const evt = events.find((e) =>
           intent.patientId
             ? e.patientId === intent.patientId && e.date === targetDate && e.status !== "done" && e.status !== "no_show"

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAppData } from "@/hooks/useAppData";
+import { toLocalDateStr } from "@/lib/format";
 
 interface Props {
   currentDate: Date;
@@ -36,7 +37,7 @@ export function AgendaMonthView({ currentDate, onSelectDay }: Props) {
     return { weeks, monthLabel };
   }, [currentDate]);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = toLocalDateStr();
 
   const eventCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -56,7 +57,7 @@ export function AgendaMonthView({ currentDate, onSelectDay }: Props) {
           ))}
           {weeks.flat().map((day, i) => {
             if (!day) return <div key={`empty-${i}`} className="h-12" />;
-            const dateStr = day.toISOString().slice(0, 10);
+            const dateStr = toLocalDateStr(day);
             const isToday = dateStr === todayStr;
             const count = eventCounts[dateStr] || 0;
             const isCurrentMonth = day.getMonth() === currentDate.getMonth();

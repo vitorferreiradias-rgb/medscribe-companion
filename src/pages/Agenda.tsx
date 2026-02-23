@@ -11,7 +11,7 @@ import {
   updateScheduleEvent, resetToSeed, getTimeBlocksForDate,
 } from "@/lib/store";
 import { parseTranscriptToSections } from "@/lib/parser";
-import { formatDateTimeBR } from "@/lib/format";
+import { formatDateTimeBR, toLocalDateStr } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,9 +70,9 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
   const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
   
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
-  const prevDateRef = useRef(currentDate.toISOString().slice(0, 10));
+  const prevDateRef = useRef(toLocalDateStr(currentDate));
 
-  const dateStr = currentDate.toISOString().slice(0, 10);
+  const dateStr = toLocalDateStr(currentDate);
 
   useEffect(() => {
     if (prevDateRef.current !== dateStr) {
@@ -109,7 +109,7 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
     return () => clearInterval(interval);
   }, []);
 
-  const isToday = dateStr === new Date().toISOString().slice(0, 10);
+  const isToday = dateStr === toLocalDateStr();
 
   const nextPatientId = useMemo(() => {
     if (!isToday) return null;

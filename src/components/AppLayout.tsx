@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppData } from "@/hooks/useAppData";
 import { addPatient } from "@/lib/store";
+import { toLocalDateStr } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
 
 export function AppLayout() {
@@ -157,12 +158,12 @@ export function AppLayout() {
         open={showNewSchedule}
         onOpenChange={(v) => { setShowNewSchedule(v); if (!v) { setEditScheduleEvent(null); setScheduleDefaults(null); } }}
         editEvent={editScheduleEvent}
-        defaultDate={scheduleDefaults?.date || currentDate.toISOString().slice(0, 10)}
+        defaultDate={scheduleDefaults?.date || toLocalDateStr(currentDate)}
         defaultPatientId={scheduleDefaults?.patientId}
         defaultStartTime={scheduleDefaults?.startTime}
         defaultEndTime={scheduleDefaults?.endTime}
       />
-      <NewTimeBlockDialog open={showTimeBlock} onOpenChange={setShowTimeBlock} defaultDate={currentDate.toISOString().slice(0, 10)} />
+      <NewTimeBlockDialog open={showTimeBlock} onOpenChange={setShowTimeBlock} defaultDate={toLocalDateStr(currentDate)} />
 
       {/* Quick new patient dialog */}
       <Dialog open={showNewPaciente} onOpenChange={(v) => { setShowNewPaciente(v); if (!v) resetPatientForm(); }}>

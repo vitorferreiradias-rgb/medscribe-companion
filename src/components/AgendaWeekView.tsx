@@ -7,6 +7,7 @@ import { useAppData } from "@/hooks/useAppData";
 import { ScheduleEvent, TimeBlock } from "@/types";
 import { getTimeBlocksForDate } from "@/lib/store";
 import { Lock } from "lucide-react";
+import { toLocalDateStr } from "@/lib/format";
 
 interface Props {
   currentDate: Date;
@@ -38,14 +39,14 @@ export function AgendaWeekView({ currentDate, onSelectDay }: Props) {
     });
   }, [currentDate]);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = toLocalDateStr();
 
   return (
     <Card className="glass-card rounded-xl overflow-hidden">
       <CardContent className="p-0">
         <div className="grid grid-cols-7 divide-x divide-border/30">
           {weekDays.map((day, i) => {
-            const dateStr = day.toISOString().slice(0, 10);
+            const dateStr = toLocalDateStr(day);
             const isToday = dateStr === todayStr;
             const events = (data.scheduleEvents ?? []).filter((e) => e.date === dateStr).sort((a, b) => a.startTime.localeCompare(b.startTime));
             const blocks = getTimeBlocksForDate(dateStr);

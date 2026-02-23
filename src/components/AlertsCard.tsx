@@ -1,6 +1,7 @@
 import { AlertTriangle, Clock, UserX, FileWarning } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScheduleEvent, Encounter } from "@/types";
+import { toLocalDateStr } from "@/lib/format";
 
 interface AlertsCardProps {
   dayEvents: ScheduleEvent[];
@@ -10,7 +11,7 @@ interface AlertsCardProps {
 export function AlertsCard({ dayEvents, encounters }: AlertsCardProps) {
   const now = new Date();
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const isToday = dayEvents.length > 0 && dayEvents[0].date === now.toISOString().slice(0, 10);
+  const isToday = dayEvents.length > 0 && dayEvents[0].date === toLocalDateStr(now);
 
   const lateCount = isToday
     ? dayEvents.filter((e) => {
