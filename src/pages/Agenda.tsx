@@ -4,11 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, FileText, CalendarClock, XCircle, CheckCircle2,
   CalendarDays, Lock, Calendar, LayoutGrid, Sparkles,
+  Trash2, PlusCircle,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import {
   addEncounter, addTranscript, addNote, updateEncounter,
-  updateScheduleEvent, resetToSeed, getTimeBlocksForDate,
+  updateScheduleEvent, deleteScheduleEvent, resetToSeed, getTimeBlocksForDate,
 } from "@/lib/store";
 import { parseTranscriptToSections } from "@/lib/parser";
 import { formatDateTimeBR, toLocalDateStr } from "@/lib/format";
@@ -200,6 +201,12 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
 
   const handleReschedule = (evt: ScheduleEvent) => {
     onReschedule(evt.id);
+  };
+
+  const handleRemove = (evt: ScheduleEvent) => {
+    deleteScheduleEvent(evt.id);
+    setSelectedId(null);
+    toast({ title: "Agendamento removido." });
   };
 
   // Now indicator
@@ -426,6 +433,14 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
                                     </TooltipTrigger>
                                     <TooltipContent>Marcar falta</TooltipContent>
                                   </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleRemove(evt); }}>
+                                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Remover da agenda</TooltipContent>
+                                  </Tooltip>
                                 </>
                               )}
                               {evt.status === "in_progress" && evt.encounterId && (
@@ -458,6 +473,18 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
                                   <TooltipContent>Ver prontuário</TooltipContent>
                                 </Tooltip>
                               )}
+                            </motion.div>
+                          )}
+                          {isSelected && i === filteredEvents.length - 1 && (
+                            <motion.div className="flex gap-1 mt-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={(e) => { e.stopPropagation(); onNewSchedule(); }}>
+                                    <PlusCircle className="h-3.5 w-3.5 text-primary" /> Agendar
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Adicionar consulta</TooltipContent>
+                              </Tooltip>
                             </motion.div>
                           )}
                         </div>
