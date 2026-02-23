@@ -1,22 +1,65 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAppData } from "@/hooks/useAppData";
-import { updateSettings, resetToSeed, clearStorage } from "@/lib/store";
+import { updateSettings, resetToSeed, clearStorage, updateClinician } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { RefreshCw, LogOut, User, Settings, Database, Shield } from "lucide-react";
+import { RefreshCw, LogOut, User, Settings, Database, Shield, Building2, Plus, Trash2, Save, Pencil } from "lucide-react";
+import { Clinic } from "@/types";
 
 const fadeUp = (i: number) => ({ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { delay: i * 0.06, duration: 0.25 } });
 
 export default function Perfil() {
   const data = useAppData();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [clearOnLogout, setClearOnLogout] = useState(false);
-  const [loggedOut, setLoggedOut] = useState(!data.settings.sessionSimulated.isLoggedIn);
+
+  const clinician = data.clinicians[0];
+
+  // Editable profile state
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(clinician?.name ?? "");
+  const [specialty, setSpecialty] = useState(clinician?.specialty ?? "");
+  const [crm, setCrm] = useState(clinician?.crm ?? "");
+  const [cpf, setCpf] = useState(clinician?.cpf ?? "");
+  const [email, setEmail] = useState(clinician?.email ?? "");
+  const [clinics, setClinics] = useState<Clinic[]>(clinician?.clinics ?? []);
+
+  const startEdit = () => {
+    setName(clinician?.name ?? "");
+    setSpecialty(clinician?.specialty ?? "");
+    setCrm(clinician?.crm ?? "");
+    setCpf(clinician?.cpf ?? "");
+    setEmail(clinician?.email ?? "");
+    setClinics(clinician?.clinics ? [...clinician.clinics] : []);
+    setEditing(true);
+  };
+
+  const handleSaveProfile = () => {
+    if (!clinician) return;
+    updateClinician(clinician.id, { name, specialty, crm, cpf, email, clinics });
+    setEditing(false);
+    toast({ title: "Perfil atualizado." });
+  };
+
+  const addClinic = () => {
+    setClinics([...clinics, { id: `clinic_${Date.now().toString(36)}`, name: "", address: "" }]);
+  };
+
+  const removeClinic = (id: string) => {
+    setClinics(clinics.filter((c) => c.id !== id));
+  };
+
+  const updateClinicField = (id: string, field: "name" | "address", value: string) => {
+    setClinics(clinics.map((c) => c.id === id ? { ...c, [field]: value } : c));
+  };
 
   const handleResetSeed = () => {
     resetToSeed();
@@ -26,21 +69,8 @@ export default function Perfil() {
   const handleLogout = () => {
     if (clearOnLogout) clearStorage();
     updateSettings({ sessionSimulated: { isLoggedIn: false } });
-    setLoggedOut(true);
-    toast({ title: "Você saiu da conta (simulado)." });
+    navigate("/login", { replace: true });
   };
-
-  const handleLogin = () => {
-    updateSettings({ sessionSimulated: { isLoggedIn: true } });
-    setLoggedOut(false);
-  };
-
-  const infoRows = [
-    { label: "Nome", value: "Dr. Ricardo Mendes" },
-    { label: "Email", value: "ricardo@medscribe.app" },
-    { label: "CRM", value: "CRM/SP 123456" },
-    { label: "Fuso horário", value: "América/São Paulo (pt-BR)" },
-  ];
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -49,22 +79,103 @@ export default function Perfil() {
       <motion.div {...fadeUp(0)}>
         <Card className="glass-card rounded-xl">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <User className="h-4 w-4 text-primary" /> Informações da Conta
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <User className="h-4 w-4 text-primary" /> Informações da Conta
+              </CardTitle>
+              {!editing && (
+                <Button variant="ghost" size="sm" onClick={startEdit} className="gap-1.5">
+                  <Pencil className="h-3.5 w-3.5" /> Editar
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            {infoRows.map((row) => (
-              <div key={row.label} className="flex justify-between items-center py-1">
-                <span className="text-muted-foreground">{row.label}</span>
-                <span className="font-medium">{row.value}</span>
+            {editing ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1"><Label className="text-xs">Nome</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
+                  <div className="space-y-1"><Label className="text-xs">Especialidade</Label><Input value={specialty} onChange={(e) => setSpecialty(e.target.value)} /></div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1"><Label className="text-xs">CRM</Label><Input value={crm} onChange={(e) => setCrm(e.target.value)} /></div>
+                  <div className="space-y-1"><Label className="text-xs">CPF</Label><Input value={cpf} onChange={(e) => setCpf(e.target.value)} /></div>
+                  <div className="space-y-1"><Label className="text-xs">E-mail</Label><Input value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button size="sm" onClick={handleSaveProfile} className="gap-1.5"><Save className="h-3.5 w-3.5" /> Salvar</Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditing(false)}>Cancelar</Button>
+                </div>
               </div>
-            ))}
+            ) : (
+              <>
+                {[
+                  { label: "Nome", value: clinician?.name },
+                  { label: "Especialidade", value: clinician?.specialty },
+                  { label: "CRM", value: clinician?.crm },
+                  { label: "CPF", value: clinician?.cpf },
+                  { label: "E-mail", value: clinician?.email },
+                ].map((row) => (
+                  <div key={row.label} className="flex justify-between items-center py-1">
+                    <span className="text-muted-foreground">{row.label}</span>
+                    <span className="font-medium">{row.value ?? "—"}</span>
+                  </div>
+                ))}
+              </>
+            )}
           </CardContent>
         </Card>
       </motion.div>
 
+      {/* Clínicas */}
       <motion.div {...fadeUp(1)}>
+        <Card className="glass-card rounded-xl">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" /> Clínicas / Locais
+              </CardTitle>
+              {editing && (
+                <Button variant="ghost" size="sm" onClick={addClinic} className="gap-1.5">
+                  <Plus className="h-3.5 w-3.5" /> Adicionar
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {editing ? (
+              clinics.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma clínica cadastrada.</p>
+              ) : (
+                clinics.map((c) => (
+                  <div key={c.id} className="flex gap-2 items-start">
+                    <div className="flex-1 grid grid-cols-2 gap-2">
+                      <Input value={c.name} onChange={(e) => updateClinicField(c.id, "name", e.target.value)} placeholder="Nome da clínica" className="text-sm" />
+                      <Input value={c.address} onChange={(e) => updateClinicField(c.id, "address", e.target.value)} placeholder="Endereço" className="text-sm" />
+                    </div>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-destructive" onClick={() => removeClinic(c.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))
+              )
+            ) : (
+              (clinician?.clinics ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma clínica cadastrada.</p>
+              ) : (
+                (clinician?.clinics ?? []).map((c) => (
+                  <div key={c.id} className="flex justify-between items-center py-1 text-sm">
+                    <span className="font-medium">{c.name}</span>
+                    <span className="text-muted-foreground">{c.address}</span>
+                  </div>
+                ))
+              )
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <motion.div {...fadeUp(2)}>
         <Card className="glass-card rounded-xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -74,25 +185,17 @@ export default function Perfil() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between py-1">
               <Label htmlFor="persist" className="text-sm">Persistência local</Label>
-              <Switch
-                id="persist"
-                checked={data.settings.persistLocal}
-                onCheckedChange={(v) => updateSettings({ persistLocal: v })}
-              />
+              <Switch id="persist" checked={data.settings.persistLocal} onCheckedChange={(v) => updateSettings({ persistLocal: v })} />
             </div>
             <div className="flex items-center justify-between py-1">
               <Label htmlFor="banner" className="text-sm">Mostrar aviso de modo simulado</Label>
-              <Switch
-                id="banner"
-                checked={data.settings.showSimulatedBanner}
-                onCheckedChange={(v) => updateSettings({ showSimulatedBanner: v })}
-              />
+              <Switch id="banner" checked={data.settings.showSimulatedBanner} onCheckedChange={(v) => updateSettings({ showSimulatedBanner: v })} />
             </div>
           </CardContent>
         </Card>
       </motion.div>
 
-      <motion.div {...fadeUp(2)}>
+      <motion.div {...fadeUp(3)}>
         <Card className="glass-card rounded-xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -107,7 +210,7 @@ export default function Perfil() {
         </Card>
       </motion.div>
 
-      <motion.div {...fadeUp(3)}>
+      <motion.div {...fadeUp(4)}>
         <Card className="glass-card rounded-xl">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -115,22 +218,13 @@ export default function Perfil() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {loggedOut ? (
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">Você saiu da conta (simulado).</p>
-                <Button variant="outline" onClick={handleLogin} className="transition-all duration-150 ease-out">Entrar novamente</Button>
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center gap-2">
-                  <Checkbox id="clear" checked={clearOnLogout} onCheckedChange={(v) => setClearOnLogout(!!v)} />
-                  <Label htmlFor="clear" className="text-sm">Limpar dados locais ao sair</Label>
-                </div>
-                <Button variant="destructive" onClick={handleLogout} className="w-full transition-all duration-150 ease-out hover:shadow-md">
-                  <LogOut className="mr-2 h-4 w-4" /> Logout (simulado)
-                </Button>
-              </>
-            )}
+            <div className="flex items-center gap-2">
+              <Checkbox id="clear" checked={clearOnLogout} onCheckedChange={(v) => setClearOnLogout(!!v)} />
+              <Label htmlFor="clear" className="text-sm">Limpar dados locais ao sair</Label>
+            </div>
+            <Button variant="destructive" onClick={handleLogout} className="w-full transition-all duration-150 ease-out hover:shadow-md">
+              <LogOut className="mr-2 h-4 w-4" /> Logout
+            </Button>
           </CardContent>
         </Card>
       </motion.div>

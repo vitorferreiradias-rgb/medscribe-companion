@@ -44,8 +44,8 @@ const mockTranscript2 = [
 
 export function createSeedData(): AppData {
   const clinicians = [
-    { id: "cli_1", name: "Dr. Ricardo Mendes", specialty: "Clínica Geral", crm: "CRM 123456/SP", cpf: "123.456.789-00", clinicAddress: "Clínica Saúde Total — Av. Paulista 1000, São Paulo-SP" },
-    { id: "cli_2", name: "Dra. Ana Beatriz Costa", specialty: "Cardiologia", crm: "CRM 654321/SP", cpf: "987.654.321-00", clinicAddress: "Instituto Cardio — Rua Augusta 500, São Paulo-SP" },
+    { id: "cli_1", name: "Dr. Ricardo Mendes", specialty: "Clínica Geral", crm: "CRM 123456/SP", cpf: "123.456.789-00", email: "ricardo@medscribe.app", clinicAddress: "Clínica Saúde Total — Av. Paulista 1000, São Paulo-SP", clinics: [{ id: "clinic_1", name: "Clínica Saúde Total", address: "Av. Paulista 1000, São Paulo-SP" }] },
+    { id: "cli_2", name: "Dra. Ana Beatriz Costa", specialty: "Cardiologia", crm: "CRM 654321/SP", cpf: "987.654.321-00", email: "ana@medscribe.app", clinicAddress: "Instituto Cardio — Rua Augusta 500, São Paulo-SP", clinics: [{ id: "clinic_2", name: "Instituto Cardio", address: "Rua Augusta 500, São Paulo-SP" }] },
   ];
 
   const patients = [
@@ -119,6 +119,10 @@ export function createSeedData(): AppData {
     { id: "sch_11", date: dayAfter, startTime: "10:00", endTime: "10:30", patientId: "pat_1", clinicianId: "cli_1", type: "retorno", status: "scheduled" },
   ];
 
+  const timeBlocks: import("@/types").TimeBlock[] = [
+    { id: "tb_1", date: today, startTime: "12:00", endTime: "13:00", reason: "Almoço", recurrence: "daily", clinicianId: "cli_1" },
+  ];
+
   return {
     clinicians,
     patients,
@@ -126,6 +130,7 @@ export function createSeedData(): AppData {
     transcripts,
     notes,
     scheduleEvents,
+    timeBlocks,
     settings: {
       persistLocal: true,
       showSimulatedBanner: true,

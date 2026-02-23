@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppData } from "@/hooks/useAppData";
-import { addScheduleEvent, updateScheduleEvent } from "@/lib/store";
+import { addScheduleEvent, updateScheduleEvent, getTimeBlocksForDate } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { ScheduleEvent } from "@/types";
 
@@ -49,6 +49,13 @@ export function NewScheduleDialog({ open, onOpenChange, editEvent, defaultDate }
     }
   }, [open, editEvent, defaultDate]);
 
+  const hasConflict = () => {
+    if (!date || !startTime) return false;
+    const blocks = getTimeBlocksForDate(date, clinicianId);
+    return blocks.some((b) => startTime < b.endTime && (endTime || "23:59") > b.startTime);
+  };
+
+  const conflict = hasConflict();
   const canSave = date && startTime && patientId && clinicianId;
 
   const handleSave = () => {
@@ -127,6 +134,11 @@ export function NewScheduleDialog({ open, onOpenChange, editEvent, defaultDate }
             <Label>Notas</Label>
             <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observações opcionais..." rows={2} />
           </div>
+          {conflict && (
+            <p className="text-xs text-warning flex items-center gap-1.5">
+              ⚠ Este horário conflita com um bloqueio existente
+            </p>
+          )}
           <Button className="w-full" disabled={!canSave} onClick={handleSave}>
             {editEvent ? "Salvar alterações" : "Criar agendamento"}
           </Button>

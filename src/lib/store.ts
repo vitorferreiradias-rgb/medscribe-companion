@@ -1,4 +1,4 @@
-import { AppData, Encounter, Patient, Transcript, Note, NoteSection, ScheduleEvent } from "@/types";
+import { AppData, Encounter, Patient, Transcript, Note, NoteSection, ScheduleEvent, TimeBlock, Clinician } from "@/types";
 import { createSeedData } from "./seed";
 
 const STORAGE_KEY = "medscribe_data_v1";
@@ -201,4 +201,45 @@ export function duplicateEncounter(encId: string): Encounter | null {
 export function updateSettings(updates: Partial<AppData["settings"]>) {
   _data.settings = { ..._data.settings, ...updates };
   notify();
+}
+
+// --- Clinicians ---
+export function updateClinician(id: string, updates: Partial<Clinician>) {
+  const i = _data.clinicians.findIndex((c) => c.id === id);
+  if (i >= 0) { _data.clinicians[i] = { ..._data.clinicians[i], ...updates }; notify(); }
+}
+
+// --- Time Blocks ---
+export function addTimeBlock(tb: Omit<TimeBlock, "id">): TimeBlock {
+  const block = { id: uid("tb"), ...tb };
+  if (!_data.timeBlocks) _data.timeBlocks = [];
+  _data.timeBlocks.push(block);
+  notify();
+  return block;
+}
+
+export function updateTimeBlock(id: string, updates: Partial<TimeBlock>) {
+  if (!_data.timeBlocks) return;
+  const i = _data.timeBlocks.findIndex((b) => b.id === id);
+  if (i >= 0) { _data.timeBlocks[i] = { ..._data.timeBlocks[i], ...updates }; notify(); }
+}
+
+export function deleteTimeBlock(id: string) {
+  if (!_data.timeBlocks) return;
+  _data.timeBlocks = _data.timeBlocks.filter((b) => b.id !== id);
+  notify();
+}
+
+export function getTimeBlocksForDate(dateStr: string, clinicianId?: string): TimeBlock[] {
+  if (!_data.timeBlocks) return [];
+  const dayOfWeek = new Date(dateStr + "T12:00:00").getDay();
+  return _data.timeBlocks.filter((b) => {
+    if (clinicianId && b.clinicianId !== clinicianId) return false;
+    if (b.recurrence === "daily") return true;
+    if (b.recurrence === "weekly") {
+      const blockDay = new Date(b.date + "T12:00:00").getDay();
+      return blockDay === dayOfWeek;
+    }
+    return b.date === dateStr;
+  });
 }

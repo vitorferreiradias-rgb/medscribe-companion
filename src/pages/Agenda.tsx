@@ -3,12 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play, FileText, CalendarClock, XCircle, CheckCircle2,
-  CalendarDays,
+  CalendarDays, Lock, Calendar, LayoutGrid,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import {
   addEncounter, addTranscript, addNote, updateEncounter,
-  updateScheduleEvent, resetToSeed,
+  updateScheduleEvent, resetToSeed, getTimeBlocksForDate,
 } from "@/lib/store";
 import { parseTranscriptToSections } from "@/lib/parser";
 import { formatDateTimeBR } from "@/lib/format";
@@ -19,12 +19,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ScheduleEvent } from "@/types";
 import { SOAP_TEMPLATE_ID } from "@/lib/soap-template";
 import { MiniCalendar } from "@/components/MiniCalendar";
 import { NewsCard } from "@/components/NewsCard";
 import { QuickNotesCard } from "@/components/QuickNotesCard";
+import { AgendaWeekView } from "@/components/AgendaWeekView";
+import { AgendaMonthView } from "@/components/AgendaMonthView";
 
 const statusConfig: Record<string, { label: string; className: string; stripBg: string; stripBorder: string }> = {
   scheduled: { label: "Agendado", className: "status-scheduled", stripBg: "bg-slate-100/60", stripBorder: "border-l-slate-400" },
@@ -44,6 +47,8 @@ const typeLabels: Record<string, string> = {
 interface AgendaProps {
   currentDate: Date;
   onNewSchedule: () => void;
+  onReschedule: (eventId: string) => void;
+  onNewTimeBlock: () => void;
 }
 
 const mockTranscript = [
@@ -52,7 +57,7 @@ const mockTranscript = [
   { speaker: "medico" as const, text: "Vou solicitar exames. Retorno em 7 dias.", tsSec: 15 },
 ];
 
-export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
+export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNewTimeBlock }: AgendaProps) {
   const data = useAppData();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -61,6 +66,7 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
   const [loading, setLoading] = useState(false);
   const [dayLoading, setDayLoading] = useState(false);
   const [notesSaved, setNotesSaved] = useState(false);
+  const [viewMode, setViewMode] = useState<"day" | "week" | "month">("day");
   
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>();
   const prevDateRef = useRef(currentDate.toISOString().slice(0, 10));
@@ -192,8 +198,7 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
   };
 
   const handleReschedule = (evt: ScheduleEvent) => {
-    updateScheduleEvent(evt.id, { status: "rescheduled" });
-    toast({ title: "Marcado como remarcado." });
+    onReschedule(evt.id);
   };
 
   // Now indicator
@@ -226,16 +231,60 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
 
   return (
       <div className="space-y-5">
-      {/* TIMELINE — principal, sempre primeiro */}
+      {/* View mode tabs */}
+      <div className="flex items-center justify-between">
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
+          <TabsList className="h-8">
+            <TabsTrigger value="day" className="text-xs gap-1.5 px-3"><CalendarDays className="h-3.5 w-3.5" />Dia</TabsTrigger>
+            <TabsTrigger value="week" className="text-xs gap-1.5 px-3"><LayoutGrid className="h-3.5 w-3.5" />Semana</TabsTrigger>
+            <TabsTrigger value="month" className="text-xs gap-1.5 px-3"><Calendar className="h-3.5 w-3.5" />Mês</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={onNewTimeBlock} className="gap-1.5 text-xs">
+            <Lock className="h-3.5 w-3.5" /> Bloquear
+          </Button>
+          <Button variant="default" size="sm" onClick={onNewSchedule} className="gap-1.5 text-xs">
+            Agendar
+          </Button>
+        </div>
+      </div>
+
+      {viewMode === "week" && (
+        <AgendaWeekView currentDate={currentDate} onSelectDay={(d) => { setViewMode("day"); /* date change handled by parent */ }} />
+      )}
+      {viewMode === "month" && (
+        <AgendaMonthView currentDate={currentDate} onSelectDay={(d) => { setViewMode("day"); }} />
+      )}
+
+      {viewMode === "day" && (
+      <>
+      {/* TIMELINE — principal */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-caption font-semibold text-muted-foreground uppercase tracking-wider">
             Agenda do dia
           </h2>
           <span className="text-caption text-muted-foreground">
-            {filteredEvents.length} de {dayEvents.length}
+            {filteredEvents.length} consulta(s)
           </span>
         </div>
+
+        {/* Time blocks for the day */}
+        {(() => {
+          const blocks = getTimeBlocksForDate(dateStr);
+          if (blocks.length === 0) return null;
+          return (
+            <div className="flex flex-wrap gap-2">
+              {blocks.map((b) => (
+                <Badge key={b.id} variant="secondary" className="gap-1.5 text-xs py-1 px-2.5 bg-muted/80">
+                  <Lock className="h-3 w-3 text-muted-foreground" />
+                  {b.startTime}–{b.endTime} · {b.reason}
+                </Badge>
+              ))}
+            </div>
+          );
+        })()}
 
         {filteredEvents.length === 0 ? (
           <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}>
@@ -453,6 +502,8 @@ export default function Agenda({ currentDate, onNewSchedule }: AgendaProps) {
           </div>
         </CardContent>
       </Card>
+      </>
+      )}
       </div>
     );
 }
