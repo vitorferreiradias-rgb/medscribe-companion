@@ -1,38 +1,34 @@
 
+# Adicionar botao "Remover" para pacientes com falta (no_show)
 
-# Ajustar grid da agenda e cores AI (ambar) nos componentes
+## Problema
 
-## 1. Grid da agenda com tamanho variavel
+Ao selecionar um card com status `no_show`, nenhuma acao contextual aparece porque o codigo so trata os status `scheduled`, `confirmed`, `in_progress` e `done`. Nao ha bloco para `no_show`.
 
-Atualmente o card da timeline tem `min-h-[420px]` fixo (linha 329 de Agenda.tsx). Isso faz o card ficar grande mesmo com poucos agendamentos.
+## Solucao
 
-**Mudanca:** Remover o `min-h-[420px]` fixo e deixar o card crescer naturalmente com base no numero de itens. Cada item ocupa ~68px de altura, entao o card se ajusta automaticamente.
+Adicionar um bloco condicional para `evt.status === "no_show"` com um botao "Remover da agenda" (icone Trash2), usando o mesmo `handleRemove` que ja existe.
 
-### Arquivo: `src/pages/Agenda.tsx`
-- Linha 329: trocar `min-h-[420px]` por nenhum min-height (o card cresce conforme os agendamentos)
-
-## 2. Cores ambar no QuickNotesCard
-
-O card ja usa a classe `glass-card-ai` (borda ambar), mas os icones e botoes internos ainda usam `text-primary` (azul). Precisam usar `text-ai` (ambar).
-
-### Arquivo: `src/components/QuickNotesCard.tsx`
-- Linha 98: icone StickyNote — trocar `text-primary/70` por `text-ai`
-- Linha 105: botao Plus — trocar `text-primary hover:bg-primary/10` por `text-ai hover:bg-ai-soft`
-- Linha 172-173: checkbox done — trocar `bg-primary border-primary` por `bg-ai border-ai`
-- Linha 174: checkbox undone — trocar `border-primary/40 hover:border-primary/70` por `border-ai/40 hover:border-ai/70`
-- Linha 177: checkmark — trocar `text-primary-foreground` por `text-white`
-
-## 3. Botao "One Click" com cor ambar
-
-O botao "One Click" na agenda (linha 253-255) usa `variant="outline"` padrao. Deve ter identidade AI (ambar).
+## Detalhe Tecnico
 
 ### Arquivo: `src/pages/Agenda.tsx`
-- Linha 253-255: adicionar classes ambar ao botao One Click — `border-ai/30 text-ai hover:bg-ai-soft` e trocar icone Sparkles para `text-ai`
 
-## Resumo das mudancas
+Apos o bloco de `evt.status === "done"` (linha 474), adicionar:
 
-| Arquivo | O que muda |
-|---------|-----------|
-| `src/pages/Agenda.tsx` | Remover min-h fixo do card; estilizar botao One Click com ambar |
-| `src/components/QuickNotesCard.tsx` | Trocar todas as cores `primary` por `ai` (ambar) nos icones e botoes |
+```tsx
+{evt.status === "no_show" && (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <Button variant="ghost" size="icon" className="h-7 w-7"
+        onClick={(e) => { e.stopPropagation(); handleRemove(evt); }}>
+        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent>Remover da agenda</TooltipContent>
+  </Tooltip>
+)}
+```
 
+Tambem seria adicionado o status `rescheduled` com o mesmo botao, ja que pacientes remarcados tambem nao tem acoes hoje.
+
+Nenhum outro arquivo precisa ser alterado.
