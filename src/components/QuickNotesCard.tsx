@@ -95,14 +95,14 @@ export function QuickNotesCard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <StickyNote className="h-3.5 w-3.5 text-primary/70" />
+          <StickyNote className="h-3.5 w-3.5 text-ai" />
           <span className="text-xs font-medium text-muted-foreground">
             Notas rápidas / compromissos
           </span>
         </div>
         <button
           onClick={addItem}
-          className="h-5 w-5 rounded-full flex items-center justify-center text-primary hover:bg-primary/10 transition-colors"
+          className="h-5 w-5 rounded-full flex items-center justify-center text-ai hover:bg-ai-soft transition-colors"
           aria-label="Adicionar compromisso"
         >
           <Plus className="h-3.5 w-3.5" />
@@ -169,12 +169,12 @@ function ItemRow({
         onClick={onToggle}
         className={`h-3.5 w-3.5 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
           item.done
-            ? "bg-primary border-primary"
-            : "border-primary/40 hover:border-primary/70"
+            ? "bg-ai border-ai"
+            : "border-ai/40 hover:border-ai/70"
         }`}
         aria-label={item.done ? "Desmarcar" : "Marcar como concluído"}
       >
-        {item.done && <span className="text-primary-foreground text-[8px]">✓</span>}
+        {item.done && <span className="text-white text-[8px]">✓</span>}
       </button>
 
       <input

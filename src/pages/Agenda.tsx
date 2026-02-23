@@ -250,8 +250,8 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
         </Tabs>
         <div className="flex gap-2">
           {onSmartAssistant && (
-            <Button variant="outline" size="sm" onClick={() => onSmartAssistant()} className="gap-1.5 text-xs">
-              <Sparkles className="h-3.5 w-3.5" /> One Click
+            <Button variant="outline" size="sm" onClick={() => onSmartAssistant()} className="gap-1.5 text-xs border-ai/30 text-ai hover:bg-ai-soft">
+              <Sparkles className="h-3.5 w-3.5 text-ai" /> One Click
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={onNewTimeBlock} className="gap-1.5 text-xs">
@@ -326,7 +326,7 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
             </Card>
           </motion.div>
         ) : (
-          <Card className="glass-card rounded-xl overflow-hidden min-h-[420px]">
+          <Card className="glass-card rounded-xl overflow-hidden">
             <CardContent className="p-0">
               <div className="relative">
                 {/* Now indicator */}
