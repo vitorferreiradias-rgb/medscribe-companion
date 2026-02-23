@@ -8,6 +8,7 @@ import { CommandBar } from "./CommandBar";
 import { NewScheduleDialog } from "./NewScheduleDialog";
 import { NewTimeBlockDialog } from "./NewTimeBlockDialog";
 import { SmartPrescriptionDialog } from "./smart-prescription/SmartPrescriptionDialog";
+import { SmartAssistantDialog } from "./SmartAssistantDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +32,15 @@ export function AppLayout() {
   const [showTimeBlock, setShowTimeBlock] = useState(false);
   const [showSmartPrescription, setShowSmartPrescription] = useState(false);
   const [smartPrescriptionText, setSmartPrescriptionText] = useState("");
+  const [showAssistant, setShowAssistant] = useState(false);
   const [editScheduleEvent, setEditScheduleEvent] = useState<import("@/types").ScheduleEvent | null>(null);
+
+  // Schedule defaults from assistant
+  const [scheduleDefaults, setScheduleDefaults] = useState<{
+    patientId?: string;
+    date?: string;
+    startTime?: string;
+  } | null>(null);
 
   // New patient form
   const [patName, setPatName] = useState("");
@@ -81,9 +90,10 @@ export function AppLayout() {
 
   const onNewConsulta = useCallback(() => navigate("/consultas/nova"), [navigate]);
   const onNewPaciente = useCallback(() => setShowNewPaciente(true), []);
-  const onNewSchedule = useCallback(() => { setEditScheduleEvent(null); setShowNewSchedule(true); }, []);
+  const onNewSchedule = useCallback(() => { setEditScheduleEvent(null); setScheduleDefaults(null); setShowNewSchedule(true); }, []);
   const onOpenCommandBar = useCallback(() => setShowCommandBar(true), []);
   const onNewTimeBlock = useCallback(() => setShowTimeBlock(true), []);
+  const onSmartAssistant = useCallback(() => setShowAssistant(true), []);
   const onSmartPrescription = useCallback((text?: string) => {
     setSmartPrescriptionText(text || "");
     setShowSmartPrescription(true);
@@ -92,6 +102,22 @@ export function AppLayout() {
     const evt = data.scheduleEvents?.find((e) => e.id === eventId);
     if (evt) { setEditScheduleEvent(evt); setShowNewSchedule(true); }
   }, [data.scheduleEvents]);
+
+  // Assistant callbacks
+  const handleAssistantSchedule = useCallback((defaults: { patientId?: string; date?: string; startTime?: string }) => {
+    setScheduleDefaults(defaults);
+    setEditScheduleEvent(null);
+    setShowNewSchedule(true);
+  }, []);
+
+  const handleAssistantPrescription = useCallback((text: string) => {
+    setSmartPrescriptionText(text);
+    setShowSmartPrescription(true);
+  }, []);
+
+  const handleAssistantNavigate = useCallback((path: string) => {
+    navigate(path);
+  }, [navigate]);
 
   return (
     <SidebarProvider>
@@ -105,11 +131,11 @@ export function AppLayout() {
             onNewPaciente={onNewPaciente}
             onNewAgendamento={onNewSchedule}
             onOpenCommandBar={onOpenCommandBar}
-            onSmartPrescription={onSmartPrescription}
+            onSmartAssistant={onSmartAssistant}
           />
           <div className="flex-1 px-5 py-5 md:px-6 md:py-6 max-w-[1440px]">
             {location.pathname.startsWith("/agenda") ? (
-              <Outlet context={{ currentDate, onNewSchedule, onReschedule, onNewTimeBlock, onSmartPrescription }} />
+              <Outlet context={{ currentDate, onNewSchedule, onReschedule, onNewTimeBlock, onSmartAssistant }} />
             ) : (
               <Outlet />
             )}
@@ -123,10 +149,17 @@ export function AppLayout() {
         onNewConsulta={onNewConsulta}
         onNewAgendamento={onNewSchedule}
         onNewPaciente={onNewPaciente}
-        onSmartPrescription={onSmartPrescription}
+        onSmartAssistant={onSmartAssistant}
       />
 
-      <NewScheduleDialog open={showNewSchedule} onOpenChange={(v) => { setShowNewSchedule(v); if (!v) setEditScheduleEvent(null); }} editEvent={editScheduleEvent} defaultDate={currentDate.toISOString().slice(0, 10)} />
+      <NewScheduleDialog
+        open={showNewSchedule}
+        onOpenChange={(v) => { setShowNewSchedule(v); if (!v) { setEditScheduleEvent(null); setScheduleDefaults(null); } }}
+        editEvent={editScheduleEvent}
+        defaultDate={scheduleDefaults?.date || currentDate.toISOString().slice(0, 10)}
+        defaultPatientId={scheduleDefaults?.patientId}
+        defaultStartTime={scheduleDefaults?.startTime}
+      />
       <NewTimeBlockDialog open={showTimeBlock} onOpenChange={setShowTimeBlock} defaultDate={currentDate.toISOString().slice(0, 10)} />
 
       {/* Quick new patient dialog */}
@@ -199,6 +232,15 @@ export function AppLayout() {
         open={showSmartPrescription}
         onOpenChange={setShowSmartPrescription}
         initialText={smartPrescriptionText}
+      />
+
+      <SmartAssistantDialog
+        open={showAssistant}
+        onOpenChange={setShowAssistant}
+        onSchedule={handleAssistantSchedule}
+        onReschedule={onReschedule}
+        onPrescription={handleAssistantPrescription}
+        onNavigate={handleAssistantNavigate}
       />
     </SidebarProvider>
   );

@@ -15,9 +15,12 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   editEvent?: ScheduleEvent | null;
   defaultDate?: string;
+  defaultPatientId?: string;
+  defaultStartTime?: string;
+  defaultEndTime?: string;
 }
 
-export function NewScheduleDialog({ open, onOpenChange, editEvent, defaultDate }: Props) {
+export function NewScheduleDialog({ open, onOpenChange, editEvent, defaultDate, defaultPatientId, defaultStartTime, defaultEndTime }: Props) {
   const data = useAppData();
   const { toast } = useToast();
 
@@ -40,9 +43,9 @@ export function NewScheduleDialog({ open, onOpenChange, editEvent, defaultDate }
       setNotes(editEvent.notes ?? "");
     } else if (open) {
       setDate(defaultDate ?? new Date().toISOString().slice(0, 10));
-      setStartTime("08:00");
-      setEndTime("08:30");
-      setPatientId("");
+      setStartTime(defaultStartTime ?? "08:00");
+      setEndTime(defaultEndTime ?? "08:30");
+      setPatientId(defaultPatientId ?? "");
       setClinicianId(data.clinicians[0]?.id ?? "");
       setType("primeira");
       setNotes("");

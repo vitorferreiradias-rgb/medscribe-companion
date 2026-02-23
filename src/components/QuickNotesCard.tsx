@@ -30,8 +30,24 @@ function loadData(): NoteData {
   return { note: "", items: [] };
 }
 
+// External API for adding notes from other components
+export function addQuickNoteExternal(text: string) {
+  const data = loadData();
+  const id = Date.now().toString(36);
+  data.items.push({ id, text, done: false });
+  try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch {}
+  window.dispatchEvent(new CustomEvent("quick-notes-updated"));
+}
+
 export function QuickNotesCard() {
   const [data, setData] = useState<NoteData>(loadData);
+
+  // Listen for external updates
+  useEffect(() => {
+    const handler = () => setData(loadData());
+    window.addEventListener("quick-notes-updated", handler);
+    return () => window.removeEventListener("quick-notes-updated", handler);
+  }, []);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>();
   const newItemRef = useRef<string | null>(null);
 

@@ -49,7 +49,7 @@ interface AgendaProps {
   onNewSchedule: () => void;
   onReschedule: (eventId: string) => void;
   onNewTimeBlock: () => void;
-  onSmartPrescription?: (text?: string) => void;
+  onSmartAssistant?: () => void;
 }
 
 const mockTranscript = [
@@ -58,7 +58,7 @@ const mockTranscript = [
   { speaker: "medico" as const, text: "Vou solicitar exames. Retorno em 7 dias.", tsSec: 15 },
 ];
 
-export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNewTimeBlock, onSmartPrescription }: AgendaProps) {
+export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNewTimeBlock, onSmartAssistant }: AgendaProps) {
   const data = useAppData();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -242,9 +242,9 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
           </TabsList>
         </Tabs>
         <div className="flex gap-2">
-          {onSmartPrescription && (
-            <Button variant="outline" size="sm" onClick={() => onSmartPrescription()} className="gap-1.5 text-xs">
-              <Sparkles className="h-3.5 w-3.5" /> Prescrição
+          {onSmartAssistant && (
+            <Button variant="outline" size="sm" onClick={() => onSmartAssistant()} className="gap-1.5 text-xs">
+              <Sparkles className="h-3.5 w-3.5" /> Assistente
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={onNewTimeBlock} className="gap-1.5 text-xs">
