@@ -50,7 +50,7 @@ export function NewScheduleDialog({ open, onOpenChange, editEvent, defaultDate, 
       setType("primeira");
       setNotes("");
     }
-  }, [open, editEvent, defaultDate]);
+  }, [open, editEvent, defaultDate, defaultPatientId, defaultStartTime, defaultEndTime]);
 
   const hasConflict = () => {
     if (!date || !startTime) return false;
