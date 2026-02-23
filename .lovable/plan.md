@@ -1,84 +1,38 @@
 
-# Atualizar tema para "Premium Liquid Glass" com acento AI ambar
 
-## Resumo
+# Ajustar grid da agenda e cores AI (ambar) nos componentes
 
-Atualizar tokens de cores, adicionar novos acentos (Aqua/Violet), refinar estados, criar tokens exclusivos para o modulo Assistente/IA (ambar sutil), e renomear "Assistente" para "One Click" em toda a interface. Sem mudancas de estrutura de paginas.
+## 1. Grid da agenda com tamanho variavel
 
-## Arquivos a alterar
+Atualmente o card da timeline tem `min-h-[420px]` fixo (linha 329 de Agenda.tsx). Isso faz o card ficar grande mesmo com poucos agendamentos.
 
-### 1. `src/index.css` -- Tokens CSS
+**Mudanca:** Remover o `min-h-[420px]` fixo e deixar o card crescer naturalmente com base no numero de itens. Cada item ocupa ~68px de altura, entao o card se ajusta automaticamente.
 
-Atualizar/adicionar variaveis CSS:
+### Arquivo: `src/pages/Agenda.tsx`
+- Linha 329: trocar `min-h-[420px]` por nenhum min-height (o card cresce conforme os agendamentos)
 
-- **Novos tokens de cor**:
-  - `--primary-soft-bg: 216 100% 96%` (#EAF2FF)
-  - `--aqua: 181 77% 35%` (#0EA5A8)
-  - `--aqua-light: 187 82% 54%` (#22D3EE)
-  - `--violet: 263 70% 50%` (#6D28D9)
-  - `--violet-light: 263 70% 58%` (#7C3AED)
+## 2. Cores ambar no QuickNotesCard
 
-- **Estados refinados**:
-  - `--success: 142 64% 36%` (#15803D)
-  - `--warning: 30 65% 48%` (#C9772A)
-  - `--destructive: 347 77% 50%` (#E11D48)
+O card ja usa a classe `glass-card-ai` (borda ambar), mas os icones e botoes internos ainda usam `text-primary` (azul). Precisam usar `text-ai` (ambar).
 
-- **Tokens IA exclusivos**:
-  - `--ai-accent: 30 80% 72%` (#F2C28B)
-  - `--ai-accent-hover: 25 74% 68%` (#E8AE72)
-  - `--ai-soft-bg: rgba(242,194,139,0.14)`
-  - `--ai-ring: rgba(242,194,139,0.28)`
-  - `--ai-bloom: rgba(242,194,139,0.16)`
+### Arquivo: `src/components/QuickNotesCard.tsx`
+- Linha 98: icone StickyNote — trocar `text-primary/70` por `text-ai`
+- Linha 105: botao Plus — trocar `text-primary hover:bg-primary/10` por `text-ai hover:bg-ai-soft`
+- Linha 172-173: checkbox done — trocar `bg-primary border-primary` por `bg-ai border-ai`
+- Linha 174: checkbox undone — trocar `border-primary/40 hover:border-primary/70` por `border-ai/40 hover:border-ai/70`
+- Linha 177: checkmark — trocar `text-primary-foreground` por `text-white`
 
-- Remover `--bloom-warm` e `--bloom-warm-subtle` (substituidos pelos tokens AI)
+## 3. Botao "One Click" com cor ambar
 
-- **Nova classe `.glass-card-ai`** (substitui `.glass-card-orange`):
-  - Border com ai-accent em vez de azul
-  - Box-shadow com glow ambar sutil
-  - Focus-within com ai-ring
+O botao "One Click" na agenda (linha 253-255) usa `variant="outline"` padrao. Deve ter identidade AI (ambar).
 
-- **Nova classe `.ai-dialog-bloom`**: radial-gradient sutil ambar para dialogs do assistente
+### Arquivo: `src/pages/Agenda.tsx`
+- Linha 253-255: adicionar classes ambar ao botao One Click — `border-ai/30 text-ai hover:bg-ai-soft` e trocar icone Sparkles para `text-ai`
 
-- Atualizar `.status-draft` e `.status-rescheduled` para usar a nova cor de warning
-- Atualizar `.status-recording` e `.status-no_show` para usar a nova cor destructive
+## Resumo das mudancas
 
-### 2. `tailwind.config.ts` -- Novos tokens Tailwind
+| Arquivo | O que muda |
+|---------|-----------|
+| `src/pages/Agenda.tsx` | Remover min-h fixo do card; estilizar botao One Click com ambar |
+| `src/components/QuickNotesCard.tsx` | Trocar todas as cores `primary` por `ai` (ambar) nos icones e botoes |
 
-Adicionar ao `extend.colors`:
-- `primary.soft` com `--primary-soft-bg`
-- `aqua.DEFAULT` e `aqua.light`
-- `violet.DEFAULT` e `violet.light`
-- `ai.DEFAULT`, `ai.hover`, `ai.soft`, `ai.ring`, `ai.bloom`
-
-### 3. `src/components/SmartAssistantDialog.tsx` -- Identidade AI
-
-- Renomear titulo "Assistente Inteligente" para "One Click"
-- Trocar cor do icone Sparkles de `text-primary` para `text-ai` (ambar)
-- Aplicar classe `ai-dialog-bloom` no DialogContent
-- Aplicar `ai-ring` no focus do Textarea (ring ambar)
-- Badge de exemplos com hover ambar em vez de azul (`hover:bg-ai-soft`)
-- Botao "Processar comando" manter azul (primary) -- e a cor dominante da app
-
-### 4. `src/pages/Agenda.tsx` -- Renomear botao
-
-- Linha 254: trocar texto "Assistente" por "One Click"
-
-### 5. `src/components/QuickActionsMenu.tsx` -- Renomear menu item
-
-- Trocar texto "Assistente inteligente" por "One Click"
-
-### 6. `src/components/CommandBar.tsx` -- Renomear command item
-
-- Trocar texto "Assistente inteligente" por "One Click"
-
-### 7. `src/components/QuickNotesCard.tsx` -- Usar nova classe
-
-- Trocar `glass-card-orange` por `glass-card-ai`
-
-## O que NAO muda
-
-- Estrutura de paginas e rotas
-- Sidebar/Topbar continuam glass com neutros frios (sem ambar)
-- Botoes primarios continuam azuis
-- Dark mode nao sera adicionado
-- Tipografia Inter mantida
