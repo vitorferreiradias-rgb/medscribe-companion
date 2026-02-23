@@ -1,6 +1,7 @@
 import { AppData, ScheduleEvent } from "@/types";
 import { parseTranscriptToSections } from "./parser";
 import { SOAP_TEMPLATE_ID } from "./soap-template";
+import { toLocalDateStr } from "./format";
 
 function daysAgo(n: number, hour = 9, min = 0): string {
   const d = new Date();
@@ -14,13 +15,13 @@ function endTime(start: string, durationSec: number): string {
 }
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalDateStr();
 }
 
 function futureDate(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return toLocalDateStr(d);
 }
 
 const mockTranscript1 = [

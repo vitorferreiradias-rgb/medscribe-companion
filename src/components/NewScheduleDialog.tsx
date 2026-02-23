@@ -9,6 +9,7 @@ import { useAppData } from "@/hooks/useAppData";
 import { addScheduleEvent, updateScheduleEvent, getTimeBlocksForDate } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { ScheduleEvent } from "@/types";
+import { toLocalDateStr } from "@/lib/format";
 
 interface Props {
   open: boolean;
@@ -24,7 +25,7 @@ export function NewScheduleDialog({ open, onOpenChange, editEvent, defaultDate, 
   const data = useAppData();
   const { toast } = useToast();
 
-  const [date, setDate] = useState(defaultDate ?? new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(defaultDate ?? toLocalDateStr());
   const [startTime, setStartTime] = useState("08:00");
   const [endTime, setEndTime] = useState("08:30");
   const [patientId, setPatientId] = useState("");
@@ -42,7 +43,7 @@ export function NewScheduleDialog({ open, onOpenChange, editEvent, defaultDate, 
       setType(editEvent.type);
       setNotes(editEvent.notes ?? "");
     } else if (open) {
-      setDate(defaultDate ?? new Date().toISOString().slice(0, 10));
+      setDate(defaultDate ?? toLocalDateStr());
       setStartTime(defaultStartTime ?? "08:00");
       setEndTime(defaultEndTime ?? "08:30");
       setPatientId(defaultPatientId ?? "");

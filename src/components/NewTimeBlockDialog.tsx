@@ -8,6 +8,7 @@ import { useAppData } from "@/hooks/useAppData";
 import { addTimeBlock, updateTimeBlock } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { TimeBlock } from "@/types";
+import { toLocalDateStr } from "@/lib/format";
 
 interface Props {
   open: boolean;
@@ -20,7 +21,7 @@ export function NewTimeBlockDialog({ open, onOpenChange, editBlock, defaultDate 
   const data = useAppData();
   const { toast } = useToast();
 
-  const [date, setDate] = useState(defaultDate ?? new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(defaultDate ?? toLocalDateStr());
   const [startTime, setStartTime] = useState("12:00");
   const [endTime, setEndTime] = useState("13:00");
   const [reason, setReason] = useState("Almoço");
@@ -36,7 +37,7 @@ export function NewTimeBlockDialog({ open, onOpenChange, editBlock, defaultDate 
       setRecurrence(editBlock.recurrence);
       setClinicianId(editBlock.clinicianId);
     } else if (open) {
-      setDate(defaultDate ?? new Date().toISOString().slice(0, 10));
+      setDate(defaultDate ?? toLocalDateStr());
       setStartTime("12:00");
       setEndTime("13:00");
       setReason("Almoço");
