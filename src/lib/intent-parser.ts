@@ -73,18 +73,71 @@ function extractDate(text: string): string | undefined {
 
 // --- Time extraction ---
 
+const WORD_TO_NUM: Record<string, number> = {
+  "uma": 1, "duas": 2, "três": 3, "tres": 3, "quatro": 4, "cinco": 5,
+  "seis": 6, "sete": 7, "oito": 8, "nove": 9, "dez": 10,
+  "onze": 11, "doze": 12, "treze": 13, "catorze": 14, "quatorze": 14,
+  "quinze": 15, "dezesseis": 16, "dezessete": 17, "dezoito": 18,
+  "dezenove": 19, "vinte": 20, "vinte e uma": 21, "vinte e duas": 22,
+  "vinte e três": 23, "vinte e tres": 23,
+};
+
+function normalizeNumberWords(text: string): string {
+  let result = text.toLowerCase();
+  // Replace multi-word numbers first (longest match)
+  const sorted = Object.entries(WORD_TO_NUM).sort((a, b) => b[0].length - a[0].length);
+  for (const [word, num] of sorted) {
+    result = result.replace(new RegExp(`\\b${word}\\b`, "gi"), String(num));
+  }
+  return result;
+}
+
 function extractTime(text: string): string | undefined {
-  // "14h" / "14h30" / "14 horas"
-  let m = text.match(/\b(\d{1,2})\s*h\s*(\d{2})?\b/i);
+  const lower = text.toLowerCase();
+
+  // "meio-dia" / "meio dia"
+  if (/\bmeio[\s-]?dia\b/i.test(lower)) return "12:00";
+
+  // "meia-noite" / "meia noite"
+  if (/\bmeia[\s-]?noite\b/i.test(lower)) return "00:00";
+
+  // Normalize written-out numbers to digits
+  const normalized = normalizeNumberWords(lower);
+
+  let m: RegExpMatchArray | null;
+
+  // "14h" / "14h30"
+  m = normalized.match(/\b(\d{1,2})\s*h\s*(\d{2})?\b/i);
   if (m) return `${m[1].padStart(2, "0")}:${m[2] || "00"}`;
 
+  // "14 horas"
+  m = normalized.match(/\b(\d{1,2})\s*horas?\b/i);
+  if (m) return `${m[1].padStart(2, "0")}:00`;
+
+  // "3 e meia"
+  m = normalized.match(/\b(\d{1,2})\s*e\s*meia\b/i);
+  if (m) return `${m[1].padStart(2, "0")}:30`;
+
+  // "14 e 30"
+  m = normalized.match(/\b(\d{1,2})\s*e\s*(\d{1,2})\b/i);
+  if (m) return `${m[1].padStart(2, "0")}:${m[2].padStart(2, "0")}`;
+
   // "14:00" / "14:30"
-  m = text.match(/\b(\d{1,2}):(\d{2})\b/);
+  m = normalized.match(/\b(\d{1,2}):(\d{2})\b/);
   if (m) return `${m[1].padStart(2, "0")}:${m[2]}`;
 
   // "às 14" / "as 14"
-  m = text.match(/\b[àa]s?\s+(\d{1,2})\b/i);
+  m = normalized.match(/\b[àa]s?\s+(\d{1,2})\b/i);
   if (m) return `${m[1].padStart(2, "0")}:00`;
+
+  // "2 da tarde" / "8 da manhã" / "8 da noite"
+  m = normalized.match(/\b(\d{1,2})\s*da\s*(tarde|noite|manh[ãa]|manha)\b/i);
+  if (m) {
+    let hour = parseInt(m[1]);
+    const period = m[2].toLowerCase();
+    if ((period === "tarde" || period === "noite") && hour < 13) hour += 12;
+    return `${String(hour).padStart(2, "0")}:00`;
+  }
 
   return undefined;
 }
@@ -203,6 +256,8 @@ export function parseIntent(text: string): ParsedIntent {
   if ((detectedIntent === "agendar" || detectedIntent === "cancelar") && !result.date) {
     result.date = fmt(new Date());
   }
+
+  console.debug("[intent-parser]", { text: trimmed, intent: result.intent, date: result.date, time: result.time, patient: result.patientName });
 
   return result;
 }

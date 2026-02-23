@@ -40,6 +40,7 @@ export function AppLayout() {
     patientId?: string;
     date?: string;
     startTime?: string;
+    endTime?: string;
   } | null>(null);
 
   // New patient form
@@ -104,7 +105,7 @@ export function AppLayout() {
   }, [data.scheduleEvents]);
 
   // Assistant callbacks
-  const handleAssistantSchedule = useCallback((defaults: { patientId?: string; date?: string; startTime?: string }) => {
+  const handleAssistantSchedule = useCallback((defaults: { patientId?: string; date?: string; startTime?: string; endTime?: string }) => {
     setScheduleDefaults(defaults);
     setEditScheduleEvent(null);
     setShowNewSchedule(true);
@@ -159,6 +160,7 @@ export function AppLayout() {
         defaultDate={scheduleDefaults?.date || currentDate.toISOString().slice(0, 10)}
         defaultPatientId={scheduleDefaults?.patientId}
         defaultStartTime={scheduleDefaults?.startTime}
+        defaultEndTime={scheduleDefaults?.endTime}
       />
       <NewTimeBlockDialog open={showTimeBlock} onOpenChange={setShowTimeBlock} defaultDate={currentDate.toISOString().slice(0, 10)} />
 
