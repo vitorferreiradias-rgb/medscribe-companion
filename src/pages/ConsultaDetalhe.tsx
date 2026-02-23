@@ -5,6 +5,7 @@ import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3
 import { useAppData } from "@/hooks/useAppData";
 import { updateEncounter, deleteEncounter } from "@/lib/store";
 import { MedicationHistorySheet } from "@/components/MedicationHistorySheet";
+import { SmartPrescriptionDialog } from "@/components/smart-prescription/SmartPrescriptionDialog";
 import { updateUnifiedNote } from "@/lib/store";
 import { formatDateTimeBR, formatDuration, formatDateLongBR, formatMedicationsForNote, formatDateBR } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ export default function ConsultaDetalhe() {
   const [aiSummary, setAiSummary] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [showMedHistory, setShowMedHistory] = useState(false);
+  const [showSmartPrescription, setShowSmartPrescription] = useState(false);
   const enc = data.encounters.find((e) => e.id === id);
   const patient = enc ? data.patients.find((p) => p.id === enc.patientId) : undefined;
   const clinician = enc ? data.clinicians.find((c) => c.id === enc.clinicianId) : undefined;
@@ -431,7 +433,13 @@ export default function ConsultaDetalhe() {
               </div>
             </TabsContent>
 
-            <TabsContent value="receita" className="mt-3">
+            <TabsContent value="receita" className="mt-3 space-y-3">
+              <Button
+                onClick={() => setShowSmartPrescription(true)}
+                className="w-full"
+              >
+                <Sparkles className="mr-2 h-4 w-4" /> Prescrição inteligente
+              </Button>
               <ReceitaPlaceholder
                 encounterId={enc.id}
                 patientId={enc.patientId}
@@ -503,6 +511,16 @@ export default function ConsultaDetalhe() {
           open={showMedHistory}
           onOpenChange={setShowMedHistory}
           patientId={enc.patientId}
+        />
+      )}
+
+      {patient && clinician && (
+        <SmartPrescriptionDialog
+          open={showSmartPrescription}
+          onOpenChange={setShowSmartPrescription}
+          patient={{ id: patient.id, name: patient.name }}
+          prescriber={{ name: clinician.name, crm: clinician.crm }}
+          encounterId={enc.id}
         />
       )}
     </motion.div>
