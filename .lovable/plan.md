@@ -1,52 +1,55 @@
 
+# Adicionar botoes "Remover" e "Adicionar" na agenda
 
-# Corrigir timezone em todo o projeto
+## O que muda
 
-## Problema
+1. **Botao "Remover da agenda"** (icone de lixeira/Trash2) -- aparece nos botoes de acao ao selecionar qualquer card com status `scheduled` ou `confirmed`. Ao clicar, remove o agendamento da lista usando `deleteScheduleEvent` que ja existe em `store.ts`.
 
-O bug de timezone que corrigimos em `intent-parser.ts` e `holidays.ts` existe em **mais 9 arquivos**. Todas as chamadas a `toISOString().slice(0, 10)` convertem para UTC, causando deslocamento de data para usuarios no Brasil (UTC-3).
+2. **Botao "Adicionar consulta"** (icone de PlusCircle) -- aparece apenas no ultimo card da lista do dia, ao ser selecionado. Ao clicar, abre o dialog de novo agendamento (`onNewSchedule`).
 
-Isso afeta:
-- A data exibida na agenda (o dia "hoje" pode estar errado)
-- A data usada ao criar agendamentos (cai no dia errado)
-- A comparacao "isToday" (pode falhar a noite)
-- A seed de dados de exemplo
+## Detalhes Tecnicos
 
-## Solucao
+### Arquivo: `src/pages/Agenda.tsx`
 
-Criar uma funcao utilitaria `toLocalDateStr(d: Date)` em `src/lib/format.ts` e substituir todas as ocorrencias de `toISOString().slice(0, 10)` por essa funcao.
+**Imports**: Adicionar `Trash2` e `PlusCircle` do lucide-react, e `deleteScheduleEvent` do store.
 
-## Arquivos a alterar
-
-### 1. `src/lib/format.ts` — adicionar funcao utilitaria
-
+**Handler novo** `handleRemove`:
 ```typescript
-export function toLocalDateStr(d: Date = new Date()): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+const handleRemove = (evt: ScheduleEvent) => {
+  deleteScheduleEvent(evt.id);
+  setSelectedId(null);
+  toast({ title: "Agendamento removido." });
+};
 ```
 
-### 2. Substituir em todos os arquivos
+**Botao Remover**: Dentro do bloco de acoes para status `scheduled`/`confirmed` (linhas 403-429), adicionar apos o botao "Marcar falta":
+```tsx
+<Tooltip>
+  <TooltipTrigger asChild>
+    <Button variant="ghost" size="icon" className="h-7 w-7"
+      onClick={(e) => { e.stopPropagation(); handleRemove(evt); }}>
+      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+    </Button>
+  </TooltipTrigger>
+  <TooltipContent>Remover da agenda</TooltipContent>
+</Tooltip>
+```
 
-| Arquivo | Ocorrencias | O que muda |
-|---------|-------------|------------|
-| `src/pages/Agenda.tsx` | 3 | `dateStr`, `prevDateRef`, `isToday` |
-| `src/components/AppLayout.tsx` | 2 | `defaultDate` para dialogs |
-| `src/components/NewScheduleDialog.tsx` | 2 | Estado inicial e reset de `date` |
-| `src/components/NewTimeBlockDialog.tsx` | 2 | Estado inicial e reset de `date` |
-| `src/components/SmartAssistantDialog.tsx` | 2 | Busca de eventos para remarcar/cancelar |
-| `src/components/AgendaWeekView.tsx` | 2 | `todayStr` e `dateStr` por dia |
-| `src/components/AgendaMonthView.tsx` | 2 | `todayStr` e `dateStr` por dia |
-| `src/components/AlertsCard.tsx` | 1 | Comparacao `isToday` |
-| `src/lib/seed.ts` | 2 | `todayStr()` e `offsetDate()` |
+**Botao Adicionar**: Apos o fechamento do bloco de acoes contextuais (linha 461), adicionar condicional para o ultimo item:
+```tsx
+{isSelected && i === filteredEvents.length - 1 && (
+  <motion.div className="flex gap-1 mt-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs"
+          onClick={(e) => { e.stopPropagation(); onNewSchedule(); }}>
+          <PlusCircle className="h-3.5 w-3.5 text-primary" /> Agendar
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>Adicionar consulta</TooltipContent>
+    </Tooltip>
+  </motion.div>
+)}
+```
 
-Cada substituicao segue o mesmo padrao:
-- `new Date().toISOString().slice(0, 10)` vira `toLocalDateStr()`
-- `someDate.toISOString().slice(0, 10)` vira `toLocalDateStr(someDate)`
-- Adicionar `import { toLocalDateStr } from "@/lib/format"` no topo
-
-Total: **18 ocorrencias** em 9 arquivos, todas substituidas pela mesma funcao centralizada.
-
+Resultado: 4 botoes para agendamentos pendentes (Iniciar, Remarcar, Falta, Remover) e um botao extra "Agendar" no ultimo card.
