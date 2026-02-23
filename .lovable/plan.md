@@ -1,141 +1,244 @@
 
 
-# Melhorias: Autenticacao, Agenda Avancada e Perfil Editavel
+# Prescricao Inteligente — Plano de Implementacao
 
 ## Resumo
 
-Tres grandes blocos de melhorias mantendo tudo local (localStorage):
-
-1. **Autenticacao simulada aprimorada** com tela de login, protecao de rotas e sessao persistente
-2. **Fluxo de agendamento completo** com remarcacao real, visualizacao semanal/mensal e bloqueio de horarios
-3. **Perfil do medico editavel** com suporte a multiplas clinicas
+Implementar um fluxo completo de "Prescricao Inteligente" na tela de consulta (`/consultas/:id`), acionavel por texto livre ou voz, com roteamento regulatorio automatico (ComplianceRouter), geracao de posologia padrao, confirmacao de divergencias, preview da receita e assinatura eletronica simulada. Tudo local (localStorage), mas estruturado para integracao futura com backend.
 
 ---
 
-## 1. Autenticacao Simulada Aprimorada
+## Arquitetura Geral
 
-### O que muda
-- Criar pagina `/login` com formulario de email/senha (credenciais fixas: `ricardo@medscribe.app` / `1234`)
-- Criar componente `ProtectedRoute` que redireciona para `/login` se nao estiver logado
-- Envolver todas as rotas (exceto `/login`) com `ProtectedRoute`
-- Atualizar o logout em `Perfil.tsx` para redirecionar a `/login`
-- Remover labels "(simulado)" — manter comportamento local mas com UX real
+O sistema sera composto por 4 modulos principais:
 
-### Arquivos
-
-| Arquivo | Acao |
-|---------|------|
-| `src/pages/Login.tsx` | Novo — formulario de login com validacao |
-| `src/components/ProtectedRoute.tsx` | Novo — wrapper que checa `settings.sessionSimulated.isLoggedIn` |
-| `src/App.tsx` | Adicionar rota `/login`, envolver rotas existentes com `ProtectedRoute` |
-| `src/pages/Perfil.tsx` | Logout redireciona para `/login` via `navigate()` |
-
----
-
-## 2. Fluxo de Agendamento
-
-### 2a. Remarcacao real (escolher nova data/hora)
-
-Atualmente o botao "Remarcar" apenas muda o status para `rescheduled`. A melhoria abre o dialogo `NewScheduleDialog` pre-preenchido com os dados do evento, permitindo alterar data e hora.
-
-| Arquivo | Acao |
-|---------|------|
-| `src/pages/Agenda.tsx` | `handleReschedule` abre `NewScheduleDialog` em modo edicao em vez de apenas mudar status |
-| `src/components/NewScheduleDialog.tsx` | Ja suporta modo edicao (`editEvent`), nenhuma mudanca necessaria |
-
-### 2b. Visualizacao semanal e mensal
-
-Adicionar tabs "Dia / Semana / Mes" acima da timeline da agenda.
-
-- **Semana**: Grid com 7 colunas (seg-dom), cada coluna mostrando os eventos do dia com horario e nome do paciente
-- **Mes**: Grid de calendario mensal com badges indicando quantidade de consultas por dia; clicar num dia muda para visao diaria
-
-| Arquivo | Acao |
-|---------|------|
-| `src/components/AgendaWeekView.tsx` | Novo — grid semanal com eventos |
-| `src/components/AgendaMonthView.tsx` | Novo — calendario mensal com contadores |
-| `src/pages/Agenda.tsx` | Adicionar state `viewMode` (dia/semana/mes), tabs de selecao, renderizar componente correspondente |
-
-### 2c. Bloqueio de horarios
-
-Novo tipo de entidade `TimeBlock` para representar intervalos bloqueados (almoco, ferias, feriados manuais).
-
-- Entidade armazenada em `AppData.timeBlocks`
-- Dialogo para criar/editar bloqueios com: data (ou range de datas), horario inicio/fim, motivo, recorrencia (nenhuma, diaria, semanal)
-- Na timeline diaria, bloqueios aparecem como faixas cinza com icone de cadeado
-- Ao criar agendamento, validar conflito com bloqueios existentes
-
-| Arquivo | Acao |
-|---------|------|
-| `src/types/index.ts` | Adicionar interface `TimeBlock` e campo `timeBlocks` em `AppData` |
-| `src/lib/store.ts` | CRUD para `timeBlocks` (add, update, delete) |
-| `src/lib/seed.ts` | Seed com bloqueio de almoco 12:00-13:00 diario |
-| `src/components/NewTimeBlockDialog.tsx` | Novo — formulario para criar bloqueio |
-| `src/pages/Agenda.tsx` | Renderizar bloqueios na timeline, botao "Bloquear horario" |
-| `src/components/NewScheduleDialog.tsx` | Validar conflito com bloqueios ao salvar |
-
----
-
-## 3. Perfil do Medico Editavel
-
-### O que muda
-- Transformar card "Informacoes da Conta" de somente-leitura para editavel
-- Campos editaveis: Nome, Especialidade, CRM, CPF, Email
-- Secao de Clinicas/Locais: lista de clinicas com nome e endereco, possibilidade de adicionar/remover
-- Salvar alteracoes atualizando o clinician no store
-
-| Arquivo | Acao |
-|---------|------|
-| `src/types/index.ts` | Expandir `Clinician` com campo `clinics: Array<{id, name, address}>` e `email` |
-| `src/lib/store.ts` | Adicionar funcao `updateClinician(id, updates)` |
-| `src/lib/seed.ts` | Migrar `clinicAddress` para array `clinics` no seed |
-| `src/pages/Perfil.tsx` | Formulario editavel com campos do medico e lista de clinicas |
-
----
-
-## Secao Tecnica Detalhada
-
-### Nova interface TimeBlock
+1. **SmartPrescriptionDialog** — Dialog/Sheet principal para entrada hibrida (texto/voz)
+2. **ComplianceRouter** — Classificador regulatorio plugavel (mock agora, backend depois)
+3. **MedicationKnowledgeMock** — Base de conhecimento local de medicamentos (posologia, variantes, alertas)
+4. **SmartPrescriptionPreview** — Preview da receita gerada com confirmacao e assinatura
 
 ```text
-interface TimeBlock {
-  id: string
-  date: string          // YYYY-MM-DD ou "recurrent"
-  startTime: string     // HH:MM
-  endTime: string       // HH:MM
-  reason: string        // ex: "Almoco", "Ferias"
-  recurrence: "none" | "daily" | "weekly"
-  clinicianId: string
+Entrada (texto/voz)
+       |
+       v
+  NLP Parser local (regex)
+       |
+       v
+  MedicationKnowledgeMock --> posologia padrao / variantes
+       |
+       v
+  ComplianceRouter --> tipo de receita + requirements + warnings
+       |
+       v
+  Confirmacao de divergencia (se necessario)
+       |
+       v
+  SmartPrescriptionPreview --> revisao + assinatura
+       |
+       v
+  Persistencia (localStorage) --> MedicationEvent + ClinicalDocument
+```
+
+---
+
+## Arquivos Novos
+
+| Arquivo | Descricao |
+|---------|-----------|
+| `src/lib/compliance-router.ts` | ComplianceRouter + RegulatoryMockDB |
+| `src/lib/medication-knowledge.ts` | MedicationKnowledgeMock (20 medicamentos) |
+| `src/lib/smart-prescription-parser.ts` | Parser de texto livre para extrair medicamento, concentracao, posologia |
+| `src/components/smart-prescription/SmartPrescriptionDialog.tsx` | Dialog principal com input hibrido (texto/voz) + chips de exemplo |
+| `src/components/smart-prescription/DivergenceConfirmation.tsx` | UI de confirmacao quando posologia diverge do padrao |
+| `src/components/smart-prescription/VariantSelector.tsx` | Cards de selecao de esquema terapeutico |
+| `src/components/smart-prescription/SmartPrescriptionPreview.tsx` | Preview completo da receita com header, corpo, rodape e botao assinar |
+| `src/components/smart-prescription/PosologyPrompt.tsx` | Prompt simples para pedir posologia quando nao reconhecida |
+
+## Arquivos Modificados
+
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/pages/ConsultaDetalhe.tsx` | Adicionar botao "Prescricao inteligente" + integracao com o fluxo |
+| `src/types/index.ts` | Expandir `ClinicalDocument` com campos de compliance e recipeType |
+| `src/lib/clinical-documents.ts` | Suportar novos campos no addDocument |
+| `src/components/CommandBar.tsx` | Detectar intencao de prescricao e acionar o fluxo |
+
+---
+
+## Detalhamento Tecnico
+
+### 1. Parser de Texto Livre (`smart-prescription-parser.ts`)
+
+Funcao `parsePrescriptionInput(text: string)` que retorna:
+
+```text
+{
+  medicationName: string | null
+  concentration: string | null
+  dosage: string | null        // posologia ditada pelo medico
+  duration: string | null
+  quantity: string | null
+  action: "prescrever" | "renovar" | "suspender" | "continuar"
+  rawText: string
 }
 ```
 
-### Expansao do Clinician
+Usa regex para extrair padroes como:
+- "prescrever Mounjaro 2,5 mg" -> medicationName="Mounjaro", concentration="2,5 mg"
+- "1 cp 2x ao dia por 30 dias" -> dosage="1 cp 2x ao dia", duration="30 dias"
+- "suspender Mounjaro porque atingiu a meta" -> action="suspender", note="atingiu a meta"
+- "renovar ultima prescricao" -> action="renovar"
+
+### 2. MedicationKnowledgeMock (`medication-knowledge.ts`)
+
+Base local com 15-20 medicamentos incluindo:
 
 ```text
-interface Clinician {
-  id: string
+interface MedicationKnowledge {
   name: string
-  specialty: string
-  crm: string
-  cpf?: string
-  email?: string
-  clinics?: Array<{ id: string; name: string; address: string }>
+  aliases: string[]           // nomes alternativos
+  category: "simples" | "antimicrobiano" | "controlado"
+  defaultDosePatterns: DosePattern[]
+  commonForms: string[]
+  cautions: string[]
+  variants?: DoseVariant[]
+}
+
+interface DosePattern {
+  concentration: string
+  dosage: string              // ex: "1 cp 1x ao dia"
+  duration?: string
+  quantity?: string
+}
+
+interface DoseVariant {
+  label: string               // ex: "Esquema padrao"
+  description: string
+  dosage: string
 }
 ```
 
-### Fluxo de login
+Medicamentos incluidos:
+- Simples: Paracetamol, Ibuprofeno, Omeprazol, Losartana, Metformina, Atorvastatina, AAS, Dipirona
+- Antimicrobianos: Amoxicilina, Azitromicina, Cefalexina
+- Controlados: Rivotril (Clonazepam), Fluoxetina, Sertralina, Ritalina
+- Com variantes: Mounjaro (tirzepatida), Ozempic (semaglutida), Contrave
+
+### 3. ComplianceRouter (`compliance-router.ts`)
 
 ```text
-/login  -->  valida credenciais fixas  -->  settings.sessionSimulated.isLoggedIn = true  -->  redireciona /agenda
+interface ComplianceInput {
+  items: ParsedPrescriptionItem[]
+  patient: { id: string; name: string }
+  prescriber: { name: string; crm: string }
+}
+
+interface ComplianceResult {
+  recipeType: "simples" | "antimicrobiano" | "controle_especial"
+  requirements: string[]
+  warnings: string[]
+  needsConfirmation: boolean
+  suggestedTemplateId: string
+  regulatorySource: string
+}
+
+function classifyPrescription(input: ComplianceInput): ComplianceResult
 ```
 
-### Ordem de implementacao
+Logica:
+- Busca cada item no RegulatoryMockDB
+- Se encontrar "controlado" -> `controle_especial` + Portaria_344_98
+- Se encontrar "antimicrobiano" -> `antimicrobiano` + RDC_471_2021
+- Senao -> `simples` + Geral
+- Se nao reconhecer -> default "simples" + warning
 
-1. Tipos e store (TimeBlock, Clinician expandido, updateClinician, CRUD timeBlocks)
-2. Login + ProtectedRoute + rotas
-3. Perfil editavel
-4. Remarcacao real
-5. Bloqueio de horarios + dialogo
-6. Visualizacao semanal
-7. Visualizacao mensal
+### 4. SmartPrescriptionDialog
+
+Dialog com:
+- Input principal com placeholder "Digite ou fale a prescricao..."
+- Botao de microfone (usa `useSpeechRecognition` existente)
+- Chips de exemplos clicaveis
+- Ao submeter: parser -> knowledge lookup -> compliance -> divergence check -> preview
+
+### 5. Fluxo de Divergencia
+
+Se o medico ditar posologia diferente do padrao do mock:
+- Mostrar card de confirmacao com 3 botoes: [Manter como ditado] [Ajustar para padrao] [Editar manualmente]
+- Registrar decisao com `confirmedByDoctor: true/false` e timestamp
+
+### 6. Selecao de Variantes
+
+Se o MedicationKnowledgeMock tiver `variants` e o medico nao especificar esquema:
+- Mostrar 2-3 cards com resumo de cada variante
+- Medico seleciona e segue para preview
+
+### 7. SmartPrescriptionPreview
+
+Preview completo com:
+- Cabecalho: paciente, data, tipo de receita (Select editavel), badge regulatorio (mock)
+- Corpo: itens prescritos com todos os detalhes
+- Para controle especial: banner informativo sobre integracao futura SNCR
+- Rodape: area de assinatura
+- Botoes: [Assinar agora] [Revisar] [Cancelar]
+
+### 8. Assinatura e Persistencia
+
+"Assinar agora":
+- Cria `ClinicalDocument` com status "signed", signedAt, signedBy
+- Cria `MedicationEvent` para cada item (status "prescrito" ou "suspenso")
+- Bloqueia edicao do documento assinado
+- Audit trail local com `confirmedByDoctor` e timestamp
+
+### 9. Expansao do Tipo ClinicalDocument
+
+Adicionar campos opcionais ao tipo existente:
+
+```text
+// Novos campos em ClinicalDocument
+recipeType?: "simples" | "antimicrobiano" | "controle_especial"
+compliance?: {
+  regulatorySource: string
+  requirements: string[]
+  warnings: string[]
+  needsConfirmation: boolean
+  confirmedByDoctor?: boolean
+}
+```
+
+### 10. Integracao com ConsultaDetalhe
+
+Na aba "Receita" da consulta:
+- Botao primario "Prescricao inteligente" (icone sparkles) acima do PrescriptionFlow existente
+- Ao clicar, abre SmartPrescriptionDialog
+- Ao finalizar, o documento gerado aparece na lista de prescricoes e no historico
+
+### 11. Integracao com CommandBar
+
+Adicionar deteccao de intencao no CommandBar:
+- Se o texto digitado contiver "prescrever", "receita", "renovar", "suspender", "continuar"
+- Mostrar opcao "Prescricao inteligente" que abre o dialog com o texto pre-preenchido
+
+### 12. Historico e Ultimos Documentos
+
+Ja existem (`MedicationHistorySheet` e `LastDocumentsSheet`). Integrar:
+- Icone de historico de medicacoes ja esta no header da consulta
+- Botao "Ultimos documentos" ja existe no PrescriptionFlow
+- Adicionar link para "Ultimos documentos" tambem dentro do SmartPrescriptionPreview
+
+---
+
+## Ordem de Implementacao
+
+1. Tipos expandidos (`types/index.ts`)
+2. `medication-knowledge.ts` — base de dados mock
+3. `smart-prescription-parser.ts` — parser de texto livre
+4. `compliance-router.ts` — roteador regulatorio
+5. `PosologyPrompt.tsx` — prompt de posologia
+6. `DivergenceConfirmation.tsx` — confirmacao de divergencia
+7. `VariantSelector.tsx` — selecao de esquema
+8. `SmartPrescriptionPreview.tsx` — preview da receita
+9. `SmartPrescriptionDialog.tsx` — dialog principal orquestrando todo o fluxo
+10. `ConsultaDetalhe.tsx` — integracao do botao e fluxo
+11. `CommandBar.tsx` — deteccao de intencao de prescricao
+12. `clinical-documents.ts` — suporte aos novos campos
 
