@@ -1,60 +1,43 @@
 
 
-# Melhorar extração de horário no Assistente Inteligente
+# Corrigir extração de data "amanhã" no Assistente Inteligente
 
 ## Problema
 
-O reconhecimento de voz transcreve horários em formatos que o parser atual não reconhece. Por exemplo:
-- "14 horas" — o regex falha porque espera "14h" (sem espaço antes do "h" seguido de letras)
-- "duas da tarde" / "três da manhã" — números por extenso não são tratados
-- "meio-dia" / "meia-noite" — expressões comuns ignoradas
-- "2 da tarde" — formato com período do dia não reconhecido
+Ao dizer "agendar Maria amanhã às 14h", o sistema agenda para **hoje** em vez de amanhã.
 
-## Solução
+**Causa raiz**: O regex `\bamanh[ãa]\b` falha com caracteres acentuados no JavaScript. O `\b` (word boundary) do JS so reconhece `[a-zA-Z0-9_]` como "word characters" -- o `ã` e tratado como non-word, fazendo o `\b` final nao corresponder. Resultado: `extractDate` retorna `undefined`, e o fallback na linha 256 aplica a data de hoje.
 
-Expandir a função `extractTime` em `src/lib/intent-parser.ts` para cobrir todos os formatos comuns de fala em português:
+O mesmo problema afeta **todos os regex com acentos**: "terça", "sábado", "después de amanhã".
 
-### Novos padrões a reconhecer
+## Solucao
 
-| Formato falado | Exemplo | Resultado |
-|----------------|---------|-----------|
-| "N horas" | "14 horas" | 14:00 |
-| "N e meia" | "3 e meia" | 03:30 |
-| "N e N" | "14 e 30" | 14:30 |
-| "N da tarde" | "2 da tarde" | 14:00 |
-| "N da manhã" | "8 da manhã" | 08:00 |
-| "N da noite" | "8 da noite" | 20:00 |
-| "meio-dia" | "meio-dia" | 12:00 |
-| "meia-noite" | "meia-noite" | 00:00 |
-| Números por extenso | "duas", "catorze" | 02:00, 14:00 |
-
-### Tambem: adicionar log de debug
-
-Para facilitar diagnóstico futuro, adicionar um `console.debug` temporário mostrando o texto recebido e o resultado do parsing (intent, date, time, patient).
-
----
+Substituir `\b` por alternativas que funcionem com caracteres acentuados em todos os regex da funcao `extractDate`.
 
 ## Detalhes Tecnicos
 
 ### Arquivo: `src/lib/intent-parser.ts`
 
-Reescrever a funcao `extractTime` com a seguinte logica (em ordem de prioridade):
+Alterar os regex em `extractDate` para usar `(?:\s|$)` ou `(?![a-zA-ZÀ-ÿ])` no lugar de `\b` no final dos padroes com acentos:
 
-1. "meio-dia" / "meio dia" retorna "12:00"
-2. "meia-noite" / "meia noite" retorna "00:00"
-3. Mapa de numeros por extenso (uma, duas, tres... doze, treze, catorze, quinze... vinte e uma) para converter para digitos
-4. Normalizar o texto substituindo numeros por extenso antes de aplicar os regex
-5. `(\d{1,2})\s*h\s*(\d{2})?` — "14h", "14h30" (ja existe)
-6. `(\d{1,2})\s*horas?` — "14 horas" (NOVO)
-7. `(\d{1,2})\s*e\s*meia` — "3 e meia" = X:30 (NOVO)
-8. `(\d{1,2})\s*e\s*(\d{1,2})` — "14 e 30" (NOVO)
-9. `(\d{1,2}):(\d{2})` — "14:00" (ja existe)
-10. `[àa]s?\s+(\d{1,2})` — "as 14" (ja existe)
-11. `(\d{1,2})\s*da\s*(tarde|noite|manhã|manha)` — aplica +12 para tarde/noite se < 13 (NOVO)
+1. **Linha 34** - "amanhã": trocar `\bamanh[ãa]\b` por `\bamanh[ãa](?!\w)`
+2. **Linha 37** - "depois de amanhã": trocar `\bdepois\s+de\s+amanh[ãa]\b` por `\bdepois\s+de\s+amanh[ãa](?!\w)`  
+3. **Linha 37 deve vir ANTES da linha 34** - "depois de amanhã" precisa ser testado antes de "amanhã", senao "depois de amanhã" casaria com "amanhã" e retornaria D+1 em vez de D+2
+4. **Linha 41** - "terça" e "sábado": o matching por `includes()` ja funciona, nao usa `\b`
 
-Adicionar tambem um `console.debug("[intent-parser]", { text, intent, date, time, patient })` no final de `parseIntent` para facilitar debug.
+A correcao mais simples e robusta: trocar o `\b` final por `(?![a-zA-ZÀ-ÿ])` (negative lookahead para letras incluindo acentuadas), garantindo que funciona com qualquer caractere Unicode.
 
-### Arquivo: `src/components/SmartAssistantDialog.tsx`
+Mudancas concretas:
 
-Adicionar endTime automatico (startTime + 30min) quando o assistente passa um horario, para que o `NewScheduleDialog` receba ambos os campos preenchidos.
+```
+// ANTES (bugado):
+if (/\bdepois\s+de\s+amanh[ãa]\b/i.test(text)) ...
+if (/\bamanh[ãa]\b/i.test(text)) ...
+
+// DEPOIS (corrigido + ordem trocada):
+if (/\bdepois\s+de\s+amanh[ãa](?![a-zA-ZÀ-ÿ])/i.test(text)) ...
+if (/\bamanh[ãa](?![a-zA-ZÀ-ÿ])/i.test(text)) ...
+```
+
+Tambem corrigir o `\b` final em "hoje" (linha 31) pelo mesmo motivo de consistencia, embora "hoje" nao tenha acentos no final.
 
