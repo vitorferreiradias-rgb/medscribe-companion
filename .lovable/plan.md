@@ -1,77 +1,45 @@
 
-# Adicionar botao de limpar nota e funcao de alarme nas Notas Rapidas
 
-## Resumo
+# Corrigir: nome do paciente vazando para o nome do medicamento
 
-Duas novas funcionalidades no `QuickNotesCard`:
+## Problema
 
-1. **Botao de limpar** a nota rapida (campo de texto do topo) -- um "X" discreto que aparece quando ha texto digitado.
-2. **Alarme por item** -- cada compromisso pode ter um horario de alarme. Quando o horario chega, uma notificacao toast (sonner) avisa o usuario.
+Quando o usuario digita algo como "Prescrever Amoxicilina 500 mg para Maria", o parser remove as palavras comuns ("para") mas deixa o nome do paciente ("Maria") no texto. O resultado e que o nome do medicamento fica "Amoxicilina Maria", que nao e encontrado no banco de dados, e o sistema pede posologia manual em vez de preencher automaticamente.
 
----
+## Causa raiz
 
-## 1. Botao de limpar a nota rapida
+O parser (`smart-prescription-parser.ts`) nao tem conhecimento do paciente selecionado. Ele so remove palavras de acao (prescrever, suspender...) e stop words (de, por, para...), mas nomes proprios ficam no texto residual.
 
-Adicionar um botao "X" dentro do campo de nota (linha 112-120) que so aparece quando `data.note` tem conteudo. Ao clicar, limpa o texto.
+## Solucao
 
-Visual: icone `X` pequeno, cinza discreto, aparece com fade ao lado direito do input.
+No `SmartPrescriptionDialog.tsx`, logo apos o parse, remover o nome do paciente selecionado do `medicationName` retornado. Isso resolve o problema sem alterar o parser generico.
 
 ---
 
-## 2. Alarme nos compromissos
+## Detalhe tecnico
 
-### Modelo de dados
+### Arquivo: `src/components/smart-prescription/SmartPrescriptionDialog.tsx`
 
-Adicionar campo opcional `alarm` ao `NoteItem`:
+Apos a linha 147 (`const medName = parsed.medicationName;`), adicionar logica para limpar o nome do paciente:
 
-```
-interface NoteItem {
-  id: string;
-  text: string;
-  done: boolean;
-  alarm?: string; // formato "HH:mm" — horario do alarme para hoje
+```typescript
+const medName = parsed.medicationName;
+
+// Remove patient name from medication name (parser residue)
+let cleanMedName = medName;
+if (patient?.name) {
+  const patientWords = patient.name.toLowerCase().split(/\s+/);
+  cleanMedName = medName
+    .split(/\s+/)
+    .filter(w => !patientWords.includes(w.toLowerCase()))
+    .join(" ")
+    .trim() || medName;
 }
 ```
 
-### Interacao do usuario
-
-- Cada item ganha um botao de sino (`Bell` / `BellRing`) ao lado do "X" de remover, visivel no hover.
-- Ao clicar no sino, aparece um pequeno input `time` inline para o usuario definir o horario.
-- Se ja tem alarme definido, o sino fica preenchido (`BellRing`) com a cor ambar (`text-ai`) e mostra o horario ao lado.
-- Para remover o alarme, o usuario clica no sino novamente.
-
-### Disparo do alarme
-
-- Um `useEffect` com `setInterval` (a cada 30 segundos) verifica se algum item nao-concluido tem `alarm` igual ao horario atual (`HH:mm`).
-- Ao disparar, exibe um toast via `sonner` com o texto do compromisso.
-- Apos disparar, o alarme e removido do item para nao repetir.
-
-### Visual
-
-- Sino sem alarme: icone `Bell` cinza, aparece no hover (como o "X" de remover).
-- Sino com alarme: icone `BellRing` ambar (`text-ai`), sempre visivel + badge pequeno com o horario.
-- Input de horario: aparece inline, estilo minimalista, com fundo transparente.
-
----
-
-## Detalhes Tecnicos
-
-### Arquivo: `src/components/QuickNotesCard.tsx`
-
-**Imports adicionais**: `Bell`, `BellRing`, `Trash2` de lucide-react; `toast` de sonner.
-
-**Interface NoteItem**: adicionar `alarm?: string`.
-
-**QuickNotesCard (componente principal)**:
-- Adicionar funcao `setAlarm(id, time)` e `clearAlarm(id)`.
-- Adicionar `useEffect` com intervalo de 30s para verificar alarmes e disparar toasts.
-- No campo de nota (input do topo): envolver em div relativa e adicionar botao "X" condicional.
-
-**ItemRow (componente interno)**:
-- Receber props `alarm`, `onSetAlarm`, `onClearAlarm`.
-- Adicionar estado local `showTimePicker` para exibir/esconder o input de horario.
-- Renderizar botao do sino e input de horario condicional.
+Em seguida, usar `cleanMedName` em vez de `medName` em todas as referencias subsequentes (setParsedMedName, findMedication, etc.).
 
 ### Nenhum outro arquivo precisa ser alterado.
 
-Persistencia continua em localStorage com o mesmo key `notes_quick_v1`, compativel com dados existentes (campo `alarm` e opcional).
+A correcao e minima e cirurgica: apenas 6 linhas no fluxo de submit.
+
