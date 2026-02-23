@@ -144,7 +144,19 @@ export function SmartPrescriptionDialog({
     if (parsed.action === "renovar") return;
     if (!parsed.medicationName) return;
 
-    const medName = parsed.medicationName;
+    const medNameRaw = parsed.medicationName;
+
+    // Remove patient name from medication name (parser residue)
+    let medName = medNameRaw;
+    if (patient?.name) {
+      const patientWords = patient.name.toLowerCase().split(/\s+/);
+      medName = medNameRaw
+        .split(/\s+/)
+        .filter(w => !patientWords.includes(w.toLowerCase()))
+        .join(" ")
+        .trim() || medNameRaw;
+    }
+
     setParsedMedName(medName);
     setParsedConcentration(parsed.concentration || "");
 
