@@ -1,34 +1,77 @@
 
-# Adicionar botao "Remover" para pacientes com falta (no_show)
+# Adicionar botao de limpar nota e funcao de alarme nas Notas Rapidas
 
-## Problema
+## Resumo
 
-Ao selecionar um card com status `no_show`, nenhuma acao contextual aparece porque o codigo so trata os status `scheduled`, `confirmed`, `in_progress` e `done`. Nao ha bloco para `no_show`.
+Duas novas funcionalidades no `QuickNotesCard`:
 
-## Solucao
+1. **Botao de limpar** a nota rapida (campo de texto do topo) -- um "X" discreto que aparece quando ha texto digitado.
+2. **Alarme por item** -- cada compromisso pode ter um horario de alarme. Quando o horario chega, uma notificacao toast (sonner) avisa o usuario.
 
-Adicionar um bloco condicional para `evt.status === "no_show"` com um botao "Remover da agenda" (icone Trash2), usando o mesmo `handleRemove` que ja existe.
+---
 
-## Detalhe Tecnico
+## 1. Botao de limpar a nota rapida
 
-### Arquivo: `src/pages/Agenda.tsx`
+Adicionar um botao "X" dentro do campo de nota (linha 112-120) que so aparece quando `data.note` tem conteudo. Ao clicar, limpa o texto.
 
-Apos o bloco de `evt.status === "done"` (linha 474), adicionar:
+Visual: icone `X` pequeno, cinza discreto, aparece com fade ao lado direito do input.
 
-```tsx
-{evt.status === "no_show" && (
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <Button variant="ghost" size="icon" className="h-7 w-7"
-        onClick={(e) => { e.stopPropagation(); handleRemove(evt); }}>
-        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-      </Button>
-    </TooltipTrigger>
-    <TooltipContent>Remover da agenda</TooltipContent>
-  </Tooltip>
-)}
+---
+
+## 2. Alarme nos compromissos
+
+### Modelo de dados
+
+Adicionar campo opcional `alarm` ao `NoteItem`:
+
+```
+interface NoteItem {
+  id: string;
+  text: string;
+  done: boolean;
+  alarm?: string; // formato "HH:mm" — horario do alarme para hoje
+}
 ```
 
-Tambem seria adicionado o status `rescheduled` com o mesmo botao, ja que pacientes remarcados tambem nao tem acoes hoje.
+### Interacao do usuario
 
-Nenhum outro arquivo precisa ser alterado.
+- Cada item ganha um botao de sino (`Bell` / `BellRing`) ao lado do "X" de remover, visivel no hover.
+- Ao clicar no sino, aparece um pequeno input `time` inline para o usuario definir o horario.
+- Se ja tem alarme definido, o sino fica preenchido (`BellRing`) com a cor ambar (`text-ai`) e mostra o horario ao lado.
+- Para remover o alarme, o usuario clica no sino novamente.
+
+### Disparo do alarme
+
+- Um `useEffect` com `setInterval` (a cada 30 segundos) verifica se algum item nao-concluido tem `alarm` igual ao horario atual (`HH:mm`).
+- Ao disparar, exibe um toast via `sonner` com o texto do compromisso.
+- Apos disparar, o alarme e removido do item para nao repetir.
+
+### Visual
+
+- Sino sem alarme: icone `Bell` cinza, aparece no hover (como o "X" de remover).
+- Sino com alarme: icone `BellRing` ambar (`text-ai`), sempre visivel + badge pequeno com o horario.
+- Input de horario: aparece inline, estilo minimalista, com fundo transparente.
+
+---
+
+## Detalhes Tecnicos
+
+### Arquivo: `src/components/QuickNotesCard.tsx`
+
+**Imports adicionais**: `Bell`, `BellRing`, `Trash2` de lucide-react; `toast` de sonner.
+
+**Interface NoteItem**: adicionar `alarm?: string`.
+
+**QuickNotesCard (componente principal)**:
+- Adicionar funcao `setAlarm(id, time)` e `clearAlarm(id)`.
+- Adicionar `useEffect` com intervalo de 30s para verificar alarmes e disparar toasts.
+- No campo de nota (input do topo): envolver em div relativa e adicionar botao "X" condicional.
+
+**ItemRow (componente interno)**:
+- Receber props `alarm`, `onSetAlarm`, `onClearAlarm`.
+- Adicionar estado local `showTimePicker` para exibir/esconder o input de horario.
+- Renderizar botao do sino e input de horario condicional.
+
+### Nenhum outro arquivo precisa ser alterado.
+
+Persistencia continua em localStorage com o mesmo key `notes_quick_v1`, compativel com dados existentes (campo `alarm` e opcional).
