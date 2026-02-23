@@ -15,7 +15,7 @@ interface TopbarProps {
   onNewAgendamento: () => void;
   onOpenCommandBar?: () => void;
   onPasteTranscript?: () => void;
-  onSmartPrescription?: () => void;
+  onSmartAssistant?: () => void;
 }
 
 export function Topbar({
@@ -26,7 +26,7 @@ export function Topbar({
   onNewAgendamento,
   onOpenCommandBar,
   onPasteTranscript,
-  onSmartPrescription,
+  onSmartAssistant,
 }: TopbarProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
@@ -110,7 +110,7 @@ export function Topbar({
           onNewAgendamento={onNewAgendamento}
           onNewPaciente={onNewPaciente}
           onPasteTranscript={onPasteTranscript}
-          onSmartPrescription={onSmartPrescription}
+          onSmartAssistant={onSmartAssistant}
         />
       </div>
     </header>

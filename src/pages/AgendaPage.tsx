@@ -6,7 +6,7 @@ interface AgendaContext {
   onNewSchedule: () => void;
   onReschedule: (eventId: string) => void;
   onNewTimeBlock: () => void;
-  onSmartPrescription?: (text?: string) => void;
+  onSmartAssistant?: () => void;
 }
 
 export default function AgendaPage() {
@@ -17,7 +17,7 @@ export default function AgendaPage() {
       onNewSchedule={context.onNewSchedule}
       onReschedule={context.onReschedule}
       onNewTimeBlock={context.onNewTimeBlock}
-      onSmartPrescription={context.onSmartPrescription}
+      onSmartAssistant={context.onSmartAssistant}
     />
   );
 }

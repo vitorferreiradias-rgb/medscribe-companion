@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, CalendarPlus, UserPlus, ClipboardPaste, Search, Newspaper, Sparkles } from "lucide-react";
 import {
@@ -18,7 +17,7 @@ interface CommandBarProps {
   onNewAgendamento: () => void;
   onNewPaciente: () => void;
   onPasteTranscript?: () => void;
-  onSmartPrescription?: (text?: string) => void;
+  onSmartAssistant?: () => void;
 }
 
 export function CommandBar({
@@ -28,7 +27,7 @@ export function CommandBar({
   onNewAgendamento,
   onNewPaciente,
   onPasteTranscript,
-  onSmartPrescription,
+  onSmartAssistant,
 }: CommandBarProps) {
   const navigate = useNavigate();
 
@@ -63,10 +62,10 @@ export function CommandBar({
               Colar transcrição
             </CommandItem>
           )}
-          {onSmartPrescription && (
-            <CommandItem onSelect={() => runAction(() => onSmartPrescription())}>
+          {onSmartAssistant && (
+            <CommandItem onSelect={() => runAction(onSmartAssistant)}>
               <Sparkles className="mr-2 h-4 w-4" />
-              Prescrição inteligente
+              Assistente inteligente
             </CommandItem>
           )}
         </CommandGroup>

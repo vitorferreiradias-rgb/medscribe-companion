@@ -13,7 +13,7 @@ interface QuickActionsMenuProps {
   onNewAgendamento: () => void;
   onNewPaciente: () => void;
   onPasteTranscript?: () => void;
-  onSmartPrescription?: () => void;
+  onSmartAssistant?: () => void;
 }
 
 export function QuickActionsMenu({
@@ -21,7 +21,7 @@ export function QuickActionsMenu({
   onNewAgendamento,
   onNewPaciente,
   onPasteTranscript,
-  onSmartPrescription,
+  onSmartAssistant,
 }: QuickActionsMenuProps) {
   return (
     <DropdownMenu>
@@ -45,10 +45,10 @@ export function QuickActionsMenu({
           <UserPlus className="mr-2 h-4 w-4" />
           Novo paciente
         </DropdownMenuItem>
-        {onSmartPrescription && (
-          <DropdownMenuItem onClick={onSmartPrescription}>
+        {onSmartAssistant && (
+          <DropdownMenuItem onClick={onSmartAssistant}>
             <Sparkles className="mr-2 h-4 w-4" />
-            Prescrição inteligente
+            Assistente inteligente
           </DropdownMenuItem>
         )}
         {onPasteTranscript && (
