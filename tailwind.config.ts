@@ -48,6 +48,7 @@ export default {
           foreground: "hsl(var(--primary-foreground))",
           hover: "hsl(var(--primary-hover))",
           link: "hsl(var(--primary-link))",
+          soft: "hsl(var(--primary-soft-bg))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -82,6 +83,21 @@ export default {
         },
         "slate-blue": {
           DEFAULT: "hsl(var(--slate-blue))",
+        },
+        aqua: {
+          DEFAULT: "hsl(var(--aqua))",
+          light: "hsl(var(--aqua-light))",
+        },
+        violet: {
+          DEFAULT: "hsl(var(--violet))",
+          light: "hsl(var(--violet-light))",
+        },
+        ai: {
+          DEFAULT: "hsl(var(--ai-accent))",
+          hover: "hsl(var(--ai-accent-hover))",
+          soft: "hsl(var(--ai-soft-bg))",
+          ring: "hsl(var(--ai-ring))",
+          bloom: "hsl(var(--ai-bloom))",
         },
 
         /* States */

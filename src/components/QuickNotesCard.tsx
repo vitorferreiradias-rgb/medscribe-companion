@@ -91,7 +91,7 @@ export function QuickNotesCard() {
   };
 
   return (
-    <div className="glass-card-orange rounded-xl p-4 space-y-2">
+    <div className="glass-card-ai rounded-xl p-4 space-y-2">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
