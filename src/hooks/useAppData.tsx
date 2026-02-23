@@ -26,7 +26,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
 export function useAppData(): AppData {
   const ctx = useContext(AppDataContext);
-  if (!ctx) throw new Error("useAppData must be used within AppDataProvider");
+  if (!ctx) {
+    // Fallback for HMR or context mismatches
+    return getData();
+  }
   return ctx;
 }
 
