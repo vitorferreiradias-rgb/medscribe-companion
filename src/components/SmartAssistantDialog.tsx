@@ -222,11 +222,11 @@ export function SmartAssistantDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); else onOpenChange(true); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg ai-dialog-bloom">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            Assistente Inteligente
+            <Sparkles className="h-5 w-5 text-ai" />
+            One Click
           </DialogTitle>
           <DialogDescription>
             Digite ou fale um comando. Ex: agendar, remarcar, anotar, prescrever, navegar.
@@ -240,7 +240,7 @@ export function SmartAssistantDialog({
                 placeholder="O que você precisa? Ex: 'Agendar Maria amanhã às 14h'"
                 value={isListening && interimText ? inputText + " " + interimText : inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                className="min-h-[100px] pr-12 resize-none"
+                className="min-h-[100px] pr-12 resize-none focus-visible:!shadow-[0_0_0_4px_hsl(var(--ai-ring))]"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -277,7 +277,7 @@ export function SmartAssistantDialog({
                 <Badge
                   key={i}
                   variant="outline"
-                  className="cursor-pointer hover:bg-primary/10 text-xs"
+                  className="cursor-pointer hover:bg-ai-soft text-xs"
                   onClick={() => setInputText(ex)}
                 >
                   {ex}

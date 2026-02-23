@@ -40,34 +40,43 @@
     --primary-foreground: 0 0% 100%;
     --primary-hover: 218 78% 46%;     /* #1A5FD0 — Primary 700 */
     --primary-link: 215 86% 55%;      /* #2A7AF0 — Primary 500 */
-    /* primary subtle: rgba(31,111,235,0.10) */
-    /* focus ring: rgba(31,111,235,0.18) */
+    --primary-soft-bg: 216 100% 96%;  /* #EAF2FF */
 
     /* ─── 4. Acentos ─── */
-    /* Teal */
+    /* Aqua/Teal */
     --accent: 174 78% 26%;            /* #0F766E — Teal 600 */
     --accent-foreground: 0 0% 100%;
     --accent-light: 170 66% 40%;      /* #14B8A6 — Teal 500 */
-    /* teal subtle: rgba(20,184,166,0.10) */
+    --aqua: 181 77% 35%;              /* #0EA5A8 */
+    --aqua-light: 187 82% 54%;        /* #22D3EE */
+
+    /* Violet */
+    --violet: 263 70% 50%;            /* #6D28D9 */
+    --violet-light: 263 70% 58%;      /* #7C3AED */
 
     /* Indigo */
     --indigo: 244 57% 58%;            /* #4F46E5 — Indigo 600 */
     --indigo-light: 243 75% 67%;      /* #6366F1 — Indigo 500 */
-    /* indigo subtle: rgba(99,102,241,0.10) */
 
     /* Slate-blue */
     --slate-blue: 217 91% 60%;        /* #2563EB */
-    /* slate-blue subtle: rgba(37,99,235,0.10) */
 
     /* ─── 5. Estados ─── */
-    --success: 142 72% 39%;           /* #16A34A */
+    --success: 142 64% 36%;           /* #15803D */
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 44%;            /* #D97706 */
+    --warning: 30 65% 48%;            /* #C9772A */
     --warning-foreground: 0 0% 5%;
-    --destructive: 0 84% 51%;         /* #DC2626 */
+    --destructive: 347 77% 50%;       /* #E11D48 */
     --destructive-foreground: 0 0% 98%;
     --info: 217 91% 60%;              /* #2563EB */
     --info-foreground: 0 0% 100%;
+
+    /* ─── 6. IA / One Click (âmbar exclusivo) ─── */
+    --ai-accent: 30 80% 72%;          /* #F2C28B */
+    --ai-accent-hover: 25 74% 68%;    /* #E8AE72 */
+    --ai-soft-bg: 30 80% 72% / 0.14;
+    --ai-ring: 30 80% 72% / 0.28;
+    --ai-bloom: 30 80% 72% / 0.16;
 
     /* ─── UI tokens ─── */
     --secondary: 214 32% 96%;         /* Neutral 100 */
@@ -98,10 +107,6 @@
     --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.85);
     --glass-blur: 18px;
     --glass-saturate: 180%;
-
-    /* Warm bloom (radial glow para dialogs/cards) */
-    --bloom-warm: rgba(255, 180, 120, 0.18);
-    --bloom-warm-subtle: rgba(255, 200, 150, 0.12);
 
     /* Focus ring Apple-style */
     --focus-ring: 0 0 0 4px rgba(31, 111, 235, 0.18);
@@ -235,26 +240,33 @@
     border-color: rgba(31, 111, 235, 0.20);
   }
 
-  /* ─── Liquid Glass Blue ─── */
-  .glass-card-orange {
+  /* ─── Glass Card AI (âmbar sutil — One Click) ─── */
+  .glass-card-ai {
     background: rgba(255, 255, 255, 0.55);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(31, 111, 235, 0.30);
+    border: 1px solid hsl(var(--ai-accent) / 0.30);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.85),
       0 14px 30px rgba(15, 23, 42, 0.10),
-      0 0 0 1px rgba(31, 111, 235, 0.30),
-      0 10px 30px rgba(31, 111, 235, 0.15);
+      0 0 0 1px hsl(var(--ai-accent) / 0.30),
+      0 10px 30px hsl(var(--ai-accent) / 0.15);
     transition: box-shadow 200ms ease-out;
   }
 
-  .glass-card-orange:focus-within {
+  .glass-card-ai:focus-within {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.85),
       0 14px 30px rgba(15, 23, 42, 0.10),
-      0 0 0 1px rgba(31, 111, 235, 0.45),
-      0 10px 30px rgba(31, 111, 235, 0.25);
+      0 0 0 1px hsl(var(--ai-accent) / 0.45),
+      0 10px 30px hsl(var(--ai-accent) / 0.25);
+  }
+
+  /* AI Dialog Bloom (radial glow âmbar para dialogs One Click) */
+  .ai-dialog-bloom {
+    background:
+      radial-gradient(ellipse at 50% 0%, hsl(var(--ai-bloom)), transparent 70%),
+      hsl(0 0% 100% / 0.92);
   }
 }
 

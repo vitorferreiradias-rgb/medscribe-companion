@@ -65,7 +65,7 @@ export function CommandBar({
           {onSmartAssistant && (
             <CommandItem onSelect={() => runAction(onSmartAssistant)}>
               <Sparkles className="mr-2 h-4 w-4" />
-              Assistente inteligente
+              One Click
             </CommandItem>
           )}
         </CommandGroup>

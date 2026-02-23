@@ -251,7 +251,7 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
         <div className="flex gap-2">
           {onSmartAssistant && (
             <Button variant="outline" size="sm" onClick={() => onSmartAssistant()} className="gap-1.5 text-xs">
-              <Sparkles className="h-3.5 w-3.5" /> Assistente
+              <Sparkles className="h-3.5 w-3.5" /> One Click
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={onNewTimeBlock} className="gap-1.5 text-xs">
