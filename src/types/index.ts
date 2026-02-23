@@ -180,6 +180,15 @@ export interface MedicationEvent {
   encounterId?: string;
 }
 
+export interface DocumentCompliance {
+  regulatorySource: string;
+  requirements: string[];
+  warnings: string[];
+  needsConfirmation: boolean;
+  confirmedByDoctor?: boolean;
+  confirmedAt?: string;
+}
+
 export interface ClinicalDocument {
   id: string;
   patientId: string;
@@ -190,7 +199,9 @@ export interface ClinicalDocument {
   createdAt: string;
   signedAt?: string;
   signedBy?: string;
-  status: "draft" | "signed";
+  status: "draft" | "ready_to_sign" | "signed";
+  recipeType?: "simples" | "antimicrobiano" | "controle_especial";
+  compliance?: DocumentCompliance;
 }
 
 export interface AppData {
