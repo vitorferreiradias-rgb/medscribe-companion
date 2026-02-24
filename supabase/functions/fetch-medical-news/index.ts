@@ -146,6 +146,45 @@ async function scrapeHTML(url: string, source: string, linkPattern: RegExp, base
   } catch (err) { console.warn(`Scrape failed for ${source}:`, err); return []; }
 }
 
+// ─── FDA Drug Approvals Scraper ──────────────────────────────
+async function fetchFDADrugApprovals(): Promise<Headline[]> {
+  const url = "https://www.fda.gov/drugs/novel-drug-approvals-fda/novel-drug-approvals-2026";
+  try {
+    console.log("Scraping FDA Drug Approvals table");
+    const res = await fetchWithTimeout(url, 10000);
+    if (!res.ok) { console.warn(`FDA approvals page returned ${res.status}`); return []; }
+    const html = await res.text();
+
+    const headlines: Headline[] = [];
+    // Match table rows: Number, Drug Name (with optional link), Active Ingredient, Date, Approved Use
+    const rowRegex = /<tr[^>]*>\s*<td[^>]*>\s*(\d+)\.?\s*<\/td>\s*<td[^>]*>(?:<a[^>]+href=["']([^"']+)["'][^>]*>)?\s*([\s\S]*?)\s*(?:<\/a>)?\s*<\/td>\s*<td[^>]*>\s*([\s\S]*?)\s*<\/td>\s*<td[^>]*>\s*([\s\S]*?)\s*<\/td>\s*<td[^>]*>\s*([\s\S]*?)\s*<\/td>/gi;
+
+    let match;
+    while ((match = rowRegex.exec(html)) !== null && headlines.length < 20) {
+      const drugLink = match[2] || "";
+      const drugName = decodeHTMLEntities(match[3]).trim();
+      const activeIngredient = decodeHTMLEntities(match[4]).trim();
+      const approvalDate = decodeHTMLEntities(match[5]).trim();
+      const approvedUse = decodeHTMLEntities(match[6]).trim();
+
+      if (!drugName || drugName.length < 2) continue;
+
+      const fullUrl = drugLink.startsWith("http") ? drugLink : drugLink ? `https://www.fda.gov${drugLink}` : url;
+
+      headlines.push({
+        title: `${drugName} (${activeIngredient}) — aprovação FDA`,
+        summary: `Aprovado em ${approvalDate}. ${approvedUse}`.substring(0, 300),
+        source: "FDA Drugs",
+        url: fullUrl,
+        published_at: parseDate(approvalDate),
+        priority: calcPriority(drugName, approvedUse, "FDA Drugs") + 5,
+      });
+    }
+    console.log(`FDA Drug Approvals: ${headlines.length} items`);
+    return headlines;
+  } catch (err) { console.warn("FDA Drug Approvals fetch failed:", err); return []; }
+}
+
 // ─── PubMed E-Utilities ─────────────────────────────────────
 async function fetchPubMed(query: string, source = "PubMed"): Promise<Headline[]> {
   try {
@@ -216,7 +255,7 @@ const categoryFetchers: Record<string, CategoryFetcher[]> = {
   medicacoes: [
     // Existentes
     () => fetchRSS("https://www.gov.br/anvisa/pt-br/assuntos/noticias-anvisa/RSS", "ANVISA"),
-    () => fetchRSS("https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/drugs/rss.xml", "FDA Drugs"),
+    () => fetchFDADrugApprovals(),
     () => fetchPubMed("drug approval OR drug recall OR pharmacovigilance", "PubMed"),
     // Novas: Vigilância
     () => scrapeHTML("https://www.gov.br/anvisa/pt-br/assuntos/farmacovigilancia", "Farmacovigilância", govBrLinkPattern, "https://www.gov.br"),
