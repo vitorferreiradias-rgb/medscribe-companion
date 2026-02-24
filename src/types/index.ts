@@ -32,6 +32,14 @@ export interface PatientDocument {
   type: "exame" | "laudo" | "imagem" | "outro";
 }
 
+export interface BeforeAfterPhoto {
+  id: string;
+  date: string;
+  label: string;
+  beforeImage: string; // base64 data URI
+  afterImage?: string; // base64 data URI
+}
+
 export interface Patient {
   id: string;
   name: string;
@@ -51,6 +59,7 @@ export interface Patient {
   diagnoses?: string[];
   drugAllergies?: string[];
   documents?: PatientDocument[];
+  beforeAfterPhotos?: BeforeAfterPhoto[];
 }
 
 export type EncounterStatus = "recording" | "draft" | "reviewed" | "final";
