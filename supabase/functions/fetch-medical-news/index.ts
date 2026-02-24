@@ -475,7 +475,8 @@ Deno.serve(async (req) => {
     await supabase.from("medical_news").delete().eq("category", category);
 
     const rows = allHeadlines.map((h) => ({
-      title: h.title, summary: h.summary, source: h.source, url: h.url,
+      title: h.title, summary: h.summary, source: h.source,
+      url: h.url ? h.url.replace(/^http:\/\//i, "https://") : h.url,
       category, published_at: h.published_at, fetched_at: new Date().toISOString(),
     }));
 

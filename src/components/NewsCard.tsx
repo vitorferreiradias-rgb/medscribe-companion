@@ -73,10 +73,12 @@ export function NewsCard({ embedded = false }: NewsCardProps) {
             ) : (
               <div className="space-y-2">
                 {items.slice(0, 5).map((item, i) => (
-                  <div
+                  <a
                     key={item.id}
-                    className="flex items-start gap-2 py-1 cursor-pointer rounded-md px-1 -mx-1 hover:bg-secondary/50 transition-colors"
-                    onClick={() => item.url && window.open(item.url, "_blank")}
+                    href={item.url || undefined}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start gap-2 py-1 cursor-pointer rounded-md px-1 -mx-1 hover:bg-secondary/50 transition-colors no-underline text-foreground"
                   >
                     <div className="h-1.5 w-1.5 rounded-full bg-primary/40 shrink-0 mt-1.5" />
                     <div className="flex-1 min-w-0">
@@ -87,7 +89,7 @@ export function NewsCard({ embedded = false }: NewsCardProps) {
                         <span className="text-[10px] text-muted-foreground">{item.published_at}</span>
                       </div>
                     </div>
-                  </div>
+                  </a>
                 ))}
               </div>
             )}

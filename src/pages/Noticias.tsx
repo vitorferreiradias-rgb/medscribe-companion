@@ -113,27 +113,31 @@ export default function Noticias() {
           ))
         ) : filtered.length > 0 ? (
           filtered.map((item) => (
-            <Card
+            <a
               key={item.id}
-              className="glass-card rounded-xl hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => item.url && window.open(item.url, "_blank")}
+              href={item.url || undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block no-underline text-foreground"
             >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold leading-snug">{item.title}</h3>
-                    {item.summary && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.summary}</p>}
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant="secondary" className="text-[10px] font-normal">{item.category}</Badge>
-                      <span className="text-[10px] text-muted-foreground">{item.source}</span>
-                      <span className="text-[10px] text-muted-foreground">·</span>
-                      <span className="text-[10px] text-muted-foreground">{item.published_at}</span>
+              <Card className="glass-card rounded-xl hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-semibold leading-snug">{item.title}</h3>
+                      {item.summary && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.summary}</p>}
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge variant="secondary" className="text-[10px] font-normal">{item.category}</Badge>
+                        <span className="text-[10px] text-muted-foreground">{item.source}</span>
+                        <span className="text-[10px] text-muted-foreground">·</span>
+                        <span className="text-[10px] text-muted-foreground">{item.published_at}</span>
+                      </div>
                     </div>
+                    {item.url && <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />}
                   </div>
-                  {item.url && <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />}
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </a>
           ))
         ) : (
           <div className="py-12 text-center text-muted-foreground">
