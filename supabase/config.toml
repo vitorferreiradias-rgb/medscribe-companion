@@ -1,8 +1,1 @@
-[project]
-id = ""
-
-[functions.clinical-summary]
-verify_jwt = false
-
-[functions.generate-soap]
-verify_jwt = false
+project_id = "qiqkwzdoyunkafbnxfao"
