@@ -102,8 +102,8 @@ Deno.serve(async (req) => {
     }
 
     // Google CSE API
-    const cseApiKey = Deno.env.get("GOOGLE_CSE_API_KEY");
-    const cseCx = Deno.env.get("GOOGLE_CSE_CX");
+    const cseApiKey = Deno.env.get("GOOGLE_CSE_API_KEY")?.trim();
+    const cseCx = Deno.env.get("GOOGLE_CSE_CX")?.trim();
 
     if (!cseApiKey || !cseCx) {
       return new Response(
@@ -111,6 +111,8 @@ Deno.serve(async (req) => {
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    console.log("CSE config - cx length:", cseCx.length, "key length:", cseApiKey.length, "cx preview:", cseCx.substring(0, 5) + "...");
 
     const query = encodeURIComponent(categoryQueries[category]);
     const cseUrl = `https://www.googleapis.com/customsearch/v1?key=${cseApiKey}&cx=${cseCx}&q=${query}&num=5&dateRestrict=m1`;
