@@ -9,7 +9,7 @@ import {
 import { useAppData } from "@/hooks/useAppData";
 import {
   addEncounter, addTranscript, addNote, updateEncounter,
-  updateScheduleEvent, deleteScheduleEvent, resetToSeed, getTimeBlocksForDate,
+  updateScheduleEvent, deleteScheduleEvent, addEncounterAsync, addTranscriptAsync, addNoteAsync,
 } from "@/lib/store";
 import { parseTranscriptToSections } from "@/lib/parser";
 import { formatDateTimeBR, toLocalDateStr } from "@/lib/format";
@@ -139,30 +139,28 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
     }, 800);
   };
 
-  const handleStart = useCallback((evt: ScheduleEvent) => {
+  const handleStart = useCallback(async (evt: ScheduleEvent) => {
     setLoading(true);
-    setTimeout(() => {
-      const now = new Date();
-      const enc = addEncounter({
-        patientId: evt.patientId,
-        clinicianId: evt.clinicianId,
-        startedAt: now.toISOString(),
-        durationSec: 0,
-        status: "recording",
-        chiefComplaint: evt.notes || undefined,
-      });
-      updateScheduleEvent(evt.id, { status: "in_progress", encounterId: enc.id });
-      toast({ title: "Consulta iniciada." });
-      setLoading(false);
-      navigate(`/consultas/${enc.id}`);
-    }, 300);
+    const now = new Date();
+    const enc = await addEncounterAsync({
+      patientId: evt.patientId,
+      clinicianId: evt.clinicianId,
+      startedAt: now.toISOString(),
+      durationSec: 0,
+      status: "recording",
+      chiefComplaint: evt.notes || undefined,
+    });
+    updateScheduleEvent(evt.id, { status: "in_progress", encounterId: enc.id });
+    toast({ title: "Consulta iniciada." });
+    setLoading(false);
+    navigate(`/consultas/${enc.id}`);
   }, [navigate, toast]);
 
   const handleOpen = (evt: ScheduleEvent) => {
     if (evt.encounterId) navigate(`/consultas/${evt.encounterId}`);
   };
 
-  const handleGenerate = useCallback((evt: ScheduleEvent) => {
+  const handleGenerate = useCallback(async (evt: ScheduleEvent) => {
     const enc = evt.encounterId ? data.encounters.find((e) => e.id === evt.encounterId) : null;
     if (!enc) {
       toast({ title: "Inicie a consulta primeiro.", variant: "destructive" });
@@ -173,17 +171,15 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      const pat = data.patients.find((p) => p.id === enc.patientId);
-      const cli = data.clinicians.find((c) => c.id === enc.clinicianId);
-      const tr = addTranscript({ encounterId: enc.id, source: "mock", content: mockTranscript });
-      const sections = parseTranscriptToSections(mockTranscript, enc.id, pat?.name, cli?.name, formatDateTimeBR(enc.startedAt));
-      const note = addNote({ encounterId: enc.id, templateId: SOAP_TEMPLATE_ID, sections });
-      updateEncounter(enc.id, { transcriptId: tr.id, noteId: note.id, status: "draft" });
-      toast({ title: "Prontuário gerado." });
-      setLoading(false);
-      navigate(`/consultas/${enc.id}`);
-    }, 400);
+    const pat = data.patients.find((p) => p.id === enc.patientId);
+    const cli = data.clinicians.find((c) => c.id === enc.clinicianId);
+    const tr = await addTranscriptAsync({ encounterId: enc.id, source: "mock", content: mockTranscript });
+    const sections = parseTranscriptToSections(mockTranscript, enc.id, pat?.name, cli?.name, formatDateTimeBR(enc.startedAt));
+    const note = await addNoteAsync({ encounterId: enc.id, templateId: SOAP_TEMPLATE_ID, sections });
+    updateEncounter(enc.id, { transcriptId: tr.id, noteId: note.id, status: "draft" });
+    toast({ title: "Prontuário gerado." });
+    setLoading(false);
+    navigate(`/consultas/${enc.id}`);
   }, [data, navigate, toast]);
 
   const handleFinalize = useCallback((evt: ScheduleEvent) => {
@@ -285,7 +281,14 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
 
         {/* Time blocks for the day */}
         {(() => {
-          const blocks = getTimeBlocksForDate(dateStr);
+          const blocks = (data.timeBlocks ?? []).filter((b) => {
+            if (b.recurrence === "daily") return true;
+            if (b.recurrence === "weekly") {
+              const blockDay = new Date(b.date + "T12:00:00").getDay();
+              return new Date(dateStr + "T12:00:00").getDay() === blockDay;
+            }
+            return b.date === dateStr;
+          });
           if (blocks.length === 0) return null;
           return (
             <div className="flex flex-wrap gap-2">
@@ -317,8 +320,8 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
                     Agendar consulta
                   </Button>
                   {dayEvents.length === 0 && (
-                    <Button variant="outline" size="sm" onClick={() => { resetToSeed(); toast({ title: "Dados de exemplo carregados." }); }}>
-                      Carregar seed
+                    <Button variant="outline" size="sm" onClick={onNewSchedule}>
+                      Agendar agora
                     </Button>
                   )}
                 </div>

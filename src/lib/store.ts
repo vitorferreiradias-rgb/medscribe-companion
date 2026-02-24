@@ -1,45 +1,7 @@
-import { AppData, Encounter, Patient, Transcript, Note, NoteSection, ScheduleEvent, TimeBlock, Clinician } from "@/types";
-import { createSeedData } from "./seed";
+import { Encounter, Patient, Transcript, Note, ScheduleEvent, TimeBlock, Clinician } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
-const STORAGE_KEY = "medscribe_data_v1";
-
-let _data: AppData;
-
-function load(): AppData {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return createSeedData();
-}
-
-function save() {
-  if (_data.settings.persistLocal) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(_data));
-  }
-}
-
-export function initStore(): AppData {
-  _data = load();
-  return _data;
-}
-
-export function getData(): AppData {
-  if (!_data) _data = load();
-  return _data;
-}
-
-export function resetToSeed(): AppData {
-  _data = createSeedData();
-  save();
-  return _data;
-}
-
-export function clearStorage() {
-  localStorage.removeItem(STORAGE_KEY);
-}
-
-// --- Helpers ---
+// ---- Listeners for triggering refresh ----
 let _listeners: Array<() => void> = [];
 
 export function subscribe(fn: () => void) {
@@ -48,198 +10,351 @@ export function subscribe(fn: () => void) {
 }
 
 function notify() {
-  save();
   _listeners.forEach((fn) => fn());
 }
 
-function uid(prefix: string) {
-  return `${prefix}_${Date.now().toString(36)}`;
+// ---- Compatibility shims ----
+export function initStore() { return null; }
+export function getData() { return null; }
+export function resetToSeed() { console.warn("resetToSeed is deprecated with Cloud"); }
+export function clearStorage() { console.warn("clearStorage is deprecated with Cloud"); }
+export function updateSettings(_updates: any) { /* no-op */ }
+
+// Helper: get current clinician id
+async function getClinicianId(): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase.from("clinicians").select("id").eq("user_id", user.id).maybeSingle();
+  return data?.id ?? null;
 }
 
 // --- Patients ---
-export function addPatient(p: Omit<Patient, "id">): Patient {
-  const patient = { id: uid("pat"), ...p };
-  _data.patients.push(patient);
-  notify();
+// Returns a Patient-like object synchronously after fire-and-forget insert
+// The real data refresh happens via realtime subscription
+export function addPatient(p: Omit<Patient, "id"> & { clinician_id?: string }): Patient {
+  const tempId = `pat_${Date.now().toString(36)}`;
+  const patient: Patient = { id: tempId, name: p.name, ...p };
+
+  // Fire and forget
+  (async () => {
+    const clinicianId = p.clinician_id || await getClinicianId();
+    if (!clinicianId) return;
+    const { error } = await supabase.from("patients").insert({
+      clinician_id: clinicianId,
+      name: p.name,
+      birth_date: p.birthDate || null,
+      sex: p.sex || null,
+      phone: p.phone || null,
+      email: p.email || null,
+      notes: p.notes || null,
+      cpf: p.cpf || null,
+      rg: p.rg || null,
+      address_line: p.addressLine || null,
+      cep: p.cep || null,
+      children: p.children || [],
+      pet_name: p.petName || null,
+      referral_source: p.referralSource || null,
+      diagnoses: p.diagnoses || [],
+      drug_allergies: p.drugAllergies || [],
+    });
+    if (error) console.error("addPatient error:", error);
+  })();
+
   return patient;
 }
 
 export function updatePatient(id: string, updates: Partial<Patient>) {
-  const i = _data.patients.findIndex((p) => p.id === id);
-  if (i >= 0) { _data.patients[i] = { ..._data.patients[i], ...updates }; notify(); }
+  const dbUpdates: Record<string, any> = {};
+  if (updates.name !== undefined) dbUpdates.name = updates.name;
+  if (updates.birthDate !== undefined) dbUpdates.birth_date = updates.birthDate || null;
+  if (updates.sex !== undefined) dbUpdates.sex = updates.sex || null;
+  if (updates.phone !== undefined) dbUpdates.phone = updates.phone || null;
+  if (updates.email !== undefined) dbUpdates.email = updates.email || null;
+  if (updates.notes !== undefined) dbUpdates.notes = updates.notes || null;
+  if (updates.archived !== undefined) dbUpdates.archived = updates.archived;
+  if (updates.cpf !== undefined) dbUpdates.cpf = updates.cpf || null;
+  if (updates.rg !== undefined) dbUpdates.rg = updates.rg || null;
+  if (updates.addressLine !== undefined) dbUpdates.address_line = updates.addressLine || null;
+  if (updates.cep !== undefined) dbUpdates.cep = updates.cep || null;
+  if (updates.children !== undefined) dbUpdates.children = updates.children || [];
+  if (updates.petName !== undefined) dbUpdates.pet_name = updates.petName || null;
+  if (updates.referralSource !== undefined) dbUpdates.referral_source = updates.referralSource || null;
+  if (updates.diagnoses !== undefined) dbUpdates.diagnoses = updates.diagnoses || [];
+  if (updates.drugAllergies !== undefined) dbUpdates.drug_allergies = updates.drugAllergies || [];
+
+  if (Object.keys(dbUpdates).length > 0) {
+    supabase.from("patients").update(dbUpdates).eq("id", id).then(({ error }) => {
+      if (error) console.error("updatePatient error:", error);
+    });
+  }
 }
 
 export function deletePatient(id: string) {
-  _data.patients = _data.patients.filter((p) => p.id !== id);
-  notify();
+  supabase.from("patients").delete().eq("id", id).then(({ error }) => {
+    if (error) console.error("deletePatient error:", error);
+  });
 }
 
 // --- Encounters ---
 export function addEncounter(e: Omit<Encounter, "id">): Encounter {
-  const enc = { id: uid("enc"), ...e };
-  _data.encounters.push(enc);
-  notify();
+  const tempId = `enc_${Date.now().toString(36)}`;
+  const enc: Encounter = { id: tempId, ...e };
+
+  // We need the real ID for navigation, so we use a promise-based approach
+  // Store a resolver so callers can get the real ID
+  const insertPromise = supabase.from("encounters").insert({
+    patient_id: e.patientId,
+    clinician_id: e.clinicianId,
+    started_at: e.startedAt,
+    ended_at: e.endedAt || null,
+    duration_sec: e.durationSec,
+    status: e.status,
+    chief_complaint: e.chiefComplaint || null,
+    location: e.location || null,
+  }).select().single();
+
+  // Attach promise to encounter for callers that need real ID
+  (enc as any)._insertPromise = insertPromise;
+
   return enc;
 }
 
+// Async version for callers that need the real ID
+export async function addEncounterAsync(e: Omit<Encounter, "id">): Promise<Encounter> {
+  const { data, error } = await supabase.from("encounters").insert({
+    patient_id: e.patientId,
+    clinician_id: e.clinicianId,
+    started_at: e.startedAt,
+    ended_at: e.endedAt || null,
+    duration_sec: e.durationSec,
+    status: e.status,
+    chief_complaint: e.chiefComplaint || null,
+    location: e.location || null,
+  }).select().single();
+
+  if (error) console.error("addEncounter error:", error);
+  return {
+    id: data?.id ?? "",
+    ...e,
+  };
+}
+
 export function updateEncounter(id: string, updates: Partial<Encounter>) {
-  const i = _data.encounters.findIndex((e) => e.id === id);
-  if (i >= 0) { _data.encounters[i] = { ..._data.encounters[i], ...updates }; notify(); }
-}
+  const dbUpdates: Record<string, any> = {};
+  if (updates.status !== undefined) dbUpdates.status = updates.status;
+  if (updates.endedAt !== undefined) dbUpdates.ended_at = updates.endedAt;
+  if (updates.durationSec !== undefined) dbUpdates.duration_sec = updates.durationSec;
+  if (updates.chiefComplaint !== undefined) dbUpdates.chief_complaint = updates.chiefComplaint;
+  if (updates.location !== undefined) dbUpdates.location = updates.location;
 
-export function deleteEncounter(id: string) {
-  _data.encounters = _data.encounters.filter((e) => e.id !== id);
-  _data.transcripts = _data.transcripts.filter((t) => t.encounterId !== id);
-  _data.notes = _data.notes.filter((n) => n.encounterId !== id);
-  notify();
-}
-
-// --- Transcripts ---
-export function addTranscript(t: Omit<Transcript, "id">): Transcript {
-  const tr = { id: uid("tr"), ...t };
-  _data.transcripts.push(tr);
-  notify();
-  return tr;
-}
-
-// --- Notes ---
-export function addNote(n: Omit<Note, "id">): Note {
-  const note = { id: uid("note"), ...n };
-  _data.notes.push(note);
-  notify();
-  return note;
-}
-
-export function updateNoteSection(noteId: string, sectionId: string, content: string) {
-  const note = _data.notes.find((n) => n.id === noteId);
-  if (!note) return;
-  const sec = note.sections.find((s) => s.id === sectionId);
-  if (sec) {
-    sec.content = content;
-    sec.autoGenerated = false;
-    sec.lastEditedAt = new Date().toISOString();
-    notify();
+  if (Object.keys(dbUpdates).length > 0) {
+    supabase.from("encounters").update(dbUpdates).eq("id", id).then(({ error }) => {
+      if (error) console.error("updateEncounter error:", error);
+    });
   }
 }
 
-export function updateUnifiedNote(noteId: string, unifiedText: string) {
-  const note = _data.notes.find((n) => n.id === noteId);
-  if (!note) return;
-  const blocks = unifiedText.split(/^## /m).filter(Boolean);
-  const now = new Date().toISOString();
-  blocks.forEach((block) => {
-    const newlineIdx = block.indexOf("\n");
-    if (newlineIdx === -1) return;
-    const title = block.substring(0, newlineIdx).trim();
-    const content = block.substring(newlineIdx + 1).trim();
-    const sec = note.sections.find((s) => s.title === title);
-    if (sec) {
-      sec.content = content;
-      sec.autoGenerated = false;
-      sec.lastEditedAt = now;
-    }
+export function deleteEncounter(id: string) {
+  supabase.from("encounters").delete().eq("id", id).then(({ error }) => {
+    if (error) console.error("deleteEncounter error:", error);
   });
-  notify();
+}
+
+// --- Transcripts ---
+export async function addTranscriptAsync(t: Omit<Transcript, "id">): Promise<Transcript> {
+  const { data, error } = await supabase.from("transcripts").insert({
+    encounter_id: t.encounterId,
+    source: t.source,
+    content: t.content as any,
+  }).select().single();
+  if (error) console.error("addTranscript error:", error);
+  return { id: data?.id ?? "", ...t };
+}
+
+export function addTranscript(t: Omit<Transcript, "id">): Transcript {
+  const tempId = `tr_${Date.now().toString(36)}`;
+  supabase.from("transcripts").insert({
+    encounter_id: t.encounterId,
+    source: t.source,
+    content: t.content as any,
+  }).then(({ error }) => { if (error) console.error("addTranscript error:", error); });
+  return { id: tempId, ...t };
+}
+
+// --- Notes ---
+export async function addNoteAsync(n: Omit<Note, "id">): Promise<Note> {
+  const { data, error } = await supabase.from("notes").insert({
+    encounter_id: n.encounterId,
+    template_id: n.templateId,
+    sections: n.sections as any,
+  }).select().single();
+  if (error) console.error("addNote error:", error);
+  return { id: data?.id ?? "", ...n };
+}
+
+export function addNote(n: Omit<Note, "id">): Note {
+  const tempId = `note_${Date.now().toString(36)}`;
+  supabase.from("notes").insert({
+    encounter_id: n.encounterId,
+    template_id: n.templateId,
+    sections: n.sections as any,
+  }).then(({ error }) => { if (error) console.error("addNote error:", error); });
+  return { id: tempId, ...n };
+}
+
+export function updateNoteSection(noteId: string, sectionId: string, content: string) {
+  (async () => {
+    const { data: noteRow } = await supabase.from("notes").select("sections").eq("id", noteId).single();
+    if (!noteRow) return;
+    const sections = (noteRow.sections as any[]).map((s: any) =>
+      s.id === sectionId ? { ...s, content, autoGenerated: false, lastEditedAt: new Date().toISOString() } : s
+    );
+    await supabase.from("notes").update({ sections: sections as any }).eq("id", noteId);
+  })();
+}
+
+export function updateUnifiedNote(noteId: string, unifiedText: string) {
+  (async () => {
+    const { data: noteRow } = await supabase.from("notes").select("sections").eq("id", noteId).single();
+    if (!noteRow) return;
+    const sections = noteRow.sections as any[];
+    const blocks = unifiedText.split(/^## /m).filter(Boolean);
+    const now = new Date().toISOString();
+    blocks.forEach((block) => {
+      const newlineIdx = block.indexOf("\n");
+      if (newlineIdx === -1) return;
+      const title = block.substring(0, newlineIdx).trim();
+      const content = block.substring(newlineIdx + 1).trim();
+      const sec = sections.find((s: any) => s.title === title);
+      if (sec) { sec.content = content; sec.autoGenerated = false; sec.lastEditedAt = now; }
+    });
+    await supabase.from("notes").update({ sections: sections as any }).eq("id", noteId);
+  })();
 }
 
 // --- Schedule Events ---
 export function addScheduleEvent(e: Omit<ScheduleEvent, "id">): ScheduleEvent {
-  const evt = { id: uid("sch"), ...e };
-  if (!_data.scheduleEvents) _data.scheduleEvents = [];
-  _data.scheduleEvents.push(evt);
-  notify();
-  return evt;
+  const tempId = `sch_${Date.now().toString(36)}`;
+  supabase.from("schedule_events").insert({
+    date: e.date,
+    start_time: e.startTime,
+    end_time: e.endTime || null,
+    patient_id: e.patientId,
+    clinician_id: e.clinicianId,
+    type: e.type,
+    status: e.status,
+    notes: e.notes || null,
+    encounter_id: e.encounterId || null,
+  }).then(({ error }) => { if (error) console.error("addScheduleEvent error:", error); });
+  return { id: tempId, ...e };
 }
 
 export function updateScheduleEvent(id: string, updates: Partial<ScheduleEvent>) {
-  if (!_data.scheduleEvents) return;
-  const i = _data.scheduleEvents.findIndex((e) => e.id === id);
-  if (i >= 0) { _data.scheduleEvents[i] = { ..._data.scheduleEvents[i], ...updates }; notify(); }
+  const dbUpdates: Record<string, any> = {};
+  if (updates.date !== undefined) dbUpdates.date = updates.date;
+  if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
+  if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime || null;
+  if (updates.patientId !== undefined) dbUpdates.patient_id = updates.patientId;
+  if (updates.clinicianId !== undefined) dbUpdates.clinician_id = updates.clinicianId;
+  if (updates.type !== undefined) dbUpdates.type = updates.type;
+  if (updates.status !== undefined) dbUpdates.status = updates.status;
+  if (updates.notes !== undefined) dbUpdates.notes = updates.notes || null;
+  if (updates.encounterId !== undefined) dbUpdates.encounter_id = updates.encounterId || null;
+
+  if (Object.keys(dbUpdates).length > 0) {
+    supabase.from("schedule_events").update(dbUpdates).eq("id", id).then(({ error }) => {
+      if (error) console.error("updateScheduleEvent error:", error);
+    });
+  }
 }
 
 export function deleteScheduleEvent(id: string) {
-  if (!_data.scheduleEvents) return;
-  _data.scheduleEvents = _data.scheduleEvents.filter((e) => e.id !== id);
-  notify();
+  supabase.from("schedule_events").delete().eq("id", id).then(({ error }) => {
+    if (error) console.error("deleteScheduleEvent error:", error);
+  });
 }
 
-// --- Duplicate Encounter ---
-export function duplicateEncounter(encId: string): Encounter | null {
-  const enc = _data.encounters.find((e) => e.id === encId);
-  if (!enc) return null;
+// --- Duplicate Encounter (async) ---
+export async function duplicateEncounter(encId: string): Promise<Encounter | null> {
+  const { data: encRow } = await supabase.from("encounters").select("*").eq("id", encId).single();
+  if (!encRow) return null;
   const now = new Date().toISOString();
-  const newEnc: Encounter = {
-    id: uid("enc"),
-    patientId: enc.patientId,
-    clinicianId: enc.clinicianId,
+  const newEnc = await addEncounterAsync({
+    patientId: encRow.patient_id,
+    clinicianId: encRow.clinician_id,
     startedAt: now,
     durationSec: 0,
     status: "draft",
-    chiefComplaint: enc.chiefComplaint,
-    location: enc.location,
-  };
-  _data.encounters.push(newEnc);
+    chiefComplaint: encRow.chief_complaint,
+    location: encRow.location,
+  });
 
-  // Duplicate note if exists
-  const note = _data.notes.find((n) => n.id === enc.noteId);
-  if (note) {
-    const newNote = {
-      id: uid("note"),
-      encounterId: newEnc.id,
-      templateId: note.templateId,
-      sections: note.sections.map((s) => ({ ...s, id: uid("sec"), autoGenerated: false, lastEditedAt: now })),
-    };
-    _data.notes.push(newNote);
-    newEnc.noteId = newNote.id;
+  const { data: noteRows } = await supabase.from("notes").select("*").eq("encounter_id", encId);
+  if (noteRows && noteRows.length > 0) {
+    const original = noteRows[0];
+    const sections = (original.sections as any[]).map((s: any) => ({
+      ...s, id: `sec_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      autoGenerated: false, lastEditedAt: now,
+    }));
+    await addNoteAsync({ encounterId: newEnc.id, templateId: original.template_id, sections });
   }
-
-  notify();
   return newEnc;
-}
-
-// --- Settings ---
-export function updateSettings(updates: Partial<AppData["settings"]>) {
-  _data.settings = { ..._data.settings, ...updates };
-  notify();
 }
 
 // --- Clinicians ---
 export function updateClinician(id: string, updates: Partial<Clinician>) {
-  const i = _data.clinicians.findIndex((c) => c.id === id);
-  if (i >= 0) { _data.clinicians[i] = { ..._data.clinicians[i], ...updates }; notify(); }
+  const dbUpdates: Record<string, any> = {};
+  if (updates.name !== undefined) dbUpdates.name = updates.name;
+  if (updates.specialty !== undefined) dbUpdates.specialty = updates.specialty;
+  if (updates.crm !== undefined) dbUpdates.crm = updates.crm;
+  if (updates.cpf !== undefined) dbUpdates.cpf = updates.cpf;
+  if (updates.email !== undefined) dbUpdates.email = updates.email;
+  if (updates.clinicAddress !== undefined) dbUpdates.clinic_address = updates.clinicAddress;
+  if (updates.clinics !== undefined) dbUpdates.clinics = updates.clinics;
+
+  if (Object.keys(dbUpdates).length > 0) {
+    supabase.from("clinicians").update(dbUpdates).eq("id", id).then(({ error }) => {
+      if (error) console.error("updateClinician error:", error);
+    });
+  }
 }
 
 // --- Time Blocks ---
 export function addTimeBlock(tb: Omit<TimeBlock, "id">): TimeBlock {
-  const block = { id: uid("tb"), ...tb };
-  if (!_data.timeBlocks) _data.timeBlocks = [];
-  _data.timeBlocks.push(block);
-  notify();
-  return block;
+  const tempId = `tb_${Date.now().toString(36)}`;
+  supabase.from("time_blocks").insert({
+    date: tb.date, start_time: tb.startTime, end_time: tb.endTime,
+    reason: tb.reason, recurrence: tb.recurrence, clinician_id: tb.clinicianId,
+  }).then(({ error }) => { if (error) console.error("addTimeBlock error:", error); });
+  return { id: tempId, ...tb };
 }
 
 export function updateTimeBlock(id: string, updates: Partial<TimeBlock>) {
-  if (!_data.timeBlocks) return;
-  const i = _data.timeBlocks.findIndex((b) => b.id === id);
-  if (i >= 0) { _data.timeBlocks[i] = { ..._data.timeBlocks[i], ...updates }; notify(); }
+  const dbUpdates: Record<string, any> = {};
+  if (updates.date !== undefined) dbUpdates.date = updates.date;
+  if (updates.startTime !== undefined) dbUpdates.start_time = updates.startTime;
+  if (updates.endTime !== undefined) dbUpdates.end_time = updates.endTime;
+  if (updates.reason !== undefined) dbUpdates.reason = updates.reason;
+  if (updates.recurrence !== undefined) dbUpdates.recurrence = updates.recurrence;
+  if (updates.clinicianId !== undefined) dbUpdates.clinician_id = updates.clinicianId;
+
+  if (Object.keys(dbUpdates).length > 0) {
+    supabase.from("time_blocks").update(dbUpdates).eq("id", id).then(({ error }) => {
+      if (error) console.error("updateTimeBlock error:", error);
+    });
+  }
 }
 
 export function deleteTimeBlock(id: string) {
-  if (!_data.timeBlocks) return;
-  _data.timeBlocks = _data.timeBlocks.filter((b) => b.id !== id);
-  notify();
+  supabase.from("time_blocks").delete().eq("id", id).then(({ error }) => {
+    if (error) console.error("deleteTimeBlock error:", error);
+  });
 }
 
-export function getTimeBlocksForDate(dateStr: string, clinicianId?: string): TimeBlock[] {
-  if (!_data.timeBlocks) return [];
-  const dayOfWeek = new Date(dateStr + "T12:00:00").getDay();
-  return _data.timeBlocks.filter((b) => {
-    if (clinicianId && b.clinicianId !== clinicianId) return false;
-    if (b.recurrence === "daily") return true;
-    if (b.recurrence === "weekly") {
-      const blockDay = new Date(b.date + "T12:00:00").getDay();
-      return blockDay === dayOfWeek;
-    }
-    return b.date === dateStr;
-  });
+// Synchronous version that uses pre-fetched data from useAppData
+// Pages should use data.timeBlocks directly instead of calling this
+export function getTimeBlocksForDate(dateStr: string, _clinicianId?: string): TimeBlock[] {
+  // This is now a no-op placeholder. Pages using this should use timeBlocks from useAppData
+  // and filter locally. We return empty to avoid breaking anything.
+  return [];
 }

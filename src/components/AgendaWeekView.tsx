@@ -5,7 +5,6 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAppData } from "@/hooks/useAppData";
 import { ScheduleEvent, TimeBlock } from "@/types";
-import { getTimeBlocksForDate } from "@/lib/store";
 import { Lock } from "lucide-react";
 import { toLocalDateStr } from "@/lib/format";
 
@@ -49,7 +48,14 @@ export function AgendaWeekView({ currentDate, onSelectDay }: Props) {
             const dateStr = toLocalDateStr(day);
             const isToday = dateStr === todayStr;
             const events = (data.scheduleEvents ?? []).filter((e) => e.date === dateStr).sort((a, b) => a.startTime.localeCompare(b.startTime));
-            const blocks = getTimeBlocksForDate(dateStr);
+            const blocks = (data.timeBlocks ?? []).filter((b) => {
+              if (b.recurrence === "daily") return true;
+              if (b.recurrence === "weekly") {
+                const blockDay = new Date(b.date + "T12:00:00").getDay();
+                return blockDay === day.getDay();
+              }
+              return b.date === dateStr;
+            });
 
             return (
               <motion.div
