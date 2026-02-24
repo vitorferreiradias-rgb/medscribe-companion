@@ -122,6 +122,21 @@ Deno.serve(async (req) => {
     if (!cseResponse.ok) {
       const errText = await cseResponse.text();
       console.error("CSE API error:", errText);
+
+      // On rate limit (429) or other errors, try returning stale cache
+      const { data: staleCache } = await supabase
+        .from("medical_news")
+        .select("*")
+        .eq("category", category)
+        .order("fetched_at", { ascending: false })
+        .limit(5);
+
+      if (staleCache && staleCache.length > 0) {
+        return new Response(JSON.stringify({ news: staleCache, cached: true, stale: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       return new Response(
         JSON.stringify({ error: `Google CSE error: ${cseResponse.status}` }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
