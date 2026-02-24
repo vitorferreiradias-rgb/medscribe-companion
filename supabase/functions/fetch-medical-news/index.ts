@@ -8,43 +8,61 @@ const corsHeaders = {
 
 const CACHE_HOURS = 24;
 
-const categoryPrompts: Record<string, string> = {
-  hoje: `Você é um assistente médico especializado em notícias de saúde do Brasil. Gere 5 notícias médicas REAIS e RECENTES do Brasil, baseadas em fontes como SBC, Anvisa, CFM, Ministério da Saúde, INCA, Lancet. As notícias devem ser factuais, sobre eventos e publicações reais de 2025-2026. Categoria: notícias do dia / destaques gerais.
-
-Retorne um JSON array com exatamente 5 objetos, cada um com:
-- title: título da notícia (máximo 80 caracteres)
-- summary: resumo de 1-2 frases (máximo 200 caracteres)
-- source: sigla da fonte (ex: SBC, Anvisa, CFM, MS)
-- url: URL real da instituição fonte
-- published_at: data no formato DD/MM/YYYY`,
-
-  diretrizes: `Você é um assistente médico. Gere 5 notícias sobre DIRETRIZES CLÍNICAS recentes no Brasil, baseadas em publicações reais de sociedades médicas como SBC, ABN, INCA, SBP, SBPT, CFM. Foque em atualizações de protocolos e guidelines de 2025-2026.
-
-Retorne um JSON array com exatamente 5 objetos, cada um com:
-- title: título (máximo 80 caracteres)
-- summary: resumo de 1-2 frases (máximo 200 caracteres)
-- source: sigla da fonte
-- url: URL real da instituição
-- published_at: data no formato DD/MM/YYYY`,
-
-  medicacoes: `Você é um assistente médico. Gere 5 notícias sobre MEDICAÇÕES no Brasil: aprovações da Anvisa, recalls, novas indicações, alertas de interações medicamentosas, genéricos aprovados. Baseie-se em informações factuais de 2025-2026.
-
-Retorne um JSON array com exatamente 5 objetos, cada um com:
-- title: título (máximo 80 caracteres)
-- summary: resumo de 1-2 frases (máximo 200 caracteres)
-- source: sigla da fonte (ex: Anvisa, FDA, CFF)
-- url: URL real da instituição
-- published_at: data no formato DD/MM/YYYY`,
-
-  eventos: `Você é um assistente médico. Gere 5 notícias sobre EVENTOS MÉDICOS no Brasil: congressos, simpósios, jornadas, workshops de 2025-2026. Inclua eventos de sociedades como SBCM, SBMFC, SOCESP, CBIS, SBC.
-
-Retorne um JSON array com exatamente 5 objetos, cada um com:
-- title: título do evento (máximo 80 caracteres)
-- summary: resumo de 1-2 frases (máximo 200 caracteres)
-- source: sigla da organização
-- url: URL real da instituição
-- published_at: data do evento no formato DD/MM/YYYY`,
+const categoryQueries: Record<string, string> = {
+  hoje: "notícias medicina saúde Brasil 2026",
+  diretrizes: "novas diretrizes clínicas protocolos medicina Brasil",
+  medicacoes: "medicamentos aprovados Anvisa alertas farmacológicos",
+  eventos: "congressos simpósios medicina Brasil 2026",
 };
+
+const domainToSource: Record<string, string> = {
+  "anvisa.gov.br": "Anvisa",
+  "gov.br": "Min. Saúde",
+  "portal.cfm.org.br": "CFM",
+  "cfm.org.br": "CFM",
+  "sbc.org.br": "SBC",
+  "inca.gov.br": "INCA",
+  "sbp.com.br": "SBP",
+  "pebmed.com.br": "PEBMED",
+  "medscape.com": "Medscape",
+  "sbmfc.org.br": "SBMFC",
+  "saude.gov.br": "Min. Saúde",
+};
+
+function extractSource(url: string): string {
+  try {
+    const hostname = new URL(url).hostname.replace("www.", "");
+    for (const [domain, source] of Object.entries(domainToSource)) {
+      if (hostname.includes(domain)) return source;
+    }
+    // Fallback: use first part of domain
+    const parts = hostname.split(".");
+    return parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+  } catch {
+    return "Web";
+  }
+}
+
+function extractDate(item: any): string {
+  // Try pagemap metatags for date
+  try {
+    const metatags = item.pagemap?.metatags?.[0];
+    const dateStr =
+      metatags?.["article:published_time"] ||
+      metatags?.["og:updated_time"] ||
+      metatags?.["date"] ||
+      item.snippet?.match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/)?.[0];
+    if (dateStr) {
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString("pt-BR");
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return new Date().toLocaleDateString("pt-BR");
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -54,7 +72,7 @@ Deno.serve(async (req) => {
   try {
     const { category, force } = await req.json();
 
-    if (!category || !categoryPrompts[category]) {
+    if (!category || !categoryQueries[category]) {
       return new Response(
         JSON.stringify({ error: "Invalid category. Use: hoje, diretrizes, medicacoes, eventos" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -83,70 +101,51 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Call Google Gemini API
-    const googleApiKey = Deno.env.get("GOOGLE_AI_API_KEY");
-    if (!googleApiKey) {
+    // Google CSE API
+    const cseApiKey = Deno.env.get("GOOGLE_CSE_API_KEY");
+    const cseCx = Deno.env.get("GOOGLE_CSE_CX");
+
+    if (!cseApiKey || !cseCx) {
       return new Response(
-        JSON.stringify({ error: "GOOGLE_AI_API_KEY not configured" }),
+        JSON.stringify({ error: "GOOGLE_CSE_API_KEY or GOOGLE_CSE_CX not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const geminiResponse = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": googleApiKey,
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: categoryPrompts[category] }] }],
-          generationConfig: { responseMimeType: "application/json" },
-        }),
-      }
-    );
+    const query = encodeURIComponent(categoryQueries[category]);
+    const cseUrl = `https://www.googleapis.com/customsearch/v1?key=${cseApiKey}&cx=${cseCx}&q=${query}&num=5&dateRestrict=m1`;
 
-    if (!geminiResponse.ok) {
-      const errText = await geminiResponse.text();
-      console.error("Gemini API error:", errText);
+    const cseResponse = await fetch(cseUrl);
+
+    if (!cseResponse.ok) {
+      const errText = await cseResponse.text();
+      console.error("CSE API error:", errText);
       return new Response(
-        JSON.stringify({ error: `Gemini API error: ${geminiResponse.status}` }),
+        JSON.stringify({ error: `Google CSE error: ${cseResponse.status}` }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const geminiData = await geminiResponse.json();
-    const textContent = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+    const cseData = await cseResponse.json();
+    const items = cseData.items ?? [];
 
-    if (!textContent) {
+    if (items.length === 0) {
       return new Response(
-        JSON.stringify({ error: "Empty response from Gemini" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    let newsItems: Array<{ title: string; summary: string; source: string; url: string; published_at: string }>;
-    try {
-      newsItems = JSON.parse(textContent);
-    } catch {
-      console.error("Failed to parse Gemini response:", textContent);
-      return new Response(
-        JSON.stringify({ error: "Invalid JSON from Gemini" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "No results from Google CSE" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Delete old news for this category and insert new ones
     await supabase.from("medical_news").delete().eq("category", category);
 
-    const rows = newsItems.map((item) => ({
-      title: item.title,
-      summary: item.summary,
-      source: item.source,
-      url: item.url || "",
+    const rows = items.slice(0, 5).map((item: any) => ({
+      title: (item.title ?? "").substring(0, 200),
+      summary: (item.snippet ?? "").substring(0, 300),
+      source: extractSource(item.link ?? ""),
+      url: item.link ?? "",
       category,
-      published_at: item.published_at,
+      published_at: extractDate(item),
       fetched_at: new Date().toISOString(),
     }));
 
