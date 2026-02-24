@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { updatePatient, deletePatient, duplicateEncounter, deleteEncounter } from "@/lib/store";
+import { useEvolutionPhotos, useAddEvolutionPhoto, useDeleteEvolutionPhoto } from "@/hooks/useSupabaseData";
+import { EvolutionPhotoImage } from "@/components/EvolutionPhotoImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -128,7 +130,7 @@ export default function PacienteDetalhe() {
   const [docDate, setDocDate] = useState("");
   const [docType, setDocType] = useState<PatientDocument["type"]>("exame");
 
-  // Tab Evolução (Evolution Timeline)
+  // Tab Evolução (Evolution Timeline) - Supabase
   const [photoLabel, setPhotoLabel] = useState("");
   const [photoDate, setPhotoDate] = useState("");
   const [photoNotes, setPhotoNotes] = useState("");
@@ -137,63 +139,34 @@ export default function PacienteDetalhe() {
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
   const [zoomPhotoId, setZoomPhotoId] = useState<string | null>(null);
 
-  const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-
-  const resizeImage = (dataUrl: string, maxSize = 800): Promise<string> => new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      let { width, height } = img;
-      if (width > maxSize || height > maxSize) {
-        const ratio = Math.min(maxSize / width, maxSize / height);
-        width *= ratio;
-        height *= ratio;
-      }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL("image/jpeg", 0.8));
-    };
-    img.src = dataUrl;
-  });
+  const { data: dbEvolutionPhotos = [] } = useEvolutionPhotos(id);
+  const addEvolutionPhotoMutation = useAddEvolutionPhoto();
+  const deleteEvolutionPhotoMutation = useDeleteEvolutionPhoto();
 
   const handleAddEvolutionPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !patient) return;
-    const base64 = await fileToBase64(file);
-    const resized = await resizeImage(base64);
-    const photo: EvolutionPhoto = {
-      id: uid("evo"),
-      date: photoDate || format(new Date(), "yyyy-MM-dd"),
+    if (!file || !patient || !id) return;
+    addEvolutionPhotoMutation.mutate({
+      patientId: id,
+      file,
       label: photoLabel || "Registro",
-      image: resized,
+      date: photoDate || format(new Date(), "yyyy-MM-dd"),
       notes: photoNotes || undefined,
       weight: photoWeight ? parseFloat(photoWeight) : undefined,
-    };
-    updatePatient(patient.id, { evolutionPhotos: [...(patient.evolutionPhotos ?? []), photo] });
+    });
     setPhotoLabel("");
     setPhotoDate("");
     setPhotoNotes("");
     setPhotoWeight("");
     setShowPhotoForm(false);
-    toast({ title: "Foto de evolução adicionada." });
     e.target.value = "";
   };
 
-  const handleRemoveEvolutionPhoto = (photoId: string) => {
-    if (!patient) return;
-    updatePatient(patient.id, {
-      evolutionPhotos: (patient.evolutionPhotos ?? []).filter((p) => p.id !== photoId),
-    });
+  const handleRemoveEvolutionPhoto = (photoId: string, imagePath: string) => {
+    if (!id) return;
+    deleteEvolutionPhotoMutation.mutate({ id: photoId, imagePath, patientId: id });
     if (compareIds && (compareIds[0] === photoId || compareIds[1] === photoId)) setCompareIds(null);
     if (zoomPhotoId === photoId) setZoomPhotoId(null);
-    toast({ title: "Foto removida." });
   };
 
   const toggleCompare = (photoId: string) => {
@@ -209,8 +182,8 @@ export default function PacienteDetalhe() {
   };
 
   const evolutionPhotos = useMemo(() =>
-    [...(patient?.evolutionPhotos ?? [])].sort((a, b) => a.date.localeCompare(b.date)),
-    [patient?.evolutionPhotos]
+    [...dbEvolutionPhotos].sort((a, b) => a.date.localeCompare(b.date)),
+    [dbEvolutionPhotos]
   );
 
   const comparePhotos = useMemo(() => {
@@ -220,6 +193,7 @@ export default function PacienteDetalhe() {
     if (!a || !b) return null;
     return a.date <= b.date ? [a, b] as const : [b, a] as const;
   }, [compareIds, evolutionPhotos]);
+
 
   const now = new Date();
 
@@ -746,7 +720,7 @@ export default function PacienteDetalhe() {
                         <span className="text-xs text-muted-foreground">{format(parseISO(photo.date), "dd/MM/yyyy")}</span>
                       </div>
                       <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-muted/30 border border-border/40">
-                        <img src={photo.image} alt={photo.label} className="w-full h-full object-cover" />
+                        <EvolutionPhotoImage imagePath={photo.image_path} alt={photo.label} />
                       </div>
                       {photo.weight && (
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -862,7 +836,7 @@ export default function PacienteDetalhe() {
                                   variant="ghost"
                                   size="icon"
                                   className="h-7 w-7"
-                                  onClick={(e) => { e.stopPropagation(); handleRemoveEvolutionPhoto(photo.id); }}
+                                  onClick={(e) => { e.stopPropagation(); handleRemoveEvolutionPhoto(photo.id, photo.image_path); }}
                                 >
                                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                                 </Button>
@@ -874,10 +848,9 @@ export default function PacienteDetalhe() {
                               "rounded-lg overflow-hidden bg-muted/30 border border-border/30 transition-all",
                               zoomPhotoId === photo.id ? "aspect-auto max-h-[500px]" : "aspect-[4/3] max-h-[200px]"
                             )}>
-                              <img
-                                src={photo.image}
+                              <EvolutionPhotoImage
+                                imagePath={photo.image_path}
                                 alt={photo.label}
-                                className="w-full h-full object-cover"
                                 onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
                               />
                             </div>
