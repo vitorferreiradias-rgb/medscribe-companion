@@ -1,43 +1,27 @@
 
 
-# Atualizar Evolution Compare para Gemini 2.5 Pro com Análise Corporal Detalhada
+# Atualizar prompt para estimativas visuais sem dados obrigatórios
 
-## Resumo
-
-Duas mudanças na edge function `evolution-compare`:
-
-1. **Modelo**: `google/gemini-2.5-flash` → `google/gemini-2.5-pro`
-2. **Prompt**: Expandir para incluir análise detalhada região por região do corpo
-
-## Mudanças
+## Mudança
 
 ### `supabase/functions/evolution-compare/index.ts`
 
-**Linha 91** — Trocar o modelo:
-```
-model: "google/gemini-2.5-pro"
-```
+Ajustar o `systemPrompt` existente para:
 
-**Linhas 49-67** — Substituir o `systemPrompt` por uma versão com análise corporal detalhada:
+1. Na seção **10. Composição Corporal Aparente**, adicionar instrução para sempre estimar faixa de peso aparente e % de gordura corporal visualmente, mesmo sem dados
+2. Na seção **Correlação com Peso**, expandir para cobrir 3 cenários:
+   - Com peso + altura: calcular IMC e correlacionar
+   - Só com peso: correlacionar mudança de peso com mudanças visuais
+   - Sem dados: fornecer estimativas visuais (faixa de peso aparente, % gordura estimado) e recomendar que o médico registre peso/altura
+3. Adicionar nova seção **Estimativas Visuais** logo após a tabela resumo, com:
+   - Faixa de peso aparente (ex: 75-85kg)
+   - % gordura corporal estimado (ex: 20-25%)
+   - Biótipo predominante
+   - Nota clara de que são estimativas visuais, não medições
 
-O novo prompt instruirá a IA a analisar separadamente:
-- **Rosto e pescoço** — contorno facial, papada, definição mandibular
-- **Braços** — volume, definição muscular, flacidez
-- **Tronco/Peito** — proporção, postura, ginecomastia
-- **Abdômen** — circunferência aparente, distensão, definição
-- **Cintura** — contorno lateral, relação cintura-quadril visual
-- **Quadril e glúteos** — volume, proporção
-- **Pernas (coxas e panturrilhas)** — volume, definição, celulite
-- **Postura geral** — alinhamento, lordose, cifose
-- **Pele** — coloração, estrias, flacidez, textura
-- **Composição corporal aparente** — estimativa visual de percentual de gordura, distribuição de massa
+4. Nas REGRAS, adicionar:
+   - "Sempre forneça estimativas visuais de composição corporal, mesmo sem dados do paciente"
+   - "Indique claramente quando valores são estimativas visuais vs dados informados"
 
-Incluirá também:
-- Tabela resumo com classificação por região (melhora significativa / leve / estável / piora leve / piora significativa)
-- Score geral de evolução
-- Se peso foi informado no contexto, correlacionar com as mudanças visuais
-
-### Seção técnica
-
-Apenas mudanças na edge function — sem alteração no frontend, banco de dados ou outras funções. A API e formato de resposta permanecem idênticos (campo `analysis` com texto markdown). O Pro pode levar 5-15s para responder (vs 2-5s do Flash), mas o loading state já está implementado no frontend.
+Nenhuma mudança no frontend, banco de dados ou formato de resposta da API.
 
