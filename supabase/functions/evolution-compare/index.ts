@@ -82,6 +82,7 @@ Analise: coloração, estrias (novas ou atenuadas), flacidez, textura, manchas.
 
 ### 10. Composição Corporal Aparente
 Estimativa visual de: percentual de gordura corporal aparente (faixa), distribuição de massa magra vs gordura, biótipo predominante (endomorfo/mesomorfo/ectomorfo).
+**IMPORTANTE:** Sempre forneça uma estimativa visual da faixa de peso aparente (ex: 75-85kg) e do percentual de gordura corporal (ex: 20-25%), mesmo que nenhum dado tenha sido informado pelo médico. Baseie-se em proporções corporais, volume aparente e referências anatômicas visíveis.
 
 ---
 
@@ -100,11 +101,33 @@ Estimativa visual de: percentual de gordura corporal aparente (faixa), distribui
 | Pele | [...] |
 | Composição Corporal | [...] |
 
+## Estimativas Visuais
+
+Forneça SEMPRE esta seção, independentemente de dados informados:
+
+| Parâmetro | ANTES (estimativa) | DEPOIS (estimativa) |
+|---|---|---|
+| Faixa de peso aparente | ex: 85-95kg | ex: 75-85kg |
+| % gordura corporal estimado | ex: 28-33% | ex: 22-27% |
+| Biótipo predominante | ex: Endomorfo | ex: Meso-endomorfo |
+
+⚠️ **Nota:** Estes valores são estimativas visuais baseadas em proporções corporais e referências anatômicas. Não substituem medições reais. Recomenda-se que o médico registre peso e altura para análises futuras mais precisas.
+
 ## Score Geral de Evolução
 Atribua uma nota de 1 a 10 para a evolução geral observada e justifique brevemente.
 
-## Correlação com Peso (se informado)
-Se o peso do paciente foi informado no contexto, correlacione as mudanças visuais com a variação de peso, indicando se a perda/ganho parece ser predominantemente de gordura ou massa magra.
+## Correlação com Dados Antropométricos
+
+Siga o cenário aplicável:
+
+**Cenário A — Peso e altura informados:**
+Calcule o IMC (ANTES e DEPOIS, se disponível) e correlacione com as mudanças visuais. Indique se a perda/ganho parece ser predominantemente de gordura ou massa magra.
+
+**Cenário B — Apenas peso informado:**
+Correlacione a variação de peso com as mudanças visuais observadas. Indique se a perda/ganho parece ser predominantemente de gordura ou massa magra. Sugira que o médico registre a altura para cálculo de IMC.
+
+**Cenário C — Nenhum dado informado:**
+Baseie-se exclusivamente nas estimativas visuais da seção anterior. Compare as faixas estimadas de ANTES e DEPOIS. Recomende enfaticamente que o médico registre peso e altura do paciente para análises futuras mais precisas e correlações mais confiáveis.
 
 ## Recomendações de Acompanhamento
 Sugira pontos específicos para o médico acompanhar nas próximas avaliações com base nas mudanças observadas.
@@ -116,7 +139,9 @@ REGRAS:
 - NÃO faça diagnósticos — apenas descreva mudanças visuais observáveis.
 - Se uma região não for visível nas fotos, indique "Região não visível nas imagens fornecidas".
 - Se as fotos forem de baixa qualidade ou ângulos muito diferentes, informe claramente e faça a melhor análise possível com o que está disponível.
-- Sempre preencha TODAS as regiões da tabela resumo.`;
+- Sempre preencha TODAS as regiões da tabela resumo.
+- Sempre forneça estimativas visuais de composição corporal, mesmo sem dados do paciente.
+- Indique claramente quando valores são estimativas visuais vs dados informados pelo médico.`;
 
     const userContent: any[] = [
       {
