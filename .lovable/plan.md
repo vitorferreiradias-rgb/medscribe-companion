@@ -1,124 +1,124 @@
 
 
-# Migrar de Gemini para Google CSE + Gemini (busca real + resumo)
+# Notícias Médicas -- Migração para Fontes Gratuitas (sem Google CSE)
 
-## Problema atual
-A Edge Function `fetch-medical-news` usa apenas o Gemini, que "alucina" URLs e fontes. Os links retornados podem nao existir. Alem disso, a chave atual esta com erro 429 (quota excedida, limite 0 -- a chave pode estar em um projeto sem billing ou com restricoes).
+## Problema Atual
+O sistema usa Google Custom Search Engine (CSE), que tem limite de 100 consultas/dia no plano gratuito. Ao atingir esse limite, retorna erro 429 e a funcionalidade para de funcionar.
 
-## Nova arquitetura
+## Solução Proposta
+Substituir o Google CSE por scraping direto de fontes oficiais gratuitas + API PubMed (gratuita, sem chave). Isso elimina completamente a dependencia de API keys pagas e limites de cota.
 
-```text
-[Frontend] --> [Edge Function: fetch-medical-news]
-                    |
-                    v
-              [Google CSE API]  -- busca noticias reais com URLs verificaveis
-                    |
-                    v
-              [Gemini API]  -- (opcional) resume/formata os resultados
-                    |
-                    v
-              [Tabela: medical_news]  -- cache 24h
-```
+---
 
-## O que e o Google CSE
-Google Custom Search Engine (CSE) e uma API gratuita do Google que retorna resultados de busca reais (titulo, URL, snippet) de sites indexados. Voce pode restringir a busca a dominios especificos como anvisa.gov.br, sbc.org.br, cfm.org.br, etc.
+## Fontes de Dados por Categoria
 
-## Pre-requisitos (voce precisa fazer)
+| Categoria | Fontes | Metodo |
+|-----------|--------|--------|
+| Hoje | ANVISA RSS, Min. Saude RSS, FDA RSS | RSS/Atom feed parsing |
+| Diretrizes | CONITEC (scraping HTML), PubMed E-Utilities (Practice Guidelines) | HTTP fetch + regex parsing |
+| Medicacoes | ANVISA RSS (filtrado), FDA Drug News RSS, EMA RSS | RSS feed parsing |
+| Eventos | PubMed (filtro), EMA Events RSS | RSS + API |
 
-### 1. Criar um Custom Search Engine
-1. Acesse https://programmablesearchengine.google.com/controlpanel/all
-2. Clique em "Add" (Adicionar)
-3. Em "Sites to search", adicione os dominios medicos:
-   - `anvisa.gov.br`
-   - `gov.br/saude`
-   - `portal.cfm.org.br`
-   - `sbc.org.br`
-   - `inca.gov.br`
-   - `sbp.com.br`
-   - `pebmed.com.br`
-   - `medscape.com`
-4. De um nome (ex: "Noticias Medicas Brasil")
-5. Clique em "Create"
-6. Copie o **Search Engine ID** (cx) gerado
+URLs das fontes:
+- ANVISA: `https://www.gov.br/anvisa/pt-br/assuntos/noticias-anvisa/RSS`
+- Min. Saude: `https://www.gov.br/saude/pt-br/assuntos/noticias/RSS`
+- FDA: `https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds` (Drug News)
+- EMA: `https://www.ema.europa.eu/en/news-events/whats-new` (HTML scraping)
+- PubMed E-Utilities: `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi` + `efetch.fcgi`
+- CONITEC: `https://www.gov.br/conitec/pt-br/assuntos/avaliacao-de-tecnologias-em-saude/protocolos-clinicos-e-diretrizes-terapeuticas` (HTML scraping)
 
-### 2. Obter uma API Key para o Custom Search
-1. Acesse https://console.cloud.google.com/apis/credentials
-2. Clique em "Create Credentials" > "API Key"
-3. (Recomendado) Restrinja a chave apenas para "Custom Search API"
-4. Copie a chave gerada
-
-### 3. Habilitar a Custom Search API
-1. Acesse https://console.cloud.google.com/apis/library/customsearch.googleapis.com
-2. Clique em "Enable"
-
-**Limite gratuito**: 100 buscas/dia (mais que suficiente com cache de 24h -- maximo 4 buscas/dia, uma por categoria).
-
-## Etapas de implementacao
-
-### 1. Configurar novos secrets
-- `GOOGLE_CSE_API_KEY` -- chave da API do Custom Search
-- `GOOGLE_CSE_CX` -- ID do Search Engine criado
-
-### 2. Atualizar Edge Function `fetch-medical-news`
-Substituir a chamada ao Gemini por:
+## Arquitetura
 
 ```text
-Fluxo:
-1. Recebe categoria (hoje, diretrizes, medicacoes, eventos)
-2. Verifica cache 24h no banco
-3. Se expirado:
-   a. Monta query de busca por categoria:
-      - hoje: "noticias medicina saude Brasil"
-      - diretrizes: "diretrizes clinicas medicina Brasil 2026"
-      - medicacoes: "medicamentos aprovados Anvisa Brasil"
-      - eventos: "congressos medicina Brasil 2026"
-   b. Chama Google CSE API:
-      GET https://www.googleapis.com/customsearch/v1
-        ?key=GOOGLE_CSE_API_KEY
-        &cx=GOOGLE_CSE_CX
-        &q={query}
-        &num=5
-        &dateRestrict=m1  (ultimo mes)
-   c. Extrai titulo, snippet e URL reais dos resultados
-   d. (Opcional) Chama Gemini para gerar resumos mais limpos
-   e. Salva no banco e retorna
++------------------+     +------------------------+     +----------------+
+|  Frontend React  | --> | Edge Function           | --> | medical_news   |
+|  (useMedicalNews)|     | fetch-medical-news      |     | (tabela cache) |
++------------------+     +------------------------+     +----------------+
+                              |
+                    +---------+---------+
+                    |         |         |
+                  RSS     Scraping   PubMed
+                 feeds     HTML     E-Utils
 ```
 
-### 3. Frontend (sem mudancas)
-Os componentes `NewsCard.tsx`, `Noticias.tsx` e o hook `useMedicalNews.ts` permanecem identicos -- a interface de dados e a mesma (title, summary, source, url, category, published_at).
+---
 
-## Custo
-Zero. O Google CSE oferece 100 buscas gratuitas por dia. Com cache de 24h, o consumo sera no maximo 4 buscas/dia.
+## Mudancas Detalhadas
 
-## Vantagens vs. abordagem anterior
-- URLs reais e verificaveis (nao alucinadas)
-- Titulos e snippets extraidos de paginas reais indexadas pelo Google
-- Fontes confiaveis (restrito aos dominios configurados)
-- Gemini usado apenas como complemento opcional para melhorar resumos
+### 1. Edge Function `fetch-medical-news/index.ts` (reescrever)
 
-## Detalhes tecnicos
+**Remover**: toda a logica do Google CSE (API key, CX, chamada customsearch).
 
-### Chamada ao Google CSE (dentro da Edge Function)
+**Adicionar**:
+- Funcao `fetchRSS(url)`: faz fetch da URL, parseia XML com regex para extrair `<title>`, `<link>`, `<pubDate>`, `<description>`
+- Funcao `scrapeHTML(url, selectors)`: faz fetch de paginas HTML e extrai manchetes via regex
+- Funcao `fetchPubMed(query)`: usa E-Utilities para buscar artigos recentes tipo "Practice Guideline"
+- Mapa de fontes por categoria:
+  - `hoje`: RSS ANVISA + RSS Min. Saude + RSS FDA
+  - `diretrizes`: scrape CONITEC + PubMed Practice Guidelines
+  - `medicacoes`: RSS ANVISA (filtrado por palavras-chave de medicacao) + RSS FDA Drug News
+  - `eventos`: scrape EMA events + PubMed conferences
+- Logica de relevancia: priorizar manchetes com termos de alta importancia ('Aprovacao', 'Recall', 'Urgente', 'Falsificacao') no topo
+- Limite de 15 manchetes por categoria (atualmente sao 5)
+- Manter cache de 6 horas (reduzido de 24h para dados mais frescos)
+- Fallback robusto: se uma fonte falhar, continuar com as outras
+
+### 2. Hook `useMedicalNews.ts` (ajustar)
+
+- Aumentar `.limit(5)` para `.limit(15)` no cache query
+- Manter a mesma interface `MedicalNewsItem`
+- Adicionar campo `priority` opcional para ordenacao
+
+### 3. Pagina `Noticias.tsx` (melhorar)
+
+- Cards clicaveis que abrem a URL original em nova aba (`window.open(url, '_blank')`)
+- Exibir ate 15 manchetes por categoria
+- Indicador visual para manchetes prioritarias (ex: badge "Urgente")
+- Manter busca e filtros existentes
+
+### 4. Componente `NewsCard.tsx` (ajustar)
+
+- Click no card abre URL diretamente (remover logica de double-click)
+- Mostrar ate 5 items no card resumido (manter)
+
+### 5. Secrets (limpeza)
+
+- `GOOGLE_CSE_API_KEY` e `GOOGLE_CSE_CX` nao serao mais necessarias (podem ser removidas futuramente)
+- Nenhuma nova API key necessaria -- PubMed E-Utilities e gratuito sem chave
+
+---
+
+## Secao Tecnica
+
+### RSS Parser (sem dependencias externas)
 ```text
-const response = await fetch(
-  `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cx}&q=${query}&num=5&dateRestrict=m1`
-);
-const data = await response.json();
-// data.items[] contem: title, snippet, link, pagemap.metatags
+Regex-based XML parsing dentro do Deno edge function:
+- Extrair <item> blocks
+- De cada <item>: <title>, <link>, <pubDate>, <description>
+- Converter pubDate para formato pt-BR
 ```
 
-### Mapeamento de categorias para queries
+### PubMed E-Utilities
 ```text
-hoje       -> "noticias medicina saude Brasil 2026"
-diretrizes -> "novas diretrizes clinicas protocolos medicina Brasil"
-medicacoes -> "medicamentos aprovados Anvisa alertas farmacologicos"
-eventos    -> "congressos simposios medicina Brasil 2026"
+GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi
+  ?db=pubmed&term=Practice+Guideline[pt]&retmax=10&sort=date&retmode=json
+
+GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi
+  ?db=pubmed&id=ID1,ID2,...&retmode=json
 ```
 
-### Extracao de fonte (source)
-O dominio da URL e extraido automaticamente para gerar a sigla:
-- `anvisa.gov.br` -> "Anvisa"
-- `sbc.org.br` -> "SBC"
-- `portal.cfm.org.br` -> "CFM"
-- Outros -> usa o dominio limpo
+### Prioridade de Manchetes
+```text
+Palavras de alta prioridade (score +10):
+  'Aprovação', 'Falsificação', 'Recall', 'Urgente', 'Emergência',
+  'Approval', 'FDA', 'Recall', 'Alert', 'Emergency'
+
+Manchetes com esses termos aparecem primeiro dentro de cada categoria.
+```
+
+### Tratamento de Erros
+- Cada fonte e buscada independentemente com try/catch
+- Se uma fonte falhar, as outras continuam
+- Se todas falharem, retorna cache stale (mantendo comportamento atual)
+- Timeout de 8 segundos por fonte para evitar edge function timeout
 
