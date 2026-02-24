@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Newspaper, ExternalLink, ArrowLeft, RefreshCw } from "lucide-react";
+import { Newspaper, ExternalLink, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,30 +15,11 @@ interface NewsCardProps {
 export function NewsCard({ embedded = false }: NewsCardProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("hoje");
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
-  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const { data: items = [], isLoading, forceRefresh } = useMedicalNews(activeTab);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
-    setExpandedIndex(null);
   };
-
-  const handleClick = useCallback((index: number, url: string | null) => {
-    if (clickTimer.current) {
-      clearTimeout(clickTimer.current);
-      clickTimer.current = null;
-      if (url) window.open(url, "_blank");
-      return;
-    }
-    clickTimer.current = setTimeout(() => {
-      clickTimer.current = null;
-      setExpandedIndex(index);
-    }, 300);
-  }, []);
-
-  const expandedItem = expandedIndex !== null ? items[expandedIndex] : null;
 
   const content = (
     <>
@@ -76,35 +57,6 @@ export function NewsCard({ embedded = false }: NewsCardProps) {
                   </div>
                 ))}
               </div>
-            ) : expandedItem ? (
-              <div className="space-y-3">
-                <button
-                  onClick={() => setExpandedIndex(null)}
-                  className="flex items-center gap-1 text-xs text-primary hover:underline"
-                >
-                  <ArrowLeft className="h-3 w-3" />
-                  Voltar à lista
-                </button>
-                <div>
-                  <h3 className="text-sm font-semibold leading-snug">{expandedItem.title}</h3>
-                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{expandedItem.summary}</p>
-                  <div className="flex items-center gap-1.5 mt-3">
-                    <Badge variant="secondary" className="text-[10px] font-normal">{expandedItem.source}</Badge>
-                    <span className="text-[10px] text-muted-foreground">{expandedItem.published_at}</span>
-                  </div>
-                  {expandedItem.url && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mt-3 text-xs text-primary hover:text-primary p-0 h-auto"
-                      onClick={() => window.open(expandedItem.url!, "_blank")}
-                    >
-                      Abrir fonte
-                      <ExternalLink className="ml-1 h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-              </div>
             ) : items.length === 0 ? (
               <div className="py-4 text-center">
                 <p className="text-xs text-muted-foreground">Nenhuma notícia disponível.</p>
@@ -124,7 +76,7 @@ export function NewsCard({ embedded = false }: NewsCardProps) {
                   <div
                     key={item.id}
                     className="flex items-start gap-2 py-1 cursor-pointer rounded-md px-1 -mx-1 hover:bg-secondary/50 transition-colors"
-                    onClick={() => handleClick(i, item.url)}
+                    onClick={() => item.url && window.open(item.url, "_blank")}
                   >
                     <div className="h-1.5 w-1.5 rounded-full bg-primary/40 shrink-0 mt-1.5" />
                     <div className="flex-1 min-w-0">
