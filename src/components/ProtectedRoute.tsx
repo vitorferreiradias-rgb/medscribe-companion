@@ -1,23 +1,20 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { getData } from "@/lib/store";
-import { useState, useEffect } from "react";
-import { subscribe } from "@/lib/store";
+import { useAuth } from "@/hooks/useAuth";
 
 export function ProtectedRoute() {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    const data = getData();
-    return data?.settings?.sessionSimulated?.isLoggedIn ?? false;
-  });
+  const { user, loading } = useAuth();
 
-  useEffect(() => {
-    return subscribe(() => {
-      const data = getData();
-      setIsLoggedIn(data?.settings?.sessionSimulated?.isLoggedIn ?? false);
-    });
-  }, []);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Carregando...</div>
+      </div>
+    );
+  }
 
-  if (!isLoggedIn) {
+  if (!user) {
     return <Navigate to="/login" replace />;
   }
+
   return <Outlet />;
 }
