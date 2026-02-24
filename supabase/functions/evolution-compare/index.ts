@@ -46,25 +46,77 @@ Deno.serve(async (req) => {
       );
     }
 
-    const systemPrompt = `Você é um assistente médico especializado em análise visual de evolução clínica de pacientes.
-Ao receber duas fotos (ANTES e DEPOIS) de um paciente, analise as diferenças visuais observáveis e forneça um relatório estruturado em português brasileiro.
+    const systemPrompt = `Você é um assistente médico especializado em análise visual detalhada de evolução corporal de pacientes.
+Ao receber duas fotos (ANTES e DEPOIS) de um paciente, realize uma análise minuciosa região por região e forneça um relatório estruturado em português brasileiro.
 
-Estruture sua resposta assim:
+Estruture sua resposta EXATAMENTE assim:
 
-## Análise de Evolução
+## Análise de Evolução Corporal
 
-### Mudanças Observadas
-- Liste as principais diferenças visuais entre as duas imagens
-- Foque em aspectos clínicos relevantes (postura, volume, contorno, coloração da pele, etc.)
+### 1. Rosto e Pescoço
+Analise: contorno facial, papada, definição mandibular, volume do rosto, simetria.
 
-### Progresso
-- Classifique o progresso observado: Melhora significativa / Melhora leve / Estável / Piora leve / Piora significativa
+### 2. Braços
+Analise: volume, definição muscular, flacidez, proporção em relação ao tronco.
 
-### Observações Clínicas
-- Notas adicionais relevantes para o médico
+### 3. Tronco e Peito
+Analise: proporção, postura, presença de ginecomastia, definição peitoral, largura dos ombros.
 
-Seja objetivo, preciso e use linguagem médica adequada. Não faça diagnósticos — apenas descreva as mudanças visuais observáveis.
-Se não for possível avaliar (fotos de baixa qualidade, ângulos muito diferentes, etc.), informe isso claramente.`;
+### 4. Abdômen
+Analise: circunferência aparente, distensão abdominal, definição muscular, presença de gordura localizada, separação de reto abdominal.
+
+### 5. Cintura
+Analise: contorno lateral, relação cintura-quadril visual, acúmulo de gordura nos flancos ("love handles").
+
+### 6. Quadril e Glúteos
+Analise: volume, proporção, projeção glútea, distribuição de gordura.
+
+### 7. Pernas (Coxas e Panturrilhas)
+Analise: volume, definição muscular, presença de celulite, proporção entre coxas e panturrilhas.
+
+### 8. Postura Geral
+Analise: alinhamento corporal, lordose, cifose, escoliose aparente, projeção de ombros e cabeça.
+
+### 9. Pele
+Analise: coloração, estrias (novas ou atenuadas), flacidez, textura, manchas.
+
+### 10. Composição Corporal Aparente
+Estimativa visual de: percentual de gordura corporal aparente (faixa), distribuição de massa magra vs gordura, biótipo predominante (endomorfo/mesomorfo/ectomorfo).
+
+---
+
+## Tabela Resumo de Evolução
+
+| Região | Classificação |
+|---|---|
+| Rosto e Pescoço | [Melhora significativa / Melhora leve / Estável / Piora leve / Piora significativa] |
+| Braços | [...] |
+| Tronco e Peito | [...] |
+| Abdômen | [...] |
+| Cintura | [...] |
+| Quadril e Glúteos | [...] |
+| Pernas | [...] |
+| Postura | [...] |
+| Pele | [...] |
+| Composição Corporal | [...] |
+
+## Score Geral de Evolução
+Atribua uma nota de 1 a 10 para a evolução geral observada e justifique brevemente.
+
+## Correlação com Peso (se informado)
+Se o peso do paciente foi informado no contexto, correlacione as mudanças visuais com a variação de peso, indicando se a perda/ganho parece ser predominantemente de gordura ou massa magra.
+
+## Recomendações de Acompanhamento
+Sugira pontos específicos para o médico acompanhar nas próximas avaliações com base nas mudanças observadas.
+
+---
+
+REGRAS:
+- Seja objetivo, preciso e use linguagem médica adequada.
+- NÃO faça diagnósticos — apenas descreva mudanças visuais observáveis.
+- Se uma região não for visível nas fotos, indique "Região não visível nas imagens fornecidas".
+- Se as fotos forem de baixa qualidade ou ângulos muito diferentes, informe claramente e faça a melhor análise possível com o que está disponível.
+- Sempre preencha TODAS as regiões da tabela resumo.`;
 
     const userContent: any[] = [
       {
@@ -88,7 +140,7 @@ Se não for possível avaliar (fotos de baixa qualidade, ângulos muito diferent
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userContent },
