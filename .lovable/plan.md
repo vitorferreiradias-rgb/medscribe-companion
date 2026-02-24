@@ -1,89 +1,90 @@
 
 
-# Traduzir Manchetes Internacionais para Portugues
+# Extrair Aprovações Individuais de Medicamentos da FDA
 
-## O que muda
+## Problema Atual
 
-Todas as manchetes vindas de fontes internacionais (FDA, EMA, PubMed, OMS) serao automaticamente traduzidas para portugues antes de serem salvas no cache. As manchetes nacionais nao serao afetadas.
+O sistema usa o RSS genérico da FDA (`/rss-feeds/drugs/rss.xml`), que retorna links para páginas institucionais como "Novel Drug Approvals 2026". O usuário quer ver **cada medicamento aprovado como uma manchete separada**, ex:
+- "Loargys (pegzilarginase-nbln) aprovado para hiperarginemia"
+- "Bysanti (milsaperidona) aprovado para esquizofrenia"
 
-## Abordagem
+## Solução
 
-Usar a API Lovable AI (modelo Gemini Flash -- rapido e barato) para traduzir em lote os titulos e resumos das manchetes internacionais. A traducao acontece na Edge Function, antes de salvar no banco, entao o cache ja armazena tudo em portugues.
+Criar um scraper dedicado que extrai a **tabela de aprovações** da página `https://www.fda.gov/drugs/novel-drug-approvals-fda/novel-drug-approvals-2026` e gera uma manchete por medicamento.
 
-## Mudancas
+## Mudanças
 
 ### 1. Edge Function `fetch-medical-news/index.ts`
 
-Adicionar uma funcao `translateHeadlines` que:
+**Nova função `fetchFDADrugApprovals`** que:
 
-1. Filtra apenas manchetes de fontes internacionais (FDA, FDA Drugs, EMA, PubMed, PubMed Estudos, PubMed Novos Farmacos, OMS)
-2. Envia os titulos e resumos em um unico prompt para a API Lovable AI (Gemini Flash)
-3. Recebe as traducoes e substitui os textos originais
-4. Manchetes nacionais passam direto sem modificacao
+1. Faz fetch da página HTML de aprovações da FDA
+2. Extrai as linhas da tabela usando regex (colunas: Numero, Nome, Ingrediente Ativo, Data, Uso Aprovado)
+3. Gera uma manchete por medicamento no formato:
+   - Titulo: `"FDA aprova [Nome] ([ingrediente]) para [uso]"`
+   - Resumo: `"Aprovado em [data]. [uso aprovado completo]"`
+   - URL: link direto para a pagina da FDA daquele medicamento (se disponível) ou a página geral
+   - Source: `"FDA Drugs"`
 
-Logica de deteccao de fonte internacional:
-
-```text
-INTERNATIONAL_SOURCES = ["FDA", "FDA Drugs", "EMA", "PubMed", "PubMed Estudos", "PubMed Novos Fármacos", "OMS"]
-
-Se headline.source esta em INTERNATIONAL_SOURCES -> traduzir
-Senao -> manter original
-```
-
-Prompt de traducao (batch para eficiencia):
+**Substituir** o fetcher RSS genérico da FDA Drugs por este scraper nos `categoryFetchers`:
 
 ```text
-"Traduza os seguintes titulos de noticias medicas do ingles para o portugues brasileiro.
-Mantenha termos tecnicos medicos reconhecidos. Retorne um JSON array com as traducoes na mesma ordem.
-
-Titulos:
-1. "FDA Approves New Drug for Type 2 Diabetes"
-2. "Clinical Trial Shows Promising Results for Cancer Therapy"
-..."
+medicacoes: [
+  ... fontes existentes,
+  - fetchRSS(".../drugs/rss.xml", "FDA Drugs")    // REMOVER
+  + fetchFDADrugApprovals()                         // ADICIONAR
+]
 ```
 
-Fluxo atualizado:
+**Manter** o RSS geral da FDA em "hoje" (press releases continuam relevantes).
+
+### 2. Nenhuma mudança no frontend
+
+As manchetes individuais aparecem automaticamente com titulo traduzido (a tradução já existe) e link correto.
+
+## Seção Técnica
+
+### Estrutura da Tabela FDA
+
+A tabela na página tem a seguinte estrutura HTML:
 
 ```text
-Fetch all sources (paralelo)
-  -> Collect headlines
-  -> Separate international vs national
-  -> Translate international batch (1 chamada AI)
-  -> Merge back
-  -> Filter, deduplicate, sort, limit
-  -> Save to cache
+<table>
+  <tr>
+    <td>4.</td>
+    <td><a href="/drugs/...">Loargys</a></td>
+    <td>pegzilarginase-nbln</td>
+    <td>23/02/2026</td>
+    <td>Para tratar a hiperarginemia...</td>
+  </tr>
+</table>
 ```
 
-### 2. Nenhuma mudanca no frontend
-
-As manchetes ja chegam traduzidas do cache -- a pagina `Noticias.tsx` e o `NewsCard.tsx` exibem o que esta no banco sem alteracao.
-
-## Secao Tecnica
-
-### Chamada a API Lovable AI
-
-A Edge Function usara o secret `LOVABLE_API_KEY` (ja configurado) para chamar a API com o modelo `google/gemini-2.5-flash-lite` (mais rapido e barato, ideal para traducao simples).
+O regex para extrair linhas da tabela:
 
 ```text
-POST https://ai.lovable.dev/api/v1/chat/completions
-Headers:
-  Authorization: Bearer LOVABLE_API_KEY
-  Content-Type: application/json
-
-Body:
-  model: "google/gemini-2.5-flash-lite"
-  messages: [{ role: "user", content: "Traduza..." }]
-  temperature: 0.1
+/<tr[^>]*>\s*<td[^>]*>\s*(\d+)\.\s*<\/td>\s*<td[^>]*>(?:<a[^>]+href=["']([^"']+)["'][^>]*>)?\s*([\s\S]*?)\s*(?:<\/a>)?\s*<\/td>\s*<td[^>]*>\s*([\s\S]*?)\s*<\/td>\s*<td[^>]*>\s*([\s\S]*?)\s*<\/td>\s*<td[^>]*>\s*([\s\S]*?)\s*<\/td>/gi
 ```
 
-### Performance
+### Formato da Manchete Gerada
 
-- Traducao em batch (todos os titulos internacionais de uma vez) -- 1 unica chamada de AI por refresh
-- Modelo flash-lite: latencia baixa (~1-2s para batch de 10-15 titulos)
-- Se a traducao falhar, manter o titulo original em ingles (fallback seguro)
-- Cache de 6 horas significa que a traducao so acontece a cada 6h por categoria
+```text
+title: "Loargys (pegzilarginase-nbln) — aprovação FDA"
+summary: "Aprovado em 23/02/2026. Para tratar a hiperarginemia em adultos e pacientes pediátricos..."
+url: "https://www.fda.gov/drugs/..." (link individual) ou página geral
+source: "FDA Drugs"
+```
 
-### Fallback
+### Tradução
 
-Se a API de traducao falhar (timeout, erro, etc.), os titulos originais em ingles serao mantidos. A funcionalidade de noticias nunca quebra por causa da traducao -- e um passo opcional.
+Como "FDA Drugs" já está em `INTERNATIONAL_SOURCES`, os títulos serão automaticamente traduzidos pela função `translateHeadlines` existente. Porém, como estamos gerando os títulos já em português ("aprovação FDA"), a tradução pode ser redundante para esses itens. Para evitar re-tradução desnecessária, o título será gerado diretamente em português.
 
+### Sugestões de Melhoria Adicionais
+
+Além da correção da FDA, sugiro:
+
+1. **Indicar a fonte com ícone/badge colorido**: Diferenciar visualmente fontes nacionais (verde) de internacionais (azul) nos cards de notícia
+2. **Adicionar categoria "Novos Medicamentos"**: Um filtro dedicado que agrupa FDA approvals + ANVISA registros + EMA approvals
+3. **Data relativa**: Mostrar "há 2 dias" em vez de "24/02/2026" para notícias recentes
+
+Essas melhorias podem ser feitas em um próximo passo.
