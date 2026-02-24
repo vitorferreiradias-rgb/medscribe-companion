@@ -61,7 +61,7 @@ export function SmartPrescriptionDialog({
   const patients = useMemo(() => {
     if (patientProp) return [];
     const d = getData();
-    return d.patients;
+    return d?.patients ?? [];
   }, [patientProp, open]);
 
   const filteredPatients = useMemo(() => {
