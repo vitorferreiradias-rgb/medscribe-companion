@@ -6,7 +6,7 @@ import {
   ArrowLeft, Edit3, Save, X, MoreVertical, Trash2,
   Plus, CalendarIcon, Heart, MapPin, Users, Activity, Megaphone,
   AlertTriangle, FileText, Search, Copy, Clock, Stethoscope, FolderOpen,
-  Camera, ImageIcon,
+  Camera, ImageIcon, Eye, ZoomIn, TrendingUp, Weight, StickyNote,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { updatePatient, deletePatient, duplicateEncounter, deleteEncounter } from "@/lib/store";
@@ -31,7 +31,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Patient, PatientDocument, BeforeAfterPhoto } from "@/types";
+import { Patient, PatientDocument, BeforeAfterPhoto, EvolutionPhoto } from "@/types";
 import { formatDateTimeBR } from "@/lib/format";
 
 // ---- Masks ----
@@ -128,10 +128,14 @@ export default function PacienteDetalhe() {
   const [docDate, setDocDate] = useState("");
   const [docType, setDocType] = useState<PatientDocument["type"]>("exame");
 
-  // Tab Evolução (Before/After Photos)
+  // Tab Evolução (Evolution Timeline)
   const [photoLabel, setPhotoLabel] = useState("");
   const [photoDate, setPhotoDate] = useState("");
+  const [photoNotes, setPhotoNotes] = useState("");
+  const [photoWeight, setPhotoWeight] = useState("");
   const [showPhotoForm, setShowPhotoForm] = useState(false);
+  const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
+  const [zoomPhotoId, setZoomPhotoId] = useState<string | null>(null);
 
   const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -159,45 +163,63 @@ export default function PacienteDetalhe() {
     img.src = dataUrl;
   });
 
-  const handleAddBeforePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAddEvolutionPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !patient) return;
     const base64 = await fileToBase64(file);
     const resized = await resizeImage(base64);
-    const photo: BeforeAfterPhoto = {
-      id: uid("photo"),
+    const photo: EvolutionPhoto = {
+      id: uid("evo"),
       date: photoDate || format(new Date(), "yyyy-MM-dd"),
       label: photoLabel || "Registro",
-      beforeImage: resized,
+      image: resized,
+      notes: photoNotes || undefined,
+      weight: photoWeight ? parseFloat(photoWeight) : undefined,
     };
-    updatePatient(patient.id, { beforeAfterPhotos: [...(patient.beforeAfterPhotos ?? []), photo] });
+    updatePatient(patient.id, { evolutionPhotos: [...(patient.evolutionPhotos ?? []), photo] });
     setPhotoLabel("");
     setPhotoDate("");
+    setPhotoNotes("");
+    setPhotoWeight("");
     setShowPhotoForm(false);
-    toast({ title: "Foto 'Antes' adicionada." });
+    toast({ title: "Foto de evolução adicionada." });
     e.target.value = "";
   };
 
-  const handleAddAfterPhoto = async (photoId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !patient) return;
-    const base64 = await fileToBase64(file);
-    const resized = await resizeImage(base64);
-    const photos = (patient.beforeAfterPhotos ?? []).map((p) =>
-      p.id === photoId ? { ...p, afterImage: resized } : p
-    );
-    updatePatient(patient.id, { beforeAfterPhotos: photos });
-    toast({ title: "Foto 'Depois' adicionada." });
-    e.target.value = "";
-  };
-
-  const handleRemovePhoto = (photoId: string) => {
+  const handleRemoveEvolutionPhoto = (photoId: string) => {
     if (!patient) return;
     updatePatient(patient.id, {
-      beforeAfterPhotos: (patient.beforeAfterPhotos ?? []).filter((p) => p.id !== photoId),
+      evolutionPhotos: (patient.evolutionPhotos ?? []).filter((p) => p.id !== photoId),
     });
-    toast({ title: "Registro removido." });
+    if (compareIds && (compareIds[0] === photoId || compareIds[1] === photoId)) setCompareIds(null);
+    if (zoomPhotoId === photoId) setZoomPhotoId(null);
+    toast({ title: "Foto removida." });
   };
+
+  const toggleCompare = (photoId: string) => {
+    if (!compareIds) {
+      setCompareIds([photoId, ""]);
+    } else if (compareIds[0] === photoId) {
+      setCompareIds(null);
+    } else if (!compareIds[1]) {
+      setCompareIds([compareIds[0], photoId]);
+    } else {
+      setCompareIds([photoId, ""]);
+    }
+  };
+
+  const evolutionPhotos = useMemo(() =>
+    [...(patient?.evolutionPhotos ?? [])].sort((a, b) => a.date.localeCompare(b.date)),
+    [patient?.evolutionPhotos]
+  );
+
+  const comparePhotos = useMemo(() => {
+    if (!compareIds || !compareIds[1]) return null;
+    const a = evolutionPhotos.find(p => p.id === compareIds[0]);
+    const b = evolutionPhotos.find(p => p.id === compareIds[1]);
+    if (!a || !b) return null;
+    return a.date <= b.date ? [a, b] as const : [b, a] as const;
+  }, [compareIds, evolutionPhotos]);
 
   const now = new Date();
 
@@ -698,76 +720,229 @@ export default function PacienteDetalhe() {
           )}
         </TabsContent>
 
-        {/* ===== TAB EVOLUÇÃO (Before/After Photos) ===== */}
+        {/* ===== TAB EVOLUÇÃO (Timeline Cronológica) ===== */}
         <TabsContent value="evolucao" className="space-y-4 mt-4">
-          <Card className="glass-card">
-            <CardHeader className="pb-3 pt-4 px-4">
-              <CardTitle className="text-sm flex items-center gap-2"><Camera className="h-4 w-4 text-primary" /> Fotos Antes & Depois</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4 space-y-4">
-              {(patient.beforeAfterPhotos ?? []).length > 0 ? (
-                <div className="space-y-6">
-                  {(patient.beforeAfterPhotos ?? []).sort((a, b) => b.date.localeCompare(a.date)).map((photo) => (
-                    <div key={photo.id} className="rounded-xl border border-border/50 p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold">{photo.label}</p>
-                          <p className="text-xs text-muted-foreground">{format(parseISO(photo.date), "dd/MM/yyyy")}</p>
-                        </div>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemovePhoto(photo.id)}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
+          {/* Comparison View */}
+          {comparePhotos && (
+            <Card className="glass-card border-primary/30">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Eye className="h-4 w-4 text-primary" /> Comparação de Evolução
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setCompareIds(null)}>
+                    <X className="h-3.5 w-3.5 mr-1" /> Fechar
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">
+                <div className="grid grid-cols-2 gap-4">
+                  {comparePhotos.map((photo, idx) => (
+                    <div key={photo.id} className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={idx === 0 ? "secondary" : "default"} className="text-[10px]">
+                          {idx === 0 ? "ANTES" : "DEPOIS"}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{format(parseISO(photo.date), "dd/MM/yyyy")}</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        {/* Before */}
-                        <div className="space-y-1.5">
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Antes</p>
-                          <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-muted/40 border border-border/30">
-                            <img src={photo.beforeImage} alt="Antes" className="w-full h-full object-cover" />
-                          </div>
-                        </div>
-                        {/* After */}
-                        <div className="space-y-1.5">
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Depois</p>
-                          {photo.afterImage ? (
-                            <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-muted/40 border border-border/30">
-                              <img src={photo.afterImage} alt="Depois" className="w-full h-full object-cover" />
-                            </div>
-                          ) : (
-                            <label className="flex flex-col items-center justify-center aspect-[4/3] rounded-lg border-2 border-dashed border-border/60 bg-muted/20 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors">
-                              <ImageIcon className="h-6 w-6 text-muted-foreground mb-1" />
-                              <span className="text-xs text-muted-foreground">Adicionar foto</span>
-                              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleAddAfterPhoto(photo.id, e)} />
-                            </label>
-                          )}
-                        </div>
+                      <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-muted/30 border border-border/40">
+                        <img src={photo.image} alt={photo.label} className="w-full h-full object-cover" />
                       </div>
+                      {photo.weight && (
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Weight className="h-3 w-3" /> {photo.weight} kg
+                        </div>
+                      )}
+                      {photo.notes && (
+                        <p className="text-xs text-muted-foreground italic">{photo.notes}</p>
+                      )}
                     </div>
                   ))}
                 </div>
+                {/* Weight diff */}
+                {comparePhotos[0].weight && comparePhotos[1].weight && (
+                  <div className="mt-3 rounded-lg bg-muted/30 p-3 flex items-center gap-3">
+                    <TrendingUp className="h-4 w-4 text-primary shrink-0" />
+                    <div className="text-sm">
+                      <span className="font-medium">Variação de peso: </span>
+                      <span className={cn(
+                        "font-semibold",
+                        comparePhotos[1].weight - comparePhotos[0].weight > 0 ? "text-red-500 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+                      )}>
+                        {comparePhotos[1].weight - comparePhotos[0].weight > 0 ? "+" : ""}
+                        {(comparePhotos[1].weight - comparePhotos[0].weight).toFixed(1)} kg
+                      </span>
+                      <span className="text-muted-foreground ml-1.5 text-xs">
+                        ({comparePhotos[0].weight} → {comparePhotos[1].weight} kg)
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Instruction */}
+          {compareIds && !compareIds[1] && (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-center text-sm text-primary animate-pulse">
+              Selecione a segunda foto para comparar
+            </div>
+          )}
+
+          {/* Timeline Grid */}
+          <Card className="glass-card">
+            <CardHeader className="pb-3 pt-4 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Camera className="h-4 w-4 text-primary" /> Timeline de Evolução
+                  {evolutionPhotos.length > 0 && (
+                    <Badge variant="outline" className="text-[10px] ml-1">{evolutionPhotos.length} registros</Badge>
+                  )}
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-4">
+              {evolutionPhotos.length > 0 ? (
+                <div className="relative">
+                  {/* Timeline line */}
+                  <div className="absolute left-[18px] top-0 bottom-0 w-px bg-border/60" />
+
+                  <div className="space-y-6">
+                    {evolutionPhotos.map((photo, idx) => {
+                      const isSelected = compareIds?.includes(photo.id);
+                      return (
+                        <div key={photo.id} className="relative pl-10">
+                          {/* Timeline dot */}
+                          <div className={cn(
+                            "absolute left-2.5 top-1 w-3 h-3 rounded-full border-2 transition-colors",
+                            isSelected
+                              ? "bg-primary border-primary scale-125"
+                              : "bg-background border-muted-foreground/40"
+                          )} />
+
+                          <div className={cn(
+                            "rounded-xl border p-3 transition-all cursor-pointer group",
+                            isSelected
+                              ? "border-primary/50 bg-primary/5 shadow-sm"
+                              : "border-border/40 hover:border-primary/30 hover:bg-muted/20"
+                          )}>
+                            {/* Header */}
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <p className="text-sm font-semibold">{photo.label}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(parseISO(photo.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                                  {idx > 0 && (() => {
+                                    const prev = evolutionPhotos[idx - 1];
+                                    const days = Math.round((parseISO(photo.date).getTime() - parseISO(prev.date).getTime()) / 86400000);
+                                    return <span className="ml-1.5 text-primary/70">({days}d desde anterior)</span>;
+                                  })()}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant={isSelected ? "default" : "ghost"}
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={(e) => { e.stopPropagation(); toggleCompare(photo.id); }}
+                                  title="Comparar"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={(e) => { e.stopPropagation(); setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id); }}
+                                  title="Ampliar"
+                                >
+                                  <ZoomIn className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={(e) => { e.stopPropagation(); handleRemoveEvolutionPhoto(photo.id); }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Photo */}
+                            <div className={cn(
+                              "rounded-lg overflow-hidden bg-muted/30 border border-border/30 transition-all",
+                              zoomPhotoId === photo.id ? "aspect-auto max-h-[500px]" : "aspect-[4/3] max-h-[200px]"
+                            )}>
+                              <img
+                                src={photo.image}
+                                alt={photo.label}
+                                className="w-full h-full object-cover"
+                                onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
+                              />
+                            </div>
+
+                            {/* Metadata */}
+                            <div className="flex flex-wrap items-center gap-3 mt-2">
+                              {photo.weight && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Weight className="h-3 w-3" /> {photo.weight} kg
+                                  {idx > 0 && evolutionPhotos[idx - 1].weight && (
+                                    <span className={cn(
+                                      "ml-1 font-medium",
+                                      photo.weight - evolutionPhotos[idx - 1].weight! > 0
+                                        ? "text-red-500 dark:text-red-400"
+                                        : "text-emerald-600 dark:text-emerald-400"
+                                    )}>
+                                      ({photo.weight - evolutionPhotos[idx - 1].weight! > 0 ? "+" : ""}
+                                      {(photo.weight - evolutionPhotos[idx - 1].weight!).toFixed(1)})
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {photo.notes && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <StickyNote className="h-3 w-3" /> {photo.notes}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Camera className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <div className="text-center py-10 text-muted-foreground">
+                  <Camera className="h-12 w-12 mx-auto mb-3 opacity-20" />
                   <p className="text-sm font-medium mb-1">Nenhum registro de evolução</p>
-                  <p className="text-xs">Adicione fotos para acompanhar o antes e depois do paciente.</p>
+                  <p className="text-xs">Adicione fotos a cada consulta para acompanhar a evolução do paciente ao longo do tempo.</p>
                 </div>
               )}
 
+              {/* Add new photo form */}
               {showPhotoForm ? (
-                <div className="rounded-lg border border-border/50 p-3 space-y-3">
-                  <Input placeholder="Descrição (ex: Tratamento facial)" value={photoLabel} onChange={(e) => setPhotoLabel(e.target.value)} />
-                  <Input type="date" value={photoDate} onChange={(e) => setPhotoDate(e.target.value)} />
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <Button variant="default" size="sm" asChild>
-                      <span><Camera className="mr-1.5 h-3.5 w-3.5" /> Selecionar foto "Antes"</span>
-                    </Button>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleAddBeforePhoto} />
-                  </label>
-                  <Button size="sm" variant="ghost" onClick={() => setShowPhotoForm(false)}>Cancelar</Button>
+                <div className="rounded-xl border border-border/50 p-4 space-y-3 bg-muted/10">
+                  <p className="text-sm font-medium">Nova foto de evolução</p>
+                  <Input placeholder="Descrição (ex: 3ª sessão, pós-procedimento)" value={photoLabel} onChange={(e) => setPhotoLabel(e.target.value)} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input type="date" value={photoDate} onChange={(e) => setPhotoDate(e.target.value)} placeholder="Data" />
+                    <Input type="number" step="0.1" placeholder="Peso (kg) — opcional" value={photoWeight} onChange={(e) => setPhotoWeight(e.target.value)} />
+                  </div>
+                  <Input placeholder="Observações — opcional" value={photoNotes} onChange={(e) => setPhotoNotes(e.target.value)} />
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer">
+                      <Button variant="default" size="sm" asChild>
+                        <span><Camera className="mr-1.5 h-3.5 w-3.5" /> Selecionar foto</span>
+                      </Button>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleAddEvolutionPhoto} />
+                    </label>
+                    <Button size="sm" variant="ghost" onClick={() => setShowPhotoForm(false)}>Cancelar</Button>
+                  </div>
                 </div>
               ) : (
-                <Button variant="outline" size="sm" onClick={() => setShowPhotoForm(true)}>
-                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Novo registro
+                <Button variant="outline" size="sm" onClick={() => setShowPhotoForm(true)} className="w-full">
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar registro de evolução
                 </Button>
               )}
             </CardContent>
