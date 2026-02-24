@@ -227,6 +227,42 @@ export type Database = {
           },
         ]
       }
+      medical_news: {
+        Row: {
+          category: string
+          created_at: string | null
+          fetched_at: string | null
+          id: string
+          published_at: string
+          source: string
+          summary: string
+          title: string
+          url: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          fetched_at?: string | null
+          id?: string
+          published_at: string
+          source: string
+          summary: string
+          title: string
+          url?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          fetched_at?: string | null
+          id?: string
+          published_at?: string
+          source?: string
+          summary?: string
+          title?: string
+          url?: string | null
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           created_at: string
