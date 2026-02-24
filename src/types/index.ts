@@ -40,6 +40,16 @@ export interface BeforeAfterPhoto {
   afterImage?: string; // base64 data URI
 }
 
+export interface EvolutionPhoto {
+  id: string;
+  date: string;
+  label: string;
+  image: string; // base64 data URI
+  notes?: string;
+  weight?: number; // kg
+  encounterId?: string;
+}
+
 export interface Patient {
   id: string;
   name: string;
@@ -60,6 +70,7 @@ export interface Patient {
   drugAllergies?: string[];
   documents?: PatientDocument[];
   beforeAfterPhotos?: BeforeAfterPhoto[];
+  evolutionPhotos?: EvolutionPhoto[];
 }
 
 export type EncounterStatus = "recording" | "draft" | "reviewed" | "final";
