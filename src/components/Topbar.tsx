@@ -82,6 +82,9 @@ export function Topbar({
         />
       </div>
 
+      {/* Separator */}
+      <div className="hidden sm:block h-6 w-px bg-border/60" />
+
       {/* Date navigator */}
       <div className="hidden sm:flex items-center gap-1 ml-auto">
         <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => goDay(-1)}>
@@ -97,6 +100,9 @@ export function Topbar({
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* Separator */}
+      <div className="hidden sm:block h-6 w-px bg-border/60" />
 
       {/* CTA principal + Quick Actions */}
       <div className="flex items-center gap-1.5">
