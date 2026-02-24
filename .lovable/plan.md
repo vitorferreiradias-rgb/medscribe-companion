@@ -1,140 +1,89 @@
 
 
-# Expandir Fontes de Noticias Medicas -- Vigilancia Sanitaria, Sociedades Medicas e Fontes Estrategicas
+# Traduzir Manchetes Internacionais para Portugues
 
-## Contexto
+## O que muda
 
-O sistema atual busca noticias de ANVISA (geral), Ministerio da Saude, FDA, CONITEC, OMS e PubMed. Faltam fontes importantes como a Vigilancia Sanitaria da ANVISA, as principais sociedades medicas brasileiras e fontes internacionais de novos farmacos/estudos clinicos.
+Todas as manchetes vindas de fontes internacionais (FDA, EMA, PubMed, OMS) serao automaticamente traduzidas para portugues antes de serem salvas no cache. As manchetes nacionais nao serao afetadas.
 
-## Novas Fontes a Adicionar
+## Abordagem
 
-### Nacionais (Prioridade Alta)
+Usar a API Lovable AI (modelo Gemini Flash -- rapido e barato) para traduzir em lote os titulos e resumos das manchetes internacionais. A traducao acontece na Edge Function, antes de salvar no banco, entao o cache ja armazena tudo em portugues.
 
-| Fonte | URL | Metodo | Categorias |
-|-------|-----|--------|------------|
-| ANVISA Farmacovigilancia | `https://www.gov.br/anvisa/pt-br/assuntos/farmacovigilancia` | HTML scraping | hoje, medicacoes |
-| ANVISA Fiscalizacao/Monitoramento | `https://www.gov.br/anvisa/pt-br/assuntos/fiscalizacao-e-monitoramento` | HTML scraping | hoje, medicacoes |
-| CFM (Conselho Federal de Medicina) | `https://portal.cfm.org.br/noticias/` | HTML scraping | hoje, diretrizes |
-| SBC (Soc. Brasileira de Cardiologia) | `https://www.portal.cardiol.br/noticias` | HTML scraping | hoje, diretrizes, eventos |
-| SBD (Soc. Brasileira de Diabetes) | `https://diabetes.org.br/noticias/` | HTML scraping | hoje, diretrizes |
-| SBEM (Soc. Brasileira de Endocrinologia) | `https://www.endocrino.org.br/noticias/` | HTML scraping | hoje, diretrizes |
-| FIOCRUZ | `https://portal.fiocruz.br/noticias` | HTML scraping | hoje, diretrizes |
-| AMB (Associacao Medica Brasileira) | `https://amb.org.br/noticias/` | HTML scraping | hoje, diretrizes |
-
-### Internacionais (Grandes Noticias)
-
-| Fonte | URL | Metodo | Categorias |
-|-------|-----|--------|------------|
-| EMA (Agencia Europeia de Medicamentos) | `https://www.ema.europa.eu/en/news` | HTML scraping | medicacoes |
-| PubMed -- Novos farmacos | Query: `new drug approval OR novel therapy OR clinical trial results` | API E-Utilities | medicacoes |
-| PubMed -- Estudos clinicos recentes | Query: `randomized controlled trial[pt] AND 2026[dp]` | API E-Utilities | diretrizes |
-
----
-
-## Mudancas Detalhadas
+## Mudancas
 
 ### 1. Edge Function `fetch-medical-news/index.ts`
 
-**Novos termos de alta prioridade** a adicionar ao `HIGH_PRIORITY_TERMS`:
-- "vigilancia", "farmacovigilancia", "sanitario", "fiscalizacao", "monitoramento", "interdicao"
-- "surveillance", "pharmacovigilance"
-- "cfm", "sociedade", "conselho"
-- "novo medicamento", "new drug", "clinical trial", "ensaio clinico"
+Adicionar uma funcao `translateHeadlines` que:
 
-**Novas fontes no `categoryFetchers`**:
+1. Filtra apenas manchetes de fontes internacionais (FDA, FDA Drugs, EMA, PubMed, PubMed Estudos, PubMed Novos Farmacos, OMS)
+2. Envia os titulos e resumos em um unico prompt para a API Lovable AI (Gemini Flash)
+3. Recebe as traducoes e substitui os textos originais
+4. Manchetes nacionais passam direto sem modificacao
+
+Logica de deteccao de fonte internacional:
 
 ```text
-hoje: [
-  ... fontes existentes (ANVISA RSS, Min. Saude RSS, FDA RSS),
-  + scrapeHTML ANVISA Farmacovigilancia
-  + scrapeHTML ANVISA Fiscalizacao
-  + scrapeHTML CFM Noticias
-  + scrapeHTML FIOCRUZ Noticias
-  + scrapeHTML AMB Noticias
-]
+INTERNATIONAL_SOURCES = ["FDA", "FDA Drugs", "EMA", "PubMed", "PubMed Estudos", "PubMed Novos Fármacos", "OMS"]
 
-diretrizes: [
-  ... fontes existentes (CONITEC, PubMed Guidelines),
-  + scrapeHTML CFM
-  + scrapeHTML SBC
-  + scrapeHTML SBD
-  + scrapeHTML SBEM
-  + fetchPubMed("randomized controlled trial[pt] AND 2026[dp]")
-]
-
-medicacoes: [
-  ... fontes existentes (ANVISA RSS, FDA Drugs RSS, PubMed pharmacovigilance),
-  + scrapeHTML ANVISA Farmacovigilancia
-  + scrapeHTML ANVISA Fiscalizacao
-  + scrapeHTML EMA News
-  + fetchPubMed("new drug approval OR novel therapy 2026")
-]
-
-eventos: [
-  ... fontes existentes (PubMed congress, OMS RSS),
-  + scrapeHTML SBC (filtrado por eventos)
-]
+Se headline.source esta em INTERNATIONAL_SOURCES -> traduzir
+Senao -> manter original
 ```
 
-**Novos keywords nos filtros de categoria** (`categoryKeywords`):
-- `hoje`: permanece sem filtro (mostra tudo)
-- `diretrizes`: + "cfm", "sociedade", "ensaio", "trial", "estudo"
-- `medicacoes`: + "vigilancia", "farmacovigilancia", "fiscalizacao", "monitoramento", "novo medicamento", "new drug", "clinical trial", "terapia", "therapy"
-- `eventos`: + "sociedade", "sbc", "sbd", "sbem", "jornada"
+Prompt de traducao (batch para eficiencia):
 
-**Logica de prioridade nacional vs internacional**:
-- Fontes nacionais (ANVISA, Min. Saude, CFM, SBC, SBD, SBEM, FIOCRUZ, AMB, CONITEC) recebem bonus de +5 na prioridade
-- Fontes internacionais (FDA, EMA, PubMed, OMS) mantem pontuacao base
-- Isso garante que noticias nacionais aparecem primeiro, mas grandes alertas internacionais (com termos de alta prioridade) ainda sobem ao topo
+```text
+"Traduza os seguintes titulos de noticias medicas do ingles para o portugues brasileiro.
+Mantenha termos tecnicos medicos reconhecidos. Retorne um JSON array com as traducoes na mesma ordem.
 
-**Aumento do limite**: `MAX_PER_CATEGORY` de 15 para 20 para acomodar mais fontes
+Titulos:
+1. "FDA Approves New Drug for Type 2 Diabetes"
+2. "Clinical Trial Shows Promising Results for Cancer Therapy"
+..."
+```
 
-### 2. Frontend -- Sem mudancas necessarias
+Fluxo atualizado:
 
-A pagina `Noticias.tsx` e o hook `useMedicalNews.ts` ja suportam dinamicamente qualquer numero de fontes e exibem o nome da fonte no card. As novas manchetes aparecerao automaticamente com seus respectivos nomes (ex: "CFM", "SBC", "Farmacovigilancia").
+```text
+Fetch all sources (paralelo)
+  -> Collect headlines
+  -> Separate international vs national
+  -> Translate international batch (1 chamada AI)
+  -> Merge back
+  -> Filter, deduplicate, sort, limit
+  -> Save to cache
+```
 
----
+### 2. Nenhuma mudanca no frontend
+
+As manchetes ja chegam traduzidas do cache -- a pagina `Noticias.tsx` e o `NewsCard.tsx` exibem o que esta no banco sem alteracao.
 
 ## Secao Tecnica
 
-### Estrategia de Scraping para Sites .gov.br e Sociedades
+### Chamada a API Lovable AI
 
-Os sites brasileiros seguem padroes semelhantes de HTML. O regex generico para extrair links de noticias:
-
-```text
-/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi
-```
-
-Cada fonte tera seu `baseUrl` para resolver links relativos:
-- gov.br: `https://www.gov.br`
-- CFM: `https://portal.cfm.org.br`
-- SBC: `https://www.portal.cardiol.br`
-- FIOCRUZ: `https://portal.fiocruz.br`
-
-### Bonus de Prioridade Nacional
+A Edge Function usara o secret `LOVABLE_API_KEY` (ja configurado) para chamar a API com o modelo `google/gemini-2.5-flash-lite` (mais rapido e barato, ideal para traducao simples).
 
 ```text
-function calcPriority(title, summary, source):
-  score = 0
-  // Termos de alta prioridade (+10 cada)
-  for term in HIGH_PRIORITY_TERMS:
-    if text.includes(term): score += 10
-  
-  // Bonus nacional (+5)
-  if source in NATIONAL_SOURCES: score += 5
-  
-  return score
+POST https://ai.lovable.dev/api/v1/chat/completions
+Headers:
+  Authorization: Bearer LOVABLE_API_KEY
+  Content-Type: application/json
+
+Body:
+  model: "google/gemini-2.5-flash-lite"
+  messages: [{ role: "user", content: "Traduza..." }]
+  temperature: 0.1
 ```
 
-### Gerenciamento de Volume
+### Performance
 
-Com ~15 fontes buscadas em paralelo, o edge function pode demorar mais. Mitigacoes:
-- Timeout por fonte: 8 segundos (ja implementado)
-- `Promise.allSettled` garante que fontes lentas nao bloqueiam as rapidas
-- Deduplicacao por titulo (primeiros 60 caracteres) remove repeticoes entre fontes
-- Limite final de 20 manchetes por categoria
+- Traducao em batch (todos os titulos internacionais de uma vez) -- 1 unica chamada de AI por refresh
+- Modelo flash-lite: latencia baixa (~1-2s para batch de 10-15 titulos)
+- Se a traducao falhar, manter o titulo original em ingles (fallback seguro)
+- Cache de 6 horas significa que a traducao so acontece a cada 6h por categoria
 
-### Tratamento de Erros
+### Fallback
 
-Cada fonte continua independente com try/catch. Se ANVISA, CFM ou qualquer fonte estiver fora do ar, as demais continuam normalmente. O cache stale serve como ultimo recurso.
+Se a API de traducao falhar (timeout, erro, etc.), os titulos originais em ingles serao mantidos. A funcionalidade de noticias nunca quebra por causa da traducao -- e um passo opcional.
 
