@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { QuickActionsMenu } from "./QuickActionsMenu";
+import { ThemeToggle } from "./ThemeToggle";
 
 interface TopbarProps {
   currentDate: Date;
@@ -78,7 +79,7 @@ export function Topbar({
           placeholder="Buscar paciente / consulta… ( / )"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 h-10 text-sm bg-secondary/40 border-transparent rounded-lg focus-visible:border-primary/20 focus-visible:bg-white"
+          className="pl-9 h-10 text-sm bg-secondary/40 border-transparent rounded-lg focus-visible:border-primary/20 focus-visible:bg-background"
         />
       </div>
 
@@ -106,6 +107,8 @@ export function Topbar({
 
       {/* CTA principal + Quick Actions */}
       <div className="flex items-center gap-1.5">
+        <ThemeToggle />
+
         <Button size="sm" className="h-9 rounded-lg gap-1.5" onClick={onNewPaciente}>
           <UserPlus className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Adicionar paciente</span>
