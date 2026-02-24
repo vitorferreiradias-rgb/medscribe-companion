@@ -111,6 +111,108 @@
     /* Focus ring Apple-style */
     --focus-ring: 0 0 0 4px rgba(31, 111, 235, 0.18);
   }
+
+  .dark {
+    /* ─── 1. Neutros (base escura com profundidade) ─── */
+    --background: 222 47% 7%;            /* #0B1120 */
+    --background-gradient: 220 40% 10%;  /* #111827 */
+    --foreground: 210 40% 93%;           /* #E8EDF4 */
+
+    --card: 220 40% 13% / 0.72;
+    --card-foreground: 210 40% 93%;
+
+    --popover: 220 40% 13% / 0.92;
+    --popover-foreground: 210 40% 93%;
+
+    /* Neutral scale (inverted) */
+    --neutral-50: 222 47% 7%;
+    --neutral-100: 220 40% 10%;
+    --neutral-200: 217 33% 17%;
+    --neutral-300: 217 24% 27%;
+    --neutral-400: 215 19% 35%;
+    --neutral-500: 215 14% 46%;
+    --neutral-600: 215 16% 65%;
+    --neutral-700: 213 18% 79%;
+    --neutral-800: 213 27% 90%;
+    --neutral-900: 210 40% 98%;
+
+    /* ─── 2. Texto ─── */
+    --text-primary: 210 40% 93%;
+    --text-secondary: 215 20% 70%;
+    --text-muted: 215 14% 55%;
+    --text-chip: 210 40% 93%;
+
+    /* ─── 3. Primário ─── */
+    --primary: 215 84% 58%;             /* Ligeiramente mais claro para contraste */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 215 84% 50%;
+    --primary-link: 215 86% 62%;
+    --primary-soft-bg: 215 60% 15%;
+
+    /* ─── 4. Acentos ─── */
+    --accent: 174 78% 32%;
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 170 66% 45%;
+    --aqua: 181 77% 40%;
+    --aqua-light: 187 82% 58%;
+
+    --violet: 263 70% 58%;
+    --violet-light: 263 70% 65%;
+
+    --indigo: 244 57% 65%;
+    --indigo-light: 243 75% 72%;
+
+    --slate-blue: 217 91% 65%;
+
+    /* ─── 5. Estados ─── */
+    --success: 142 64% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 30 65% 55%;
+    --warning-foreground: 0 0% 5%;
+    --destructive: 347 77% 55%;
+    --destructive-foreground: 0 0% 98%;
+    --info: 217 91% 65%;
+    --info-foreground: 0 0% 100%;
+
+    /* ─── 6. IA / One Click ─── */
+    --ai-accent: 30 70% 60%;
+    --ai-accent-hover: 25 64% 55%;
+    --ai-soft-bg: 30 70% 60% / 0.12;
+    --ai-ring: 30 70% 60% / 0.25;
+    --ai-bloom: 30 70% 60% / 0.12;
+
+    /* ─── UI tokens ─── */
+    --secondary: 220 40% 13%;
+    --secondary-foreground: 210 40% 80%;
+    --muted: 220 40% 13%;
+    --muted-foreground: 215 14% 55%;
+
+    --border: 217 33% 20%;
+    --input: 217 33% 22%;
+    --ring: 215 84% 58%;
+
+    /* ─── Sidebar ─── */
+    --sidebar-background: 220 40% 10% / 0.60;
+    --sidebar-foreground: 215 14% 55%;
+    --sidebar-primary: 215 84% 58%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 215 84% 58% / 0.10;
+    --sidebar-accent-foreground: 215 84% 58%;
+    --sidebar-border: 217 33% 20% / 0.6;
+    --sidebar-ring: 215 84% 58%;
+
+    /* ─── Liquid Glass tokens (dark) ─── */
+    --glass-bg: 220 40% 13% / 0.65;
+    --glass-border: 210 40% 80% / 0.08;
+    --glass-divider: 210 40% 80% / 0.06;
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --glass-blur: 20px;
+    --glass-saturate: 160%;
+
+    /* Focus ring */
+    --focus-ring: 0 0 0 4px rgba(56, 132, 244, 0.25);
+  }
 }
 
 @layer base {
@@ -120,6 +222,11 @@
 
   html {
     color-scheme: light;
+  }
+
+  .dark html,
+  html.dark {
+    color-scheme: dark;
   }
 
   body {
@@ -132,6 +239,13 @@
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  .dark body {
+    background:
+      radial-gradient(ellipse 80% 60% at 10% 0%, hsla(215, 84%, 53%, 0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 90% 10%, hsla(263, 70%, 50%, 0.04) 0%, transparent 55%),
+      linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background-gradient)) 100%);
   }
 
   /* Apple-like focus ring */
@@ -177,10 +291,19 @@
     box-shadow: 0 1px 8px rgba(15, 23, 42, 0.03), 0 4px 24px rgba(15, 23, 42, 0.02);
   }
 
+  :is(.dark) .glass-topbar {
+    background: hsl(220 40% 10% / 0.72);
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.15), 0 4px 24px rgba(0, 0, 0, 0.10);
+  }
+
   .glass-sidebar {
     background: hsl(0 0% 100% / 0.6);
     backdrop-filter: blur(20px) saturate(190%);
     -webkit-backdrop-filter: blur(20px) saturate(190%);
+  }
+
+  :is(.dark) .glass-sidebar {
+    background: hsl(220 40% 8% / 0.65);
   }
 
   /* ─── Status badges ─── */
@@ -257,6 +380,15 @@
     transition: box-shadow 200ms ease-out;
   }
 
+  :is(.dark) .glass-card-ai {
+    background: rgba(30, 41, 59, 0.55);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 14px 30px rgba(0, 0, 0, 0.25),
+      0 0 0 1px hsl(var(--ai-accent) / 0.25),
+      0 10px 30px hsl(var(--ai-accent) / 0.10);
+  }
+
   .glass-card-ai:focus-within {
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.85),
@@ -270,6 +402,21 @@
     background:
       radial-gradient(ellipse at 50% 0%, hsl(var(--ai-bloom)), transparent 70%),
       hsl(0 0% 100% / 0.92);
+  }
+
+  :is(.dark) .ai-dialog-bloom {
+    background:
+      radial-gradient(ellipse at 50% 0%, hsl(var(--ai-bloom)), transparent 70%),
+      hsl(220 40% 10% / 0.95);
+  }
+
+  /* Dark mode glass-card hover */
+  :is(.dark) .glass-card:hover {
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.30), 0 4px 16px rgba(56, 132, 244, 0.06), var(--glass-highlight);
+  }
+
+  :is(.dark) .premium-hover:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.20);
   }
 }
 
