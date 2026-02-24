@@ -1,51 +1,43 @@
 
 
-# Corrigir Links Externos Bloqueados nas Noticias
+# Atualizar Evolution Compare para Gemini 2.5 Pro com Análise Corporal Detalhada
 
-## Problema
+## Resumo
 
-Dois problemas identificados:
+Duas mudanças na edge function `evolution-compare`:
 
-1. **URLs da FDA usam `http://`** em vez de `https://` -- o RSS da FDA retorna links com protocolo HTTP, que muitos navegadores bloqueiam ou redirecionam com aviso de seguranca
-2. **`window.open()` e bloqueado como popup** -- dentro do iframe de preview do Lovable, o navegador interpreta `window.open()` em handler de click como tentativa de popup e bloqueia
+1. **Modelo**: `google/gemini-2.5-flash` → `google/gemini-2.5-pro`
+2. **Prompt**: Expandir para incluir análise detalhada região por região do corpo
 
-Alem disso, as manchetes da OMS no banco ainda estao em ingles (a traducao nao foi aplicada a elas).
+## Mudanças
 
-## Mudancas
+### `supabase/functions/evolution-compare/index.ts`
 
-### 1. `src/components/NewsCard.tsx` e `src/pages/Noticias.tsx`
-
-Substituir `window.open(item.url, "_blank")` por um elemento `<a>` nativo com `target="_blank"` e `rel="noopener noreferrer"`. Links nativos `<a>` nao sao bloqueados pelo navegador como popups.
-
-No `NewsCard.tsx`, envolver o conteudo do item em `<a>` em vez de usar `onClick`:
-```text
-<a href={item.url} target="_blank" rel="noopener noreferrer">
-  ... conteudo do item ...
-</a>
+**Linha 91** — Trocar o modelo:
+```
+model: "google/gemini-2.5-pro"
 ```
 
-No `Noticias.tsx`, mesma abordagem no Card de noticia.
+**Linhas 49-67** — Substituir o `systemPrompt` por uma versão com análise corporal detalhada:
 
-### 2. Edge Function `fetch-medical-news/index.ts`
+O novo prompt instruirá a IA a analisar separadamente:
+- **Rosto e pescoço** — contorno facial, papada, definição mandibular
+- **Braços** — volume, definição muscular, flacidez
+- **Tronco/Peito** — proporção, postura, ginecomastia
+- **Abdômen** — circunferência aparente, distensão, definição
+- **Cintura** — contorno lateral, relação cintura-quadril visual
+- **Quadril e glúteos** — volume, proporção
+- **Pernas (coxas e panturrilhas)** — volume, definição, celulite
+- **Postura geral** — alinhamento, lordose, cifose
+- **Pele** — coloração, estrias, flacidez, textura
+- **Composição corporal aparente** — estimativa visual de percentual de gordura, distribuição de massa
 
-Normalizar URLs para `https://` -- substituir `http://` por `https://` em todas as URLs capturadas dos feeds RSS e scrapers. A FDA redireciona HTTP para HTTPS de qualquer forma, entao usar HTTPS diretamente evita o problema.
+Incluirá também:
+- Tabela resumo com classificação por região (melhora significativa / leve / estável / piora leve / piora significativa)
+- Score geral de evolução
+- Se peso foi informado no contexto, correlacionar com as mudanças visuais
 
-Adicionar uma linha simples apos capturar a URL:
-```text
-url = url.replace(/^http:\/\//i, "https://")
-```
+### Seção técnica
 
-## Secao Tecnica
-
-### Por que `<a>` funciona e `window.open()` nao
-
-Navegadores modernos distinguem entre:
-- `<a target="_blank">` -- navegacao iniciada pelo usuario, sempre permitida
-- `window.open()` em handler de click -- pode ser bloqueado dependendo do contexto (iframe, sandbox, popup blocker)
-
-O iframe de preview do Lovable tem restricoes de sandbox que tornam `window.open()` menos confiavel.
-
-### Normalizacao de URLs
-
-A FDA retorna URLs como `http://www.fda.gov/...` no RSS. Todos os sites governamentais modernos (FDA, WHO, EMA) suportam HTTPS. A normalizacao e segura e evita avisos de "conexao nao segura" no navegador.
+Apenas mudanças na edge function — sem alteração no frontend, banco de dados ou outras funções. A API e formato de resposta permanecem idênticos (campo `analysis` com texto markdown). O Pro pode levar 5-15s para responder (vs 2-5s do Flash), mas o loading state já está implementado no frontend.
 
