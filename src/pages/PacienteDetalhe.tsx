@@ -5,7 +5,8 @@ import { ptBR } from "date-fns/locale";
 import {
   ArrowLeft, Edit3, Save, X, MoreVertical, Trash2,
   Plus, CalendarIcon, Heart, MapPin, Users, Activity, Megaphone,
-  AlertTriangle, FileText, Search, Copy, Clock, Stethoscope, FolderOpen
+  AlertTriangle, FileText, Search, Copy, Clock, Stethoscope, FolderOpen,
+  Camera, ImageIcon,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { updatePatient, deletePatient, duplicateEncounter, deleteEncounter } from "@/lib/store";
@@ -30,7 +31,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Patient, PatientDocument } from "@/types";
+import { Patient, PatientDocument, BeforeAfterPhoto } from "@/types";
 import { formatDateTimeBR } from "@/lib/format";
 
 // ---- Masks ----
@@ -127,7 +128,77 @@ export default function PacienteDetalhe() {
   const [docDate, setDocDate] = useState("");
   const [docType, setDocType] = useState<PatientDocument["type"]>("exame");
 
-  // Derived data - must be before early return
+  // Tab Evolução (Before/After Photos)
+  const [photoLabel, setPhotoLabel] = useState("");
+  const [photoDate, setPhotoDate] = useState("");
+  const [showPhotoForm, setShowPhotoForm] = useState(false);
+
+  const fileToBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const resizeImage = (dataUrl: string, maxSize = 800): Promise<string> => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        const ratio = Math.min(maxSize / width, maxSize / height);
+        width *= ratio;
+        height *= ratio;
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", 0.8));
+    };
+    img.src = dataUrl;
+  });
+
+  const handleAddBeforePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !patient) return;
+    const base64 = await fileToBase64(file);
+    const resized = await resizeImage(base64);
+    const photo: BeforeAfterPhoto = {
+      id: uid("photo"),
+      date: photoDate || format(new Date(), "yyyy-MM-dd"),
+      label: photoLabel || "Registro",
+      beforeImage: resized,
+    };
+    updatePatient(patient.id, { beforeAfterPhotos: [...(patient.beforeAfterPhotos ?? []), photo] });
+    setPhotoLabel("");
+    setPhotoDate("");
+    setShowPhotoForm(false);
+    toast({ title: "Foto 'Antes' adicionada." });
+    e.target.value = "";
+  };
+
+  const handleAddAfterPhoto = async (photoId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !patient) return;
+    const base64 = await fileToBase64(file);
+    const resized = await resizeImage(base64);
+    const photos = (patient.beforeAfterPhotos ?? []).map((p) =>
+      p.id === photoId ? { ...p, afterImage: resized } : p
+    );
+    updatePatient(patient.id, { beforeAfterPhotos: photos });
+    toast({ title: "Foto 'Depois' adicionada." });
+    e.target.value = "";
+  };
+
+  const handleRemovePhoto = (photoId: string) => {
+    if (!patient) return;
+    updatePatient(patient.id, {
+      beforeAfterPhotos: (patient.beforeAfterPhotos ?? []).filter((p) => p.id !== photoId),
+    });
+    toast({ title: "Registro removido." });
+  };
+
   const now = new Date();
 
   const patientEncounters = useMemo(() =>
@@ -335,9 +406,10 @@ export default function PacienteDetalhe() {
 
       {/* ===== TABS ===== */}
       <Tabs defaultValue="resumo" className="w-full">
-        <TabsList className="w-full grid grid-cols-5 h-9">
+        <TabsList className="w-full grid grid-cols-6 h-9">
           <TabsTrigger value="resumo" className="text-xs">Resumo</TabsTrigger>
           <TabsTrigger value="consultas" className="text-xs">Consultas</TabsTrigger>
+          <TabsTrigger value="evolucao" className="text-xs">Evolução</TabsTrigger>
           <TabsTrigger value="diagnosticos" className="text-xs">Diagnósticos</TabsTrigger>
           <TabsTrigger value="alergias" className="text-xs">Alergias</TabsTrigger>
           <TabsTrigger value="documentos" className="text-xs">Documentos</TabsTrigger>
@@ -624,6 +696,82 @@ export default function PacienteDetalhe() {
               </Button>
             </div>
           )}
+        </TabsContent>
+
+        {/* ===== TAB EVOLUÇÃO (Before/After Photos) ===== */}
+        <TabsContent value="evolucao" className="space-y-4 mt-4">
+          <Card className="glass-card">
+            <CardHeader className="pb-3 pt-4 px-4">
+              <CardTitle className="text-sm flex items-center gap-2"><Camera className="h-4 w-4 text-primary" /> Fotos Antes & Depois</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-4">
+              {(patient.beforeAfterPhotos ?? []).length > 0 ? (
+                <div className="space-y-6">
+                  {(patient.beforeAfterPhotos ?? []).sort((a, b) => b.date.localeCompare(a.date)).map((photo) => (
+                    <div key={photo.id} className="rounded-xl border border-border/50 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">{photo.label}</p>
+                          <p className="text-xs text-muted-foreground">{format(parseISO(photo.date), "dd/MM/yyyy")}</p>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleRemovePhoto(photo.id)}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* Before */}
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Antes</p>
+                          <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-muted/40 border border-border/30">
+                            <img src={photo.beforeImage} alt="Antes" className="w-full h-full object-cover" />
+                          </div>
+                        </div>
+                        {/* After */}
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Depois</p>
+                          {photo.afterImage ? (
+                            <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-muted/40 border border-border/30">
+                              <img src={photo.afterImage} alt="Depois" className="w-full h-full object-cover" />
+                            </div>
+                          ) : (
+                            <label className="flex flex-col items-center justify-center aspect-[4/3] rounded-lg border-2 border-dashed border-border/60 bg-muted/20 cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors">
+                              <ImageIcon className="h-6 w-6 text-muted-foreground mb-1" />
+                              <span className="text-xs text-muted-foreground">Adicionar foto</span>
+                              <input type="file" accept="image/*" className="hidden" onChange={(e) => handleAddAfterPhoto(photo.id, e)} />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Camera className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm font-medium mb-1">Nenhum registro de evolução</p>
+                  <p className="text-xs">Adicione fotos para acompanhar o antes e depois do paciente.</p>
+                </div>
+              )}
+
+              {showPhotoForm ? (
+                <div className="rounded-lg border border-border/50 p-3 space-y-3">
+                  <Input placeholder="Descrição (ex: Tratamento facial)" value={photoLabel} onChange={(e) => setPhotoLabel(e.target.value)} />
+                  <Input type="date" value={photoDate} onChange={(e) => setPhotoDate(e.target.value)} />
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Button variant="default" size="sm" asChild>
+                      <span><Camera className="mr-1.5 h-3.5 w-3.5" /> Selecionar foto "Antes"</span>
+                    </Button>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleAddBeforePhoto} />
+                  </label>
+                  <Button size="sm" variant="ghost" onClick={() => setShowPhotoForm(false)}>Cancelar</Button>
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setShowPhotoForm(true)}>
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Novo registro
+                </Button>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ===== TAB DIAGNÓSTICOS ===== */}
