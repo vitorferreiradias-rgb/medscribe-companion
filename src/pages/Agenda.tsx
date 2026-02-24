@@ -275,7 +275,7 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
       {/* TIMELINE — principal */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-caption font-semibold text-muted-foreground uppercase tracking-wider">
+          <h2 className="text-caption font-medium text-muted-foreground uppercase tracking-widest">
             Agenda do dia
           </h2>
           <span className="text-caption text-muted-foreground">
@@ -338,9 +338,9 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
                   >
-                    <div className="h-2 w-2 rounded-full bg-primary shrink-0 -ml-1" />
-                    <div className="flex-1 h-px bg-primary/60" />
-                    <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full mr-2">
+                    <div className="h-2.5 w-2.5 rounded-full bg-primary shrink-0 -ml-1 animate-pulse shadow-md shadow-primary/30" />
+                    <div className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, hsl(215 84% 53% / 0.6), transparent)' }} />
+                    <span className="text-[9px] font-bold text-primary bg-primary/10 backdrop-blur-sm px-1.5 py-0.5 rounded-full mr-2">
                       AGORA
                     </span>
                   </motion.div>
@@ -359,23 +359,23 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.04, duration: 0.25, ease: "easeOut" }}
                         onClick={() => setSelectedId(evt.id)}
-                        className={`relative flex gap-3 py-3 px-4 cursor-pointer transition-all duration-150 ease-out border-b border-border/50 last:border-b-0 ${
+                        className={`relative flex gap-3 py-3 px-4 cursor-pointer premium-hover border-b border-border/30 last:border-b-0 ${
                           isSelected
-                            ? "bg-primary/[0.06]"
+                            ? `bg-primary/[0.06] !border-l-primary`
                             : isNext
-                            ? "bg-primary/[0.03]"
-                            : "hover:bg-secondary/50"
+                            ? `bg-primary/[0.03] !border-l-primary/30`
+                            : `hover:!border-l-${evt.status === 'done' ? 'success' : evt.status === 'no_show' ? 'destructive' : 'primary'}/40 hover:bg-secondary/50`
                         }`}
                       >
                         {/* Time */}
-                        <div className="flex flex-col items-center shrink-0 w-14">
+                        <div className="flex flex-col items-center shrink-0 w-14 tabular-nums">
                           <span className="text-sm font-semibold text-foreground">{evt.startTime}</span>
                           <span className="text-[10px] text-muted-foreground">{evt.endTime ?? "—"}</span>
                         </div>
 
                         {/* Avatar */}
                         <Avatar className="h-9 w-9 shrink-0 mt-0.5">
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                          <AvatarFallback className={`gradient-avatar-${(pat?.name?.charCodeAt(0) ?? 0) % 6} text-white text-xs font-semibold shadow-inner`}>
                             {pat?.name?.charAt(0) ?? "?"}
                           </AvatarFallback>
                         </Avatar>
@@ -389,7 +389,7 @@ export default function Agenda({ currentDate, onNewSchedule, onReschedule, onNew
                                 Próximo
                               </Badge>
                             )}
-                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 font-medium border ${sc.className}`}>
+                            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-5 font-medium border rounded-full ${sc.className}`}>
                               {sc.label}
                             </Badge>
                           </div>
