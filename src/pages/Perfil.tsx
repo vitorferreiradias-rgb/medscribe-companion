@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAppData } from "@/hooks/useAppData";
-import { updateSettings, resetToSeed, clearStorage, updateClinician } from "@/lib/store";
+import { updateClinician } from "@/lib/store";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -16,6 +17,7 @@ import { Clinic } from "@/types";
 const fadeUp = (i: number) => ({ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 }, transition: { delay: i * 0.06, duration: 0.25 } });
 
 export default function Perfil() {
+  const { signOut } = useAuth();
   const data = useAppData();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -62,13 +64,11 @@ export default function Perfil() {
   };
 
   const handleResetSeed = () => {
-    resetToSeed();
-    toast({ title: "Dados de exemplo restaurados." });
+    toast({ title: "Funcionalidade desabilitada com Cloud." });
   };
 
-  const handleLogout = () => {
-    if (clearOnLogout) clearStorage();
-    updateSettings({ sessionSimulated: { isLoggedIn: false } });
+  const handleLogout = async () => {
+    await signOut();
     navigate("/login", { replace: true });
   };
 
@@ -183,14 +183,7 @@ export default function Perfil() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between py-1">
-              <Label htmlFor="persist" className="text-sm">Persistência local</Label>
-              <Switch id="persist" checked={data.settings.persistLocal} onCheckedChange={(v) => updateSettings({ persistLocal: v })} />
-            </div>
-            <div className="flex items-center justify-between py-1">
-              <Label htmlFor="banner" className="text-sm">Mostrar aviso de modo simulado</Label>
-              <Switch id="banner" checked={data.settings.showSimulatedBanner} onCheckedChange={(v) => updateSettings({ showSimulatedBanner: v })} />
-            </div>
+            <p className="text-sm text-muted-foreground">Dados armazenados no Lovable Cloud.</p>
           </CardContent>
         </Card>
       </motion.div>

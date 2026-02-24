@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppData } from "@/hooks/useAppData";
-import { addScheduleEvent, updateScheduleEvent, getTimeBlocksForDate } from "@/lib/store";
+import { addScheduleEvent, updateScheduleEvent } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { ScheduleEvent } from "@/types";
 import { toLocalDateStr } from "@/lib/format";
@@ -55,7 +55,15 @@ export function NewScheduleDialog({ open, onOpenChange, editEvent, defaultDate, 
 
   const hasConflict = () => {
     if (!date || !startTime) return false;
-    const blocks = getTimeBlocksForDate(date, clinicianId);
+    const blocks = (data.timeBlocks ?? []).filter((b) => {
+      if (clinicianId && b.clinicianId !== clinicianId) return false;
+      if (b.recurrence === "daily") return true;
+      if (b.recurrence === "weekly") {
+        const blockDay = new Date(b.date + "T12:00:00").getDay();
+        return new Date(date + "T12:00:00").getDay() === blockDay;
+      }
+      return b.date === date;
+    });
     return blocks.some((b) => startTime < b.endTime && (endTime || "23:59") > b.startTime);
   };
 

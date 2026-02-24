@@ -11,7 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAppData } from "@/hooks/useAppData";
-import { addEncounter, addTranscript, addNote, updateEncounter, addPatient } from "@/lib/store";
+import { addEncounterAsync, addTranscriptAsync, addNoteAsync, updateEncounter, addPatient } from "@/lib/store";
 import { parseTranscriptToSections } from "@/lib/parser";
 import { soapTemplate } from "@/lib/soap-template";
 import { formatTimer, formatDateTimeBR } from "@/lib/format";
@@ -198,12 +198,12 @@ export default function NovaConsulta() {
   }, [getTranscriptionText, patientId, complaint, recording, data.patients]);
 
   // ── Merge & Save ──
-  const handleMergeAndSave = useCallback(() => {
+  const handleMergeAndSave = useCallback(async () => {
     const now = new Date();
     const startedAt = new Date(now.getTime() - timer * 1000).toISOString();
     const endedAt = now.toISOString();
 
-    const enc = addEncounter({
+    const enc = await addEncounterAsync({
       patientId: patientId || "unknown",
       clinicianId,
       startedAt,
@@ -214,7 +214,6 @@ export default function NovaConsulta() {
       location: location || undefined,
     });
 
-    // Build utterances for transcript record
     let utterances: Utterance[];
     let source: "pasted" | "mock" = "pasted";
     if (speech.utterances.length > 0) {
@@ -229,19 +228,14 @@ export default function NovaConsulta() {
       utterances = [{ speaker: "medico" as const, text: editorContent || "(sem transcrição)", tsSec: 0 }];
     }
 
-    const tr = addTranscript({ encounterId: enc.id, source, content: utterances });
+    const tr = await addTranscriptAsync({ encounterId: enc.id, source, content: utterances });
 
-    // Merge manual + AI content
     const mergedContent = [editorContent.trim(), aiSoapContent.trim()].filter(Boolean).join("\n\n---\n\n");
-
-    // Parse merged content into sections
     const pat = data.patients.find((p) => p.id === patientId);
     const cli = data.clinicians.find((c) => c.id === clinicianId);
     const baseSections = parseTranscriptToSections(utterances, enc.id, pat?.name, cli?.name, formatDateTimeBR(startedAt));
 
-    // Override with merged content if available
     const sections = baseSections.map((sec) => {
-      // Check if merged content has this section header
       const headerPattern = new RegExp(`## ${sec.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\n([\\s\\S]*?)(?=\\n## |$)`);
       const match = mergedContent.match(headerPattern);
       if (match && match[1]?.trim()) {
@@ -250,7 +244,7 @@ export default function NovaConsulta() {
       return sec;
     });
 
-    const note = addNote({ encounterId: enc.id, templateId: "template_soap_v1", sections });
+    const note = await addNoteAsync({ encounterId: enc.id, templateId: "template_soap_v1", sections });
     updateEncounter(enc.id, { transcriptId: tr.id, noteId: note.id });
 
     toast({ title: "Prontuário salvo com sucesso." });

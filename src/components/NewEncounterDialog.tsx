@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppData } from "@/hooks/useAppData";
-import { addEncounter, addTranscript, addNote, updateEncounter, addPatient } from "@/lib/store";
+import { addEncounterAsync, addTranscriptAsync, addNoteAsync, updateEncounter, addPatient } from "@/lib/store";
 import { parseTranscriptToSections } from "@/lib/parser";
 import { formatTimer, formatDateTimeBR } from "@/lib/format";
 import { useToast } from "@/hooks/use-toast";
@@ -116,52 +116,47 @@ export function NewEncounterDialog({ open, onOpenChange, defaultPatientId }: Pro
 
   const goToStep2 = () => { setDirection(1); setStep(2); };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
     speech.stop();
     setIsGenerating(true);
 
-    setTimeout(() => {
-      const now = new Date();
-      const startedAt = new Date(now.getTime() - timer * 1000).toISOString();
-      const endedAt = now.toISOString();
+    const now = new Date();
+    const startedAt = new Date(now.getTime() - timer * 1000).toISOString();
+    const endedAt = now.toISOString();
 
-      const enc = addEncounter({ patientId, clinicianId, startedAt, endedAt, durationSec: timer || 60, status: "draft", chiefComplaint: complaint || undefined, location: location || undefined });
+    const enc = await addEncounterAsync({ patientId, clinicianId, startedAt, endedAt, durationSec: timer || 60, status: "draft", chiefComplaint: complaint || undefined, location: location || undefined });
 
-      // Build utterances from speech or pasted text
-      let utterances: Utterance[];
-      let source: "pasted" | "mock" = "mock";
+    let utterances: Utterance[];
+    let source: "pasted" | "mock" = "mock";
 
-      if (speech.utterances.length > 0) {
-        utterances = speech.utterances;
-        source = "pasted";
-      } else if (pastedText.trim()) {
-        source = "pasted";
-        utterances = pastedText.split("\n").filter(Boolean).map((line, i) => ({ speaker: i % 2 === 0 ? "medico" as const : "paciente" as const, text: line.trim(), tsSec: i * 10 }));
-      } else if (manualNotes.trim()) {
-        // Use manual notes as single utterance
-        source = "pasted";
-        utterances = [{ speaker: "medico" as const, text: manualNotes.trim(), tsSec: 0 }];
-      } else {
-        utterances = mockTranscriptContent;
-      }
+    if (speech.utterances.length > 0) {
+      utterances = speech.utterances;
+      source = "pasted";
+    } else if (pastedText.trim()) {
+      source = "pasted";
+      utterances = pastedText.split("\n").filter(Boolean).map((line, i) => ({ speaker: i % 2 === 0 ? "medico" as const : "paciente" as const, text: line.trim(), tsSec: i * 10 }));
+    } else if (manualNotes.trim()) {
+      source = "pasted";
+      utterances = [{ speaker: "medico" as const, text: manualNotes.trim(), tsSec: 0 }];
+    } else {
+      utterances = mockTranscriptContent;
+    }
 
-      // If we have both manual notes and transcription, prepend manual notes
-      if (manualNotes.trim() && (speech.utterances.length > 0 || pastedText.trim())) {
-        utterances = [{ speaker: "medico" as const, text: manualNotes.trim(), tsSec: 0 }, ...utterances];
-      }
+    if (manualNotes.trim() && (speech.utterances.length > 0 || pastedText.trim())) {
+      utterances = [{ speaker: "medico" as const, text: manualNotes.trim(), tsSec: 0 }, ...utterances];
+    }
 
-      const tr = addTranscript({ encounterId: enc.id, source, content: utterances });
-      const pat = data.patients.find((p) => p.id === patientId);
-      const cli = data.clinicians.find((c) => c.id === clinicianId);
-      const sections = parseTranscriptToSections(utterances, enc.id, pat?.name, cli?.name, formatDateTimeBR(startedAt));
-      const note = addNote({ encounterId: enc.id, templateId: "template_soap_v1", sections });
-      updateEncounter(enc.id, { transcriptId: tr.id, noteId: note.id });
+    const tr = await addTranscriptAsync({ encounterId: enc.id, source, content: utterances });
+    const pat = data.patients.find((p) => p.id === patientId);
+    const cli = data.clinicians.find((c) => c.id === clinicianId);
+    const sections = parseTranscriptToSections(utterances, enc.id, pat?.name, cli?.name, formatDateTimeBR(startedAt));
+    const note = await addNoteAsync({ encounterId: enc.id, templateId: "template_soap_v1", sections });
+    updateEncounter(enc.id, { transcriptId: tr.id, noteId: note.id });
 
-      toast({ title: "Consulta criada com sucesso." });
-      onOpenChange(false);
-      navigate(`/consultas/${enc.id}`);
-    }, 400);
+    toast({ title: "Consulta criada com sucesso." });
+    onOpenChange(false);
+    navigate(`/consultas/${enc.id}`);
   };
 
   // Circular timer SVG
