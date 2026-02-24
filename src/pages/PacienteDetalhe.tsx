@@ -136,6 +136,7 @@ export default function PacienteDetalhe() {
   const [photoDate, setPhotoDate] = useState("");
   const [photoNotes, setPhotoNotes] = useState("");
   const [photoWeight, setPhotoWeight] = useState("");
+  const [photoAngle, setPhotoAngle] = useState("frontal");
   const [showPhotoForm, setShowPhotoForm] = useState(false);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
   const [zoomPhotoId, setZoomPhotoId] = useState<string | null>(null);
@@ -156,11 +157,13 @@ export default function PacienteDetalhe() {
       date: photoDate || format(new Date(), "yyyy-MM-dd"),
       notes: photoNotes || undefined,
       weight: photoWeight ? parseFloat(photoWeight) : undefined,
+      angle: photoAngle,
     });
     setPhotoLabel("");
     setPhotoDate("");
     setPhotoNotes("");
     setPhotoWeight("");
+    setPhotoAngle("frontal");
     setShowPhotoForm(false);
     e.target.value = "";
   };
@@ -202,9 +205,12 @@ export default function PacienteDetalhe() {
     setAiAnalysisLoading(true);
     setAiAnalysis(null);
     try {
+      const angleLabels: Record<string, string> = { frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lateral Direito", lateral_esquerdo: "Lateral Esquerdo", tres_quartos: "¾" };
       const weightContext = [
         comparePhotos[0].weight ? `Peso antes: ${comparePhotos[0].weight}kg` : "",
         comparePhotos[1].weight ? `Peso depois: ${comparePhotos[1].weight}kg` : "",
+        (comparePhotos[0] as any).angle ? `Ângulo foto antes (informado pelo médico): ${angleLabels[(comparePhotos[0] as any).angle] || (comparePhotos[0] as any).angle}` : "",
+        (comparePhotos[1] as any).angle ? `Ângulo foto depois (informado pelo médico): ${angleLabels[(comparePhotos[1] as any).angle] || (comparePhotos[1] as any).angle}` : "",
         comparePhotos[0].notes ? `Notas antes: ${comparePhotos[0].notes}` : "",
         comparePhotos[1].notes ? `Notas depois: ${comparePhotos[1].notes}` : "",
       ].filter(Boolean).join(". ");
@@ -956,9 +962,20 @@ export default function PacienteDetalhe() {
                 <div className="rounded-xl border border-border/50 p-4 space-y-3 bg-muted/10">
                   <p className="text-sm font-medium">Nova foto de evolução</p>
                   <Input placeholder="Descrição (ex: 3ª sessão, pós-procedimento)" value={photoLabel} onChange={(e) => setPhotoLabel(e.target.value)} />
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <Input type="date" value={photoDate} onChange={(e) => setPhotoDate(e.target.value)} placeholder="Data" />
                     <Input type="number" step="0.1" placeholder="Peso (kg) — opcional" value={photoWeight} onChange={(e) => setPhotoWeight(e.target.value)} />
+                    <select
+                      value={photoAngle}
+                      onChange={(e) => setPhotoAngle(e.target.value)}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="frontal">Frontal</option>
+                      <option value="posterior">Posterior</option>
+                      <option value="lateral_direito">Lateral Direito</option>
+                      <option value="lateral_esquerdo">Lateral Esquerdo</option>
+                      <option value="tres_quartos">¾ (Três Quartos)</option>
+                    </select>
                   </div>
                   <Input placeholder="Observações — opcional" value={photoNotes} onChange={(e) => setPhotoNotes(e.target.value)} />
                   <div className="flex items-center gap-2">

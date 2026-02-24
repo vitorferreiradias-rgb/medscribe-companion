@@ -185,6 +185,7 @@ export type Database = {
       }
       evolution_photos: {
         Row: {
+          angle: string | null
           created_at: string
           date: string
           encounter_id: string | null
@@ -196,6 +197,7 @@ export type Database = {
           weight: number | null
         }
         Insert: {
+          angle?: string | null
           created_at?: string
           date?: string
           encounter_id?: string | null
@@ -207,6 +209,7 @@ export type Database = {
           weight?: number | null
         }
         Update: {
+          angle?: string | null
           created_at?: string
           date?: string
           encounter_id?: string | null

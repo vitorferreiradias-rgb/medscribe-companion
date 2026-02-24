@@ -418,6 +418,7 @@ export function useAddEvolutionPhoto() {
       date,
       notes,
       weight,
+      angle,
     }: {
       patientId: string;
       file: File;
@@ -425,6 +426,7 @@ export function useAddEvolutionPhoto() {
       date: string;
       notes?: string;
       weight?: number;
+      angle?: string;
     }) => {
       // Upload file to storage
       const ext = file.name.split(".").pop() || "jpg";
@@ -442,7 +444,8 @@ export function useAddEvolutionPhoto() {
         image_path: filePath,
         notes: notes || null,
         weight: weight || null,
-      }).select().single();
+        angle: angle || "frontal",
+      } as any).select().single();
       if (error) throw error;
       return data;
     },
