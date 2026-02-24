@@ -1,90 +1,51 @@
 
 
-# Extrair Aprovações Individuais de Medicamentos da FDA
+# Corrigir Links Externos Bloqueados nas Noticias
 
-## Problema Atual
+## Problema
 
-O sistema usa o RSS genérico da FDA (`/rss-feeds/drugs/rss.xml`), que retorna links para páginas institucionais como "Novel Drug Approvals 2026". O usuário quer ver **cada medicamento aprovado como uma manchete separada**, ex:
-- "Loargys (pegzilarginase-nbln) aprovado para hiperarginemia"
-- "Bysanti (milsaperidona) aprovado para esquizofrenia"
+Dois problemas identificados:
 
-## Solução
+1. **URLs da FDA usam `http://`** em vez de `https://` -- o RSS da FDA retorna links com protocolo HTTP, que muitos navegadores bloqueiam ou redirecionam com aviso de seguranca
+2. **`window.open()` e bloqueado como popup** -- dentro do iframe de preview do Lovable, o navegador interpreta `window.open()` em handler de click como tentativa de popup e bloqueia
 
-Criar um scraper dedicado que extrai a **tabela de aprovações** da página `https://www.fda.gov/drugs/novel-drug-approvals-fda/novel-drug-approvals-2026` e gera uma manchete por medicamento.
+Alem disso, as manchetes da OMS no banco ainda estao em ingles (a traducao nao foi aplicada a elas).
 
-## Mudanças
+## Mudancas
 
-### 1. Edge Function `fetch-medical-news/index.ts`
+### 1. `src/components/NewsCard.tsx` e `src/pages/Noticias.tsx`
 
-**Nova função `fetchFDADrugApprovals`** que:
+Substituir `window.open(item.url, "_blank")` por um elemento `<a>` nativo com `target="_blank"` e `rel="noopener noreferrer"`. Links nativos `<a>` nao sao bloqueados pelo navegador como popups.
 
-1. Faz fetch da página HTML de aprovações da FDA
-2. Extrai as linhas da tabela usando regex (colunas: Numero, Nome, Ingrediente Ativo, Data, Uso Aprovado)
-3. Gera uma manchete por medicamento no formato:
-   - Titulo: `"FDA aprova [Nome] ([ingrediente]) para [uso]"`
-   - Resumo: `"Aprovado em [data]. [uso aprovado completo]"`
-   - URL: link direto para a pagina da FDA daquele medicamento (se disponível) ou a página geral
-   - Source: `"FDA Drugs"`
-
-**Substituir** o fetcher RSS genérico da FDA Drugs por este scraper nos `categoryFetchers`:
-
+No `NewsCard.tsx`, envolver o conteudo do item em `<a>` em vez de usar `onClick`:
 ```text
-medicacoes: [
-  ... fontes existentes,
-  - fetchRSS(".../drugs/rss.xml", "FDA Drugs")    // REMOVER
-  + fetchFDADrugApprovals()                         // ADICIONAR
-]
+<a href={item.url} target="_blank" rel="noopener noreferrer">
+  ... conteudo do item ...
+</a>
 ```
 
-**Manter** o RSS geral da FDA em "hoje" (press releases continuam relevantes).
+No `Noticias.tsx`, mesma abordagem no Card de noticia.
 
-### 2. Nenhuma mudança no frontend
+### 2. Edge Function `fetch-medical-news/index.ts`
 
-As manchetes individuais aparecem automaticamente com titulo traduzido (a tradução já existe) e link correto.
+Normalizar URLs para `https://` -- substituir `http://` por `https://` em todas as URLs capturadas dos feeds RSS e scrapers. A FDA redireciona HTTP para HTTPS de qualquer forma, entao usar HTTPS diretamente evita o problema.
 
-## Seção Técnica
-
-### Estrutura da Tabela FDA
-
-A tabela na página tem a seguinte estrutura HTML:
-
+Adicionar uma linha simples apos capturar a URL:
 ```text
-<table>
-  <tr>
-    <td>4.</td>
-    <td><a href="/drugs/...">Loargys</a></td>
-    <td>pegzilarginase-nbln</td>
-    <td>23/02/2026</td>
-    <td>Para tratar a hiperarginemia...</td>
-  </tr>
-</table>
+url = url.replace(/^http:\/\//i, "https://")
 ```
 
-O regex para extrair linhas da tabela:
+## Secao Tecnica
 
-```text
-/<tr[^>]*>\s*<td[^>]*>\s*(\d+)\.\s*<\/td>\s*<td[^>]*>(?:<a[^>]+href=["']([^"']+)["'][^>]*>)?\s*([\s\S]*?)\s*(?:<\/a>)?\s*<\/td>\s*<td[^>]*>\s*([\s\S]*?)\s*<\/td>\s*<td[^>]*>\s*([\s\S]*?)\s*<\/td>\s*<td[^>]*>\s*([\s\S]*?)\s*<\/td>/gi
-```
+### Por que `<a>` funciona e `window.open()` nao
 
-### Formato da Manchete Gerada
+Navegadores modernos distinguem entre:
+- `<a target="_blank">` -- navegacao iniciada pelo usuario, sempre permitida
+- `window.open()` em handler de click -- pode ser bloqueado dependendo do contexto (iframe, sandbox, popup blocker)
 
-```text
-title: "Loargys (pegzilarginase-nbln) — aprovação FDA"
-summary: "Aprovado em 23/02/2026. Para tratar a hiperarginemia em adultos e pacientes pediátricos..."
-url: "https://www.fda.gov/drugs/..." (link individual) ou página geral
-source: "FDA Drugs"
-```
+O iframe de preview do Lovable tem restricoes de sandbox que tornam `window.open()` menos confiavel.
 
-### Tradução
+### Normalizacao de URLs
 
-Como "FDA Drugs" já está em `INTERNATIONAL_SOURCES`, os títulos serão automaticamente traduzidos pela função `translateHeadlines` existente. Porém, como estamos gerando os títulos já em português ("aprovação FDA"), a tradução pode ser redundante para esses itens. Para evitar re-tradução desnecessária, o título será gerado diretamente em português.
+A FDA retorna URLs como `http://www.fda.gov/...` no RSS. Todos os sites governamentais modernos (FDA, WHO, EMA) suportam HTTPS. A normalizacao e segura e evita avisos de "conexao nao segura" no navegador.
 
-### Sugestões de Melhoria Adicionais
-
-Além da correção da FDA, sugiro:
-
-1. **Indicar a fonte com ícone/badge colorido**: Diferenciar visualmente fontes nacionais (verde) de internacionais (azul) nos cards de notícia
-2. **Adicionar categoria "Novos Medicamentos"**: Um filtro dedicado que agrupa FDA approvals + ANVISA registros + EMA approvals
-3. **Data relativa**: Mostrar "há 2 dias" em vez de "24/02/2026" para notícias recentes
-
-Essas melhorias podem ser feitas em um próximo passo.
