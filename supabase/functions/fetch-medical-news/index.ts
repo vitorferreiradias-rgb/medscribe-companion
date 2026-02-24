@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const CACHE_HOURS = 6;
-const MAX_PER_CATEGORY = 15;
+const MAX_PER_CATEGORY = 20;
 const FETCH_TIMEOUT = 8000;
 
 interface Headline {
@@ -23,14 +23,28 @@ const HIGH_PRIORITY_TERMS = [
   "aprovação", "falsificação", "recall", "urgente", "emergência", "alerta",
   "suspensão", "proibição", "interdição",
   "approval", "fda", "recall", "alert", "emergency", "warning", "banned",
+  // Vigilância sanitária
+  "vigilância", "farmacovigilância", "sanitário", "fiscalização", "monitoramento",
+  "surveillance", "pharmacovigilance",
+  // Sociedades & órgãos
+  "cfm", "sociedade", "conselho",
+  // Novos fármacos / ensaios
+  "novo medicamento", "new drug", "clinical trial", "ensaio clínico",
 ];
 
-function calcPriority(title: string, summary: string): number {
+const NATIONAL_SOURCES = [
+  "ANVISA", "Min. Saúde", "CONITEC", "CFM", "SBC", "SBD", "SBEM",
+  "FIOCRUZ", "AMB", "Farmacovigilância", "ANVISA Vigilância",
+];
+
+function calcPriority(title: string, summary: string, source = ""): number {
   const text = `${title} ${summary}`.toLowerCase();
   let score = 0;
   for (const term of HIGH_PRIORITY_TERMS) {
-    if (text.includes(term)) score += 10;
+    if (text.includes(term.toLowerCase())) score += 10;
   }
+  // Bônus nacional
+  if (NATIONAL_SOURCES.some((ns) => source.includes(ns))) score += 5;
   return score;
 }
 
@@ -49,9 +63,7 @@ function decodeHTMLEntities(text: string): string {
 function parseDate(dateStr: string): string {
   try {
     const d = new Date(dateStr);
-    if (!isNaN(d.getTime())) {
-      return d.toLocaleDateString("pt-BR");
-    }
+    if (!isNaN(d.getTime())) return d.toLocaleDateString("pt-BR");
   } catch { /* ignore */ }
   return new Date().toLocaleDateString("pt-BR");
 }
@@ -60,8 +72,7 @@ async function fetchWithTimeout(url: string, timeout = FETCH_TIMEOUT): Promise<R
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   try {
-    const res = await fetch(url, { signal: controller.signal });
-    return res;
+    return await fetch(url, { signal: controller.signal });
   } finally {
     clearTimeout(id);
   }
@@ -72,63 +83,42 @@ async function fetchRSS(url: string, source: string): Promise<Headline[]> {
   try {
     console.log(`Fetching RSS: ${url}`);
     const res = await fetchWithTimeout(url);
-    if (!res.ok) {
-      console.warn(`RSS ${url} returned ${res.status}`);
-      return [];
-    }
+    if (!res.ok) { console.warn(`RSS ${url} returned ${res.status}`); return []; }
     const xml = await res.text();
 
-    // Parse <item> or <entry> blocks
     const items = xml.match(/<item[\s>][\s\S]*?<\/item>/gi) || [];
     const entries = xml.match(/<entry[\s>][\s\S]*?<\/entry>/gi) || [];
     const allBlocks = [...items, ...entries];
 
     const headlines: Headline[] = [];
     for (const block of allBlocks.slice(0, 20)) {
-      const title = decodeHTMLEntities(
-        block.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || ""
-      );
+      const title = decodeHTMLEntities(block.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "");
       if (!title) continue;
 
-      // <link> can be text content or href attribute
-      let link = block.match(/<link[^>]*href=["']([^"']+)["']/i)?.[1]
+      const link = block.match(/<link[^>]*href=["']([^"']+)["']/i)?.[1]
         || decodeHTMLEntities(block.match(/<link[^>]*>([\s\S]*?)<\/link>/i)?.[1] || "");
 
       const pubDate = block.match(/<pubDate[^>]*>([\s\S]*?)<\/pubDate>/i)?.[1]
         || block.match(/<published[^>]*>([\s\S]*?)<\/published>/i)?.[1]
-        || block.match(/<updated[^>]*>([\s\S]*?)<\/updated>/i)?.[1]
-        || "";
+        || block.match(/<updated[^>]*>([\s\S]*?)<\/updated>/i)?.[1] || "";
 
       const description = decodeHTMLEntities(
         block.match(/<description[^>]*>([\s\S]*?)<\/description>/i)?.[1]
-        || block.match(/<summary[^>]*>([\s\S]*?)<\/summary>/i)?.[1]
-        || ""
+        || block.match(/<summary[^>]*>([\s\S]*?)<\/summary>/i)?.[1] || ""
       ).substring(0, 300);
 
       headlines.push({
-        title: title.substring(0, 200),
-        summary: description,
-        source,
-        url: link,
-        published_at: parseDate(pubDate),
-        priority: calcPriority(title, description),
+        title: title.substring(0, 200), summary: description, source, url: link,
+        published_at: parseDate(pubDate), priority: calcPriority(title, description, source),
       });
     }
     console.log(`RSS ${source}: ${headlines.length} items`);
     return headlines;
-  } catch (err) {
-    console.warn(`RSS fetch failed for ${source}:`, err);
-    return [];
-  }
+  } catch (err) { console.warn(`RSS fetch failed for ${source}:`, err); return []; }
 }
 
 // ─── HTML Scraper ────────────────────────────────────────────
-async function scrapeHTML(
-  url: string,
-  source: string,
-  linkPattern: RegExp,
-  baseUrl: string
-): Promise<Headline[]> {
+async function scrapeHTML(url: string, source: string, linkPattern: RegExp, baseUrl: string): Promise<Headline[]> {
   try {
     console.log(`Scraping HTML: ${url}`);
     const res = await fetchWithTimeout(url);
@@ -144,20 +134,14 @@ async function scrapeHTML(
 
       const fullUrl = href.startsWith("http") ? href : `${baseUrl}${href}`;
       headlines.push({
-        title: title.substring(0, 200),
-        summary: "",
-        source,
-        url: fullUrl,
+        title: title.substring(0, 200), summary: "", source, url: fullUrl,
         published_at: new Date().toLocaleDateString("pt-BR"),
-        priority: calcPriority(title, ""),
+        priority: calcPriority(title, "", source),
       });
     }
     console.log(`Scrape ${source}: ${headlines.length} items`);
     return headlines;
-  } catch (err) {
-    console.warn(`Scrape failed for ${source}:`, err);
-    return [];
-  }
+  } catch (err) { console.warn(`Scrape failed for ${source}:`, err); return []; }
 }
 
 // ─── PubMed E-Utilities ─────────────────────────────────────
@@ -182,73 +166,100 @@ async function fetchPubMed(query: string, source = "PubMed"): Promise<Headline[]
       if (!article) continue;
       const title = (article.title || "").replace(/<[^>]+>/g, "");
       if (!title) continue;
-
       headlines.push({
         title: title.substring(0, 200),
         summary: (article.source || "") + (article.pubdate ? ` (${article.pubdate})` : ""),
-        source,
-        url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`,
+        source, url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`,
         published_at: parseDate(article.pubdate || ""),
-        priority: calcPriority(title, ""),
+        priority: calcPriority(title, "", source),
       });
     }
     console.log(`PubMed: ${headlines.length} items`);
     return headlines;
-  } catch (err) {
-    console.warn("PubMed fetch failed:", err);
-    return [];
-  }
+  } catch (err) { console.warn("PubMed fetch failed:", err); return []; }
 }
+
+// ─── Reusable link pattern for gov.br and societies ─────────
+const govBrLinkPattern = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
 
 // ─── Category Sources ────────────────────────────────────────
 type CategoryFetcher = () => Promise<Headline[]>;
 
 const categoryFetchers: Record<string, CategoryFetcher[]> = {
   hoje: [
+    // Existentes
     () => fetchRSS("https://www.gov.br/anvisa/pt-br/assuntos/noticias-anvisa/RSS", "ANVISA"),
     () => fetchRSS("https://www.gov.br/saude/pt-br/assuntos/noticias/RSS", "Min. Saúde"),
     () => fetchRSS("https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/press-releases/rss.xml", "FDA"),
+    // Novas: Vigilância sanitária
+    () => scrapeHTML("https://www.gov.br/anvisa/pt-br/assuntos/farmacovigilancia", "Farmacovigilância", govBrLinkPattern, "https://www.gov.br"),
+    () => scrapeHTML("https://www.gov.br/anvisa/pt-br/assuntos/fiscalizacao-e-monitoramento", "ANVISA Vigilância", govBrLinkPattern, "https://www.gov.br"),
+    // Novas: Sociedades & órgãos
+    () => scrapeHTML("https://portal.cfm.org.br/noticias/", "CFM", /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, "https://portal.cfm.org.br"),
+    () => scrapeHTML("https://portal.fiocruz.br/noticias", "FIOCRUZ", govBrLinkPattern, "https://portal.fiocruz.br"),
+    () => scrapeHTML("https://amb.org.br/noticias/", "AMB", /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, "https://amb.org.br"),
   ],
   diretrizes: [
-    () => scrapeHTML(
-      "https://www.gov.br/conitec/pt-br/assuntos/avaliacao-de-tecnologias-em-saude/protocolos-clinicos-e-diretrizes-terapeuticas",
-      "CONITEC",
-      /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
-      "https://www.gov.br"
-    ),
+    // Existentes
+    () => scrapeHTML("https://www.gov.br/conitec/pt-br/assuntos/avaliacao-de-tecnologias-em-saude/protocolos-clinicos-e-diretrizes-terapeuticas", "CONITEC", govBrLinkPattern, "https://www.gov.br"),
     () => fetchPubMed("Practice Guideline[pt] AND (clinical OR medicine)", "PubMed"),
+    // Novas: Sociedades médicas
+    () => scrapeHTML("https://portal.cfm.org.br/noticias/", "CFM", /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, "https://portal.cfm.org.br"),
+    () => scrapeHTML("https://www.portal.cardiol.br/noticias", "SBC", /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, "https://www.portal.cardiol.br"),
+    () => scrapeHTML("https://diabetes.org.br/noticias/", "SBD", /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, "https://diabetes.org.br"),
+    () => scrapeHTML("https://www.endocrino.org.br/noticias/", "SBEM", /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, "https://www.endocrino.org.br"),
+    // Nova: PubMed estudos clínicos recentes
+    () => fetchPubMed("randomized controlled trial[pt] AND 2026[dp]", "PubMed Estudos"),
   ],
   medicacoes: [
+    // Existentes
     () => fetchRSS("https://www.gov.br/anvisa/pt-br/assuntos/noticias-anvisa/RSS", "ANVISA"),
     () => fetchRSS("https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds/drugs/rss.xml", "FDA Drugs"),
     () => fetchPubMed("drug approval OR drug recall OR pharmacovigilance", "PubMed"),
+    // Novas: Vigilância
+    () => scrapeHTML("https://www.gov.br/anvisa/pt-br/assuntos/farmacovigilancia", "Farmacovigilância", govBrLinkPattern, "https://www.gov.br"),
+    () => scrapeHTML("https://www.gov.br/anvisa/pt-br/assuntos/fiscalizacao-e-monitoramento", "ANVISA Vigilância", govBrLinkPattern, "https://www.gov.br"),
+    // Nova: EMA
+    () => scrapeHTML("https://www.ema.europa.eu/en/news", "EMA", /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, "https://www.ema.europa.eu"),
+    // Nova: PubMed novos fármacos
+    () => fetchPubMed("new drug approval OR novel therapy 2026", "PubMed Novos Fármacos"),
   ],
   eventos: [
+    // Existentes
     () => fetchPubMed("medical congress OR medical symposium OR clinical meeting 2026", "PubMed"),
     () => fetchRSS("https://www.who.int/rss-feeds/news-english.xml", "OMS"),
+    // Nova: SBC eventos
+    () => scrapeHTML("https://www.portal.cardiol.br/noticias", "SBC", /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi, "https://www.portal.cardiol.br"),
   ],
 };
 
 // Category-specific keyword filters
 const categoryKeywords: Record<string, string[]> = {
   hoje: [], // no filter, show all
-  diretrizes: ["diretriz", "protocolo", "guia", "resolução", "pcdt", "guideline", "protocol", "recommendation", "standard"],
-  medicacoes: ["medicamento", "droga", "remédio", "registro", "aprovação", "bula", "recall", "drug", "medicine", "approval", "fda", "ema", "anvisa"],
-  eventos: ["congresso", "simpósio", "webinar", "encontro", "evento", "reunião", "congress", "symposium", "meeting", "webinar", "event", "conference"],
+  diretrizes: [
+    "diretriz", "protocolo", "guia", "resolução", "pcdt", "guideline", "protocol", "recommendation", "standard",
+    "cfm", "sociedade", "ensaio", "trial", "estudo",
+  ],
+  medicacoes: [
+    "medicamento", "droga", "remédio", "registro", "aprovação", "bula", "recall", "drug", "medicine", "approval", "fda", "ema", "anvisa",
+    "vigilância", "farmacovigilância", "fiscalização", "monitoramento", "novo medicamento", "new drug", "clinical trial", "terapia", "therapy",
+  ],
+  eventos: [
+    "congresso", "simpósio", "webinar", "encontro", "evento", "reunião", "congress", "symposium", "meeting", "webinar", "event", "conference",
+    "sociedade", "sbc", "sbd", "sbem", "jornada",
+  ],
 };
 
 function filterByKeywords(items: Headline[], category: string): Headline[] {
   const keywords = categoryKeywords[category];
   if (!keywords || keywords.length === 0) return items;
 
-  // For categories with keywords, prefer matching items but keep others if needed
   const matching = items.filter((item) => {
     const text = `${item.title} ${item.summary}`.toLowerCase();
     return keywords.some((kw) => text.includes(kw));
   });
 
   if (matching.length >= 5) return matching;
-  // If not enough matches, return all items (sources are already relevant)
   return items;
 }
 
@@ -320,13 +331,9 @@ Deno.serve(async (req) => {
     allHeadlines = allHeadlines.slice(0, MAX_PER_CATEGORY);
 
     if (allHeadlines.length === 0) {
-      // Return stale cache if no new results
       const { data: staleCache } = await supabase
-        .from("medical_news")
-        .select("*")
-        .eq("category", category)
-        .order("fetched_at", { ascending: false })
-        .limit(MAX_PER_CATEGORY);
+        .from("medical_news").select("*").eq("category", category)
+        .order("fetched_at", { ascending: false }).limit(MAX_PER_CATEGORY);
 
       if (staleCache && staleCache.length > 0) {
         return new Response(JSON.stringify({ news: staleCache, cached: true, stale: true }), {
@@ -344,19 +351,12 @@ Deno.serve(async (req) => {
     await supabase.from("medical_news").delete().eq("category", category);
 
     const rows = allHeadlines.map((h) => ({
-      title: h.title,
-      summary: h.summary,
-      source: h.source,
-      url: h.url,
-      category,
-      published_at: h.published_at,
-      fetched_at: new Date().toISOString(),
+      title: h.title, summary: h.summary, source: h.source, url: h.url,
+      category, published_at: h.published_at, fetched_at: new Date().toISOString(),
     }));
 
     const { data: inserted, error: insertError } = await supabase
-      .from("medical_news")
-      .insert(rows)
-      .select();
+      .from("medical_news").insert(rows).select();
 
     if (insertError) {
       console.error("Insert error:", insertError);

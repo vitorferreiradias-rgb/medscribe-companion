@@ -19,7 +19,7 @@ async function fetchNewsFromCache(category: string): Promise<MedicalNewsItem[]> 
     .select("*")
     .eq("category", category)
     .order("fetched_at", { ascending: false })
-    .limit(15);
+    .limit(20);
 
   if (error) throw error;
   return (data as unknown as MedicalNewsItem[]) ?? [];
