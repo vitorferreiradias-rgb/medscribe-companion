@@ -19,7 +19,7 @@ async function fetchNewsFromCache(category: string): Promise<MedicalNewsItem[]> 
     .select("*")
     .eq("category", category)
     .order("fetched_at", { ascending: false })
-    .limit(5);
+    .limit(15);
 
   if (error) throw error;
   return (data as unknown as MedicalNewsItem[]) ?? [];
@@ -62,7 +62,7 @@ export function useMedicalNews(category: string) {
       // Cache empty or stale — fetch from edge function
       return refreshNews(category);
     },
-    staleTime: 5 * 60 * 1000, // 5 min
+    staleTime: 10 * 60 * 1000, // 10 min
   });
 
   const forceRefresh = useMutation({

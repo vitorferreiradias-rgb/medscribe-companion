@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Newspaper, Search, ArrowLeft, RefreshCw } from "lucide-react";
+import { Newspaper, Search, ArrowLeft, RefreshCw, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -113,12 +113,16 @@ export default function Noticias() {
           ))
         ) : filtered.length > 0 ? (
           filtered.map((item) => (
-            <Card key={item.id} className="glass-card rounded-xl hover:shadow-md transition-shadow">
+            <Card
+              key={item.id}
+              className="glass-card rounded-xl hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => item.url && window.open(item.url, "_blank")}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-semibold leading-snug">{item.title}</h3>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.summary}</p>
+                    {item.summary && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.summary}</p>}
                     <div className="flex items-center gap-2 mt-2">
                       <Badge variant="secondary" className="text-[10px] font-normal">{item.category}</Badge>
                       <span className="text-[10px] text-muted-foreground">{item.source}</span>
@@ -126,6 +130,7 @@ export default function Noticias() {
                       <span className="text-[10px] text-muted-foreground">{item.published_at}</span>
                     </div>
                   </div>
+                  {item.url && <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />}
                 </div>
               </CardContent>
             </Card>
