@@ -53,7 +53,7 @@ export function SmartPrescriptionDialog({
   const prescriber = useMemo(() => {
     if (prescriberProp) return prescriberProp;
     const d = getData();
-    const c = d.clinicians[0];
+    const c = d?.clinicians?.[0];
     return c ? { name: c.name, crm: c.crm } : { name: "Médico", crm: "000000" };
   }, [prescriberProp]);
 
