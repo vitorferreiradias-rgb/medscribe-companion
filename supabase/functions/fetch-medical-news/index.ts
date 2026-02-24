@@ -10,6 +10,8 @@ const CACHE_HOURS = 6;
 const MAX_PER_CATEGORY = 20;
 const FETCH_TIMEOUT = 8000;
 
+const INTERNATIONAL_SOURCES = ["FDA", "FDA Drugs", "EMA", "PubMed", "PubMed Estudos", "PubMed Novos Fármacos", "OMS"];
+
 interface Headline {
   title: string;
   summary: string;
@@ -263,6 +265,86 @@ function filterByKeywords(items: Headline[], category: string): Headline[] {
   return items;
 }
 
+// ─── Translation ─────────────────────────────────────────────
+async function translateHeadlines(headlines: Headline[]): Promise<Headline[]> {
+  const international = headlines.filter((h) => INTERNATIONAL_SOURCES.includes(h.source));
+  const national = headlines.filter((h) => !INTERNATIONAL_SOURCES.includes(h.source));
+
+  if (international.length === 0) return headlines;
+
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    console.warn("LOVABLE_API_KEY not set, skipping translation");
+    return headlines;
+  }
+
+  try {
+    const items = international.map((h, i) => ({
+      i,
+      t: h.title,
+      s: h.summary,
+    }));
+
+    const prompt = `Traduza os seguintes títulos e resumos de notícias médicas do inglês para o português brasileiro.
+Mantenha termos técnicos médicos reconhecidos (ex: FDA, EMA, PubMed).
+Retorne APENAS um JSON array com objetos {\"t\":\"título traduzido\",\"s\":\"resumo traduzido\"} na mesma ordem. Sem explicações.
+
+${JSON.stringify(items.map((x) => ({ t: x.t, s: x.s })))}`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.1,
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!aiRes.ok) {
+      console.warn(`Translation API returned ${aiRes.status}, keeping originals`);
+      return headlines;
+    }
+
+    const aiData = await aiRes.json();
+    const content = aiData?.choices?.[0]?.message?.content || "";
+
+    // Extract JSON array from response
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      console.warn("Translation response has no JSON array, keeping originals");
+      return headlines;
+    }
+
+    const translations: { t: string; s: string }[] = JSON.parse(jsonMatch[0]);
+
+    if (translations.length !== international.length) {
+      console.warn(`Translation count mismatch (${translations.length} vs ${international.length}), keeping originals`);
+      return headlines;
+    }
+
+    for (let i = 0; i < international.length; i++) {
+      if (translations[i]?.t) international[i].title = translations[i].t;
+      if (translations[i]?.s) international[i].summary = translations[i].s;
+    }
+
+    console.log(`Translated ${international.length} international headlines to PT-BR`);
+    return [...national, ...international];
+  } catch (err) {
+    console.warn("Translation failed, keeping originals:", err);
+    return headlines;
+  }
+}
+
 // ─── Main Handler ────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -311,6 +393,9 @@ Deno.serve(async (req) => {
         allHeadlines.push(...result.value);
       }
     }
+
+    // Translate international headlines to PT-BR
+    allHeadlines = await translateHeadlines(allHeadlines);
 
     // Filter by category keywords
     allHeadlines = filterByKeywords(allHeadlines, category);
