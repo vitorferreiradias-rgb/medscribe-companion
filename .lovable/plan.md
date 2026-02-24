@@ -1,124 +1,140 @@
 
 
-# Notícias Médicas -- Migração para Fontes Gratuitas (sem Google CSE)
+# Expandir Fontes de Noticias Medicas -- Vigilancia Sanitaria, Sociedades Medicas e Fontes Estrategicas
 
-## Problema Atual
-O sistema usa Google Custom Search Engine (CSE), que tem limite de 100 consultas/dia no plano gratuito. Ao atingir esse limite, retorna erro 429 e a funcionalidade para de funcionar.
+## Contexto
 
-## Solução Proposta
-Substituir o Google CSE por scraping direto de fontes oficiais gratuitas + API PubMed (gratuita, sem chave). Isso elimina completamente a dependencia de API keys pagas e limites de cota.
+O sistema atual busca noticias de ANVISA (geral), Ministerio da Saude, FDA, CONITEC, OMS e PubMed. Faltam fontes importantes como a Vigilancia Sanitaria da ANVISA, as principais sociedades medicas brasileiras e fontes internacionais de novos farmacos/estudos clinicos.
 
----
+## Novas Fontes a Adicionar
 
-## Fontes de Dados por Categoria
+### Nacionais (Prioridade Alta)
 
-| Categoria | Fontes | Metodo |
-|-----------|--------|--------|
-| Hoje | ANVISA RSS, Min. Saude RSS, FDA RSS | RSS/Atom feed parsing |
-| Diretrizes | CONITEC (scraping HTML), PubMed E-Utilities (Practice Guidelines) | HTTP fetch + regex parsing |
-| Medicacoes | ANVISA RSS (filtrado), FDA Drug News RSS, EMA RSS | RSS feed parsing |
-| Eventos | PubMed (filtro), EMA Events RSS | RSS + API |
+| Fonte | URL | Metodo | Categorias |
+|-------|-----|--------|------------|
+| ANVISA Farmacovigilancia | `https://www.gov.br/anvisa/pt-br/assuntos/farmacovigilancia` | HTML scraping | hoje, medicacoes |
+| ANVISA Fiscalizacao/Monitoramento | `https://www.gov.br/anvisa/pt-br/assuntos/fiscalizacao-e-monitoramento` | HTML scraping | hoje, medicacoes |
+| CFM (Conselho Federal de Medicina) | `https://portal.cfm.org.br/noticias/` | HTML scraping | hoje, diretrizes |
+| SBC (Soc. Brasileira de Cardiologia) | `https://www.portal.cardiol.br/noticias` | HTML scraping | hoje, diretrizes, eventos |
+| SBD (Soc. Brasileira de Diabetes) | `https://diabetes.org.br/noticias/` | HTML scraping | hoje, diretrizes |
+| SBEM (Soc. Brasileira de Endocrinologia) | `https://www.endocrino.org.br/noticias/` | HTML scraping | hoje, diretrizes |
+| FIOCRUZ | `https://portal.fiocruz.br/noticias` | HTML scraping | hoje, diretrizes |
+| AMB (Associacao Medica Brasileira) | `https://amb.org.br/noticias/` | HTML scraping | hoje, diretrizes |
 
-URLs das fontes:
-- ANVISA: `https://www.gov.br/anvisa/pt-br/assuntos/noticias-anvisa/RSS`
-- Min. Saude: `https://www.gov.br/saude/pt-br/assuntos/noticias/RSS`
-- FDA: `https://www.fda.gov/about-fda/contact-fda/stay-informed/rss-feeds` (Drug News)
-- EMA: `https://www.ema.europa.eu/en/news-events/whats-new` (HTML scraping)
-- PubMed E-Utilities: `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi` + `efetch.fcgi`
-- CONITEC: `https://www.gov.br/conitec/pt-br/assuntos/avaliacao-de-tecnologias-em-saude/protocolos-clinicos-e-diretrizes-terapeuticas` (HTML scraping)
+### Internacionais (Grandes Noticias)
 
-## Arquitetura
-
-```text
-+------------------+     +------------------------+     +----------------+
-|  Frontend React  | --> | Edge Function           | --> | medical_news   |
-|  (useMedicalNews)|     | fetch-medical-news      |     | (tabela cache) |
-+------------------+     +------------------------+     +----------------+
-                              |
-                    +---------+---------+
-                    |         |         |
-                  RSS     Scraping   PubMed
-                 feeds     HTML     E-Utils
-```
+| Fonte | URL | Metodo | Categorias |
+|-------|-----|--------|------------|
+| EMA (Agencia Europeia de Medicamentos) | `https://www.ema.europa.eu/en/news` | HTML scraping | medicacoes |
+| PubMed -- Novos farmacos | Query: `new drug approval OR novel therapy OR clinical trial results` | API E-Utilities | medicacoes |
+| PubMed -- Estudos clinicos recentes | Query: `randomized controlled trial[pt] AND 2026[dp]` | API E-Utilities | diretrizes |
 
 ---
 
 ## Mudancas Detalhadas
 
-### 1. Edge Function `fetch-medical-news/index.ts` (reescrever)
+### 1. Edge Function `fetch-medical-news/index.ts`
 
-**Remover**: toda a logica do Google CSE (API key, CX, chamada customsearch).
+**Novos termos de alta prioridade** a adicionar ao `HIGH_PRIORITY_TERMS`:
+- "vigilancia", "farmacovigilancia", "sanitario", "fiscalizacao", "monitoramento", "interdicao"
+- "surveillance", "pharmacovigilance"
+- "cfm", "sociedade", "conselho"
+- "novo medicamento", "new drug", "clinical trial", "ensaio clinico"
 
-**Adicionar**:
-- Funcao `fetchRSS(url)`: faz fetch da URL, parseia XML com regex para extrair `<title>`, `<link>`, `<pubDate>`, `<description>`
-- Funcao `scrapeHTML(url, selectors)`: faz fetch de paginas HTML e extrai manchetes via regex
-- Funcao `fetchPubMed(query)`: usa E-Utilities para buscar artigos recentes tipo "Practice Guideline"
-- Mapa de fontes por categoria:
-  - `hoje`: RSS ANVISA + RSS Min. Saude + RSS FDA
-  - `diretrizes`: scrape CONITEC + PubMed Practice Guidelines
-  - `medicacoes`: RSS ANVISA (filtrado por palavras-chave de medicacao) + RSS FDA Drug News
-  - `eventos`: scrape EMA events + PubMed conferences
-- Logica de relevancia: priorizar manchetes com termos de alta importancia ('Aprovacao', 'Recall', 'Urgente', 'Falsificacao') no topo
-- Limite de 15 manchetes por categoria (atualmente sao 5)
-- Manter cache de 6 horas (reduzido de 24h para dados mais frescos)
-- Fallback robusto: se uma fonte falhar, continuar com as outras
+**Novas fontes no `categoryFetchers`**:
 
-### 2. Hook `useMedicalNews.ts` (ajustar)
+```text
+hoje: [
+  ... fontes existentes (ANVISA RSS, Min. Saude RSS, FDA RSS),
+  + scrapeHTML ANVISA Farmacovigilancia
+  + scrapeHTML ANVISA Fiscalizacao
+  + scrapeHTML CFM Noticias
+  + scrapeHTML FIOCRUZ Noticias
+  + scrapeHTML AMB Noticias
+]
 
-- Aumentar `.limit(5)` para `.limit(15)` no cache query
-- Manter a mesma interface `MedicalNewsItem`
-- Adicionar campo `priority` opcional para ordenacao
+diretrizes: [
+  ... fontes existentes (CONITEC, PubMed Guidelines),
+  + scrapeHTML CFM
+  + scrapeHTML SBC
+  + scrapeHTML SBD
+  + scrapeHTML SBEM
+  + fetchPubMed("randomized controlled trial[pt] AND 2026[dp]")
+]
 
-### 3. Pagina `Noticias.tsx` (melhorar)
+medicacoes: [
+  ... fontes existentes (ANVISA RSS, FDA Drugs RSS, PubMed pharmacovigilance),
+  + scrapeHTML ANVISA Farmacovigilancia
+  + scrapeHTML ANVISA Fiscalizacao
+  + scrapeHTML EMA News
+  + fetchPubMed("new drug approval OR novel therapy 2026")
+]
 
-- Cards clicaveis que abrem a URL original em nova aba (`window.open(url, '_blank')`)
-- Exibir ate 15 manchetes por categoria
-- Indicador visual para manchetes prioritarias (ex: badge "Urgente")
-- Manter busca e filtros existentes
+eventos: [
+  ... fontes existentes (PubMed congress, OMS RSS),
+  + scrapeHTML SBC (filtrado por eventos)
+]
+```
 
-### 4. Componente `NewsCard.tsx` (ajustar)
+**Novos keywords nos filtros de categoria** (`categoryKeywords`):
+- `hoje`: permanece sem filtro (mostra tudo)
+- `diretrizes`: + "cfm", "sociedade", "ensaio", "trial", "estudo"
+- `medicacoes`: + "vigilancia", "farmacovigilancia", "fiscalizacao", "monitoramento", "novo medicamento", "new drug", "clinical trial", "terapia", "therapy"
+- `eventos`: + "sociedade", "sbc", "sbd", "sbem", "jornada"
 
-- Click no card abre URL diretamente (remover logica de double-click)
-- Mostrar ate 5 items no card resumido (manter)
+**Logica de prioridade nacional vs internacional**:
+- Fontes nacionais (ANVISA, Min. Saude, CFM, SBC, SBD, SBEM, FIOCRUZ, AMB, CONITEC) recebem bonus de +5 na prioridade
+- Fontes internacionais (FDA, EMA, PubMed, OMS) mantem pontuacao base
+- Isso garante que noticias nacionais aparecem primeiro, mas grandes alertas internacionais (com termos de alta prioridade) ainda sobem ao topo
 
-### 5. Secrets (limpeza)
+**Aumento do limite**: `MAX_PER_CATEGORY` de 15 para 20 para acomodar mais fontes
 
-- `GOOGLE_CSE_API_KEY` e `GOOGLE_CSE_CX` nao serao mais necessarias (podem ser removidas futuramente)
-- Nenhuma nova API key necessaria -- PubMed E-Utilities e gratuito sem chave
+### 2. Frontend -- Sem mudancas necessarias
+
+A pagina `Noticias.tsx` e o hook `useMedicalNews.ts` ja suportam dinamicamente qualquer numero de fontes e exibem o nome da fonte no card. As novas manchetes aparecerao automaticamente com seus respectivos nomes (ex: "CFM", "SBC", "Farmacovigilancia").
 
 ---
 
 ## Secao Tecnica
 
-### RSS Parser (sem dependencias externas)
+### Estrategia de Scraping para Sites .gov.br e Sociedades
+
+Os sites brasileiros seguem padroes semelhantes de HTML. O regex generico para extrair links de noticias:
+
 ```text
-Regex-based XML parsing dentro do Deno edge function:
-- Extrair <item> blocks
-- De cada <item>: <title>, <link>, <pubDate>, <description>
-- Converter pubDate para formato pt-BR
+/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi
 ```
 
-### PubMed E-Utilities
-```text
-GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi
-  ?db=pubmed&term=Practice+Guideline[pt]&retmax=10&sort=date&retmode=json
+Cada fonte tera seu `baseUrl` para resolver links relativos:
+- gov.br: `https://www.gov.br`
+- CFM: `https://portal.cfm.org.br`
+- SBC: `https://www.portal.cardiol.br`
+- FIOCRUZ: `https://portal.fiocruz.br`
 
-GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi
-  ?db=pubmed&id=ID1,ID2,...&retmode=json
+### Bonus de Prioridade Nacional
+
+```text
+function calcPriority(title, summary, source):
+  score = 0
+  // Termos de alta prioridade (+10 cada)
+  for term in HIGH_PRIORITY_TERMS:
+    if text.includes(term): score += 10
+  
+  // Bonus nacional (+5)
+  if source in NATIONAL_SOURCES: score += 5
+  
+  return score
 ```
 
-### Prioridade de Manchetes
-```text
-Palavras de alta prioridade (score +10):
-  'Aprovação', 'Falsificação', 'Recall', 'Urgente', 'Emergência',
-  'Approval', 'FDA', 'Recall', 'Alert', 'Emergency'
+### Gerenciamento de Volume
 
-Manchetes com esses termos aparecem primeiro dentro de cada categoria.
-```
+Com ~15 fontes buscadas em paralelo, o edge function pode demorar mais. Mitigacoes:
+- Timeout por fonte: 8 segundos (ja implementado)
+- `Promise.allSettled` garante que fontes lentas nao bloqueiam as rapidas
+- Deduplicacao por titulo (primeiros 60 caracteres) remove repeticoes entre fontes
+- Limite final de 20 manchetes por categoria
 
 ### Tratamento de Erros
-- Cada fonte e buscada independentemente com try/catch
-- Se uma fonte falhar, as outras continuam
-- Se todas falharem, retorna cache stale (mantendo comportamento atual)
-- Timeout de 8 segundos por fonte para evitar edge function timeout
+
+Cada fonte continua independente com try/catch. Se ANVISA, CFM ou qualquer fonte estiver fora do ar, as demais continuam normalmente. O cache stale serve como ultimo recurso.
 
