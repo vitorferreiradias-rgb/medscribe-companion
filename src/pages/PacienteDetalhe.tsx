@@ -6,12 +6,13 @@ import {
   ArrowLeft, Edit3, Save, X, MoreVertical, Trash2,
   Plus, CalendarIcon, Heart, MapPin, Users, Activity, Megaphone,
   AlertTriangle, FileText, Search, Copy, Clock, Stethoscope, FolderOpen,
-  Camera, ImageIcon, Eye, ZoomIn, TrendingUp, Weight, StickyNote,
+  Camera, ImageIcon, Eye, ZoomIn, TrendingUp, Weight, StickyNote, Sparkles, Loader2,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { updatePatient, deletePatient, duplicateEncounter, deleteEncounter } from "@/lib/store";
 import { useEvolutionPhotos, useAddEvolutionPhoto, useDeleteEvolutionPhoto } from "@/hooks/useSupabaseData";
 import { EvolutionPhotoImage } from "@/components/EvolutionPhotoImage";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -138,6 +139,8 @@ export default function PacienteDetalhe() {
   const [showPhotoForm, setShowPhotoForm] = useState(false);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
   const [zoomPhotoId, setZoomPhotoId] = useState<string | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
 
   const { data: dbEvolutionPhotos = [] } = useEvolutionPhotos(id);
   const addEvolutionPhotoMutation = useAddEvolutionPhoto();
@@ -194,6 +197,33 @@ export default function PacienteDetalhe() {
     return a.date <= b.date ? [a, b] as const : [b, a] as const;
   }, [compareIds, evolutionPhotos]);
 
+  const handleAiCompare = async () => {
+    if (!comparePhotos) return;
+    setAiAnalysisLoading(true);
+    setAiAnalysis(null);
+    try {
+      const weightContext = [
+        comparePhotos[0].weight ? `Peso antes: ${comparePhotos[0].weight}kg` : "",
+        comparePhotos[1].weight ? `Peso depois: ${comparePhotos[1].weight}kg` : "",
+        comparePhotos[0].notes ? `Notas antes: ${comparePhotos[0].notes}` : "",
+        comparePhotos[1].notes ? `Notas depois: ${comparePhotos[1].notes}` : "",
+      ].filter(Boolean).join(". ");
+
+      const { data, error } = await supabase.functions.invoke("evolution-compare", {
+        body: {
+          beforeImagePath: comparePhotos[0].image_path,
+          afterImagePath: comparePhotos[1].image_path,
+          patientContext: weightContext || undefined,
+        },
+      });
+      if (error) throw error;
+      setAiAnalysis(data?.analysis || "Não foi possível gerar a análise.");
+    } catch (err: any) {
+      toast({ title: "Erro na análise com IA", description: err.message || "Tente novamente.", variant: "destructive" });
+    } finally {
+      setAiAnalysisLoading(false);
+    }
+  };
 
   const now = new Date();
 
@@ -704,7 +734,7 @@ export default function PacienteDetalhe() {
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Eye className="h-4 w-4 text-primary" /> Comparação de Evolução
                   </CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setCompareIds(null)}>
+                  <Button variant="ghost" size="sm" onClick={() => { setCompareIds(null); setAiAnalysis(null); }}>
                     <X className="h-3.5 w-3.5 mr-1" /> Fechar
                   </Button>
                 </div>
@@ -719,7 +749,7 @@ export default function PacienteDetalhe() {
                         </Badge>
                         <span className="text-xs text-muted-foreground">{format(parseISO(photo.date), "dd/MM/yyyy")}</span>
                       </div>
-                      <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-muted/30 border border-border/40">
+                      <div className="relative rounded-xl overflow-hidden bg-muted/30 border border-border/40">
                         <EvolutionPhotoImage imagePath={photo.image_path} alt={photo.label} />
                       </div>
                       {photo.weight && (
@@ -752,6 +782,34 @@ export default function PacienteDetalhe() {
                     </div>
                   </div>
                 )}
+
+                {/* AI Analysis Button & Result */}
+                <div className="mt-4 space-y-3">
+                  <Button
+                    onClick={handleAiCompare}
+                    disabled={aiAnalysisLoading}
+                    className="w-full gap-2"
+                    variant="default"
+                  >
+                    {aiAnalysisLoading ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Analisando com IA…</>
+                    ) : (
+                      <><Sparkles className="h-4 w-4" /> Analisar evolução com IA</>
+                    )}
+                  </Button>
+
+                  {aiAnalysis && (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-semibold text-primary">Análise com IA</span>
+                      </div>
+                      <div className="text-sm prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                        {aiAnalysis}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           )}
@@ -846,7 +904,7 @@ export default function PacienteDetalhe() {
                             {/* Photo */}
                             <div className={cn(
                               "rounded-lg overflow-hidden bg-muted/30 border border-border/30 transition-all",
-                              zoomPhotoId === photo.id ? "aspect-auto max-h-[500px]" : "aspect-[4/3] max-h-[200px]"
+                              zoomPhotoId === photo.id ? "aspect-auto" : "aspect-auto max-h-[300px]"
                             )}>
                               <EvolutionPhotoImage
                                 imagePath={photo.image_path}

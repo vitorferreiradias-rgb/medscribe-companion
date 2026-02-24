@@ -28,7 +28,7 @@ export function EvolutionPhotoImage({ imagePath, alt, className, onClick }: Evol
     <img
       src={url}
       alt={alt}
-      className={cn("w-full h-full object-cover", className)}
+      className={cn("w-full h-full object-contain", className)}
       onClick={onClick}
     />
   );
