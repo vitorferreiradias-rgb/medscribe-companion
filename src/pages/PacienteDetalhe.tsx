@@ -3,14 +3,14 @@ import { useParams, useNavigate } from "react-router-dom";
 import { format, parseISO, isValid, subDays, isAfter, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  ArrowLeft, Edit3, Save, X, MoreVertical, Trash2,
+  ArrowLeft, Edit3, Save, X, MoreVertical, Trash2, Pencil, Check,
   Plus, CalendarIcon, Heart, MapPin, Users, Activity, Megaphone,
   AlertTriangle, FileText, Search, Copy, Clock, Stethoscope, FolderOpen,
   Camera, ImageIcon, Eye, ZoomIn, TrendingUp, Weight, StickyNote, Sparkles, Loader2,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { updatePatient, deletePatient, duplicateEncounter, deleteEncounter } from "@/lib/store";
-import { useEvolutionPhotos, useAddEvolutionPhoto, useDeleteEvolutionPhoto } from "@/hooks/useSupabaseData";
+import { useEvolutionPhotos, useAddEvolutionPhoto, useDeleteEvolutionPhoto, useUpdateEvolutionPhoto } from "@/hooks/useSupabaseData";
 import { EvolutionPhotoImage } from "@/components/EvolutionPhotoImage";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -143,9 +143,18 @@ export default function PacienteDetalhe() {
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
 
+  // Inline photo editing
+  const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editWeight, setEditWeight] = useState("");
+  const [editAngle, setEditAngle] = useState("frontal");
+  const [editNotes, setEditNotes] = useState("");
+
   const { data: dbEvolutionPhotos = [] } = useEvolutionPhotos(id);
   const addEvolutionPhotoMutation = useAddEvolutionPhoto();
   const deleteEvolutionPhotoMutation = useDeleteEvolutionPhoto();
+  const updateEvolutionPhotoMutation = useUpdateEvolutionPhoto();
 
   const handleAddEvolutionPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -186,6 +195,32 @@ export default function PacienteDetalhe() {
       setCompareIds([photoId, ""]);
     }
   };
+
+  const startEditPhoto = (photo: any) => {
+    setEditingPhotoId(photo.id);
+    setEditLabel(photo.label || "");
+    setEditDate(photo.date || "");
+    setEditWeight(photo.weight?.toString() || "");
+    setEditAngle(photo.angle || "frontal");
+    setEditNotes(photo.notes || "");
+  };
+
+  const saveEditPhoto = () => {
+    if (!editingPhotoId) return;
+    updateEvolutionPhotoMutation.mutate({
+      id: editingPhotoId,
+      updates: {
+        label: editLabel || "Registro",
+        date: editDate || undefined,
+        weight: editWeight ? parseFloat(editWeight) : null,
+        angle: editAngle,
+        notes: editNotes || null,
+      },
+    });
+    setEditingPhotoId(null);
+  };
+
+  const cancelEditPhoto = () => setEditingPhotoId(null);
 
   const evolutionPhotos = useMemo(() =>
     [...dbEvolutionPhotos].sort((a, b) => a.date.localeCompare(b.date)),
@@ -864,48 +899,121 @@ export default function PacienteDetalhe() {
                               ? "border-primary/50 bg-primary/5 shadow-sm"
                               : "border-border/40 hover:border-primary/30 hover:bg-muted/20"
                           )}>
-                            {/* Header */}
-                            <div className="flex items-start justify-between mb-2">
-                              <div>
-                                <p className="text-sm font-semibold">{photo.label}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {format(parseISO(photo.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                                  {idx > 0 && (() => {
-                                    const prev = evolutionPhotos[idx - 1];
-                                    const days = Math.round((parseISO(photo.date).getTime() - parseISO(prev.date).getTime()) / 86400000);
-                                    return <span className="ml-1.5 text-primary/70">({days}d desde anterior)</span>;
-                                  })()}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Button
-                                  variant={isSelected ? "default" : "ghost"}
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={(e) => { e.stopPropagation(); toggleCompare(photo.id); }}
-                                  title="Comparar"
-                                >
-                                  <Eye className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={(e) => { e.stopPropagation(); setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id); }}
-                                  title="Ampliar"
-                                >
-                                  <ZoomIn className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={(e) => { e.stopPropagation(); handleRemoveEvolutionPhoto(photo.id, photo.image_path); }}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                                </Button>
-                              </div>
-                            </div>
+                            {/* Header & Metadata — edit mode or view mode */}
+                            {editingPhotoId === photo.id ? (
+                              <>
+                                <div className="space-y-2 mb-2">
+                                  <Input placeholder="Descrição" value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="h-8 text-sm" />
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-8 text-sm" />
+                                    <Input type="number" step="0.1" placeholder="Peso (kg)" value={editWeight} onChange={(e) => setEditWeight(e.target.value)} className="h-8 text-sm" />
+                                    <select
+                                      value={editAngle}
+                                      onChange={(e) => setEditAngle(e.target.value)}
+                                      className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    >
+                                      <option value="frontal">Frontal</option>
+                                      <option value="posterior">Posterior</option>
+                                      <option value="lateral_direito">Lateral Dir.</option>
+                                      <option value="lateral_esquerdo">Lateral Esq.</option>
+                                      <option value="tres_quartos">¾</option>
+                                    </select>
+                                  </div>
+                                  <Input placeholder="Observações" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="h-8 text-sm" />
+                                  <div className="flex gap-1.5">
+                                    <Button size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); saveEditPhoto(); }}>
+                                      <Check className="mr-1 h-3 w-3" /> Salvar
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); cancelEditPhoto(); }}>
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex items-start justify-between mb-2">
+                                  <div>
+                                    <p className="text-sm font-semibold">{photo.label}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {format(parseISO(photo.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                                      {idx > 0 && (() => {
+                                        const prev = evolutionPhotos[idx - 1];
+                                        const days = Math.round((parseISO(photo.date).getTime() - parseISO(prev.date).getTime()) / 86400000);
+                                        return <span className="ml-1.5 text-primary/70">({days}d desde anterior)</span>;
+                                      })()}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={(e) => { e.stopPropagation(); startEditPhoto(photo); }}
+                                      title="Editar"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant={isSelected ? "default" : "ghost"}
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={(e) => { e.stopPropagation(); toggleCompare(photo.id); }}
+                                      title="Comparar"
+                                    >
+                                      <Eye className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={(e) => { e.stopPropagation(); setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id); }}
+                                      title="Ampliar"
+                                    >
+                                      <ZoomIn className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={(e) => { e.stopPropagation(); handleRemoveEvolutionPhoto(photo.id, photo.image_path); }}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {/* Metadata */}
+                                <div className="flex flex-wrap items-center gap-3 mt-2">
+                                  {(photo as any).angle && (
+                                    <Badge variant="outline" className="text-[10px]">
+                                      {({ frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lat. Dir.", lateral_esquerdo: "Lat. Esq.", tres_quartos: "¾" } as Record<string,string>)[(photo as any).angle] || (photo as any).angle}
+                                    </Badge>
+                                  )}
+                                  {photo.weight && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Weight className="h-3 w-3" /> {photo.weight} kg
+                                      {idx > 0 && evolutionPhotos[idx - 1].weight && (
+                                        <span className={cn(
+                                          "ml-1 font-medium",
+                                          photo.weight - evolutionPhotos[idx - 1].weight! > 0
+                                            ? "text-destructive"
+                                            : "text-emerald-600 dark:text-emerald-400"
+                                        )}>
+                                          ({photo.weight - evolutionPhotos[idx - 1].weight! > 0 ? "+" : ""}
+                                          {(photo.weight - evolutionPhotos[idx - 1].weight!).toFixed(1)})
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {photo.notes && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <StickyNote className="h-3 w-3" /> {photo.notes}
+                                    </div>
+                                  )}
+                                </div>
+                              </>
+                            )}
 
                             {/* Photo */}
                             <div className={cn(
@@ -917,31 +1025,6 @@ export default function PacienteDetalhe() {
                                 alt={photo.label}
                                 onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
                               />
-                            </div>
-
-                            {/* Metadata */}
-                            <div className="flex flex-wrap items-center gap-3 mt-2">
-                              {photo.weight && (
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <Weight className="h-3 w-3" /> {photo.weight} kg
-                                  {idx > 0 && evolutionPhotos[idx - 1].weight && (
-                                    <span className={cn(
-                                      "ml-1 font-medium",
-                                      photo.weight - evolutionPhotos[idx - 1].weight! > 0
-                                        ? "text-red-500 dark:text-red-400"
-                                        : "text-emerald-600 dark:text-emerald-400"
-                                    )}>
-                                      ({photo.weight - evolutionPhotos[idx - 1].weight! > 0 ? "+" : ""}
-                                      {(photo.weight - evolutionPhotos[idx - 1].weight!).toFixed(1)})
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                              {photo.notes && (
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                  <StickyNote className="h-3 w-3" /> {photo.notes}
-                                </div>
-                              )}
                             </div>
                           </div>
                         </div>
