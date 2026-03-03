@@ -18,6 +18,7 @@ export interface ComplianceResult {
   needsConfirmation: boolean;
   suggestedTemplateId: string;
   regulatorySource: string;
+  autoClassified: boolean;
 }
 
 const RECIPE_CONFIG: Record<RecipeType, { templateId: string; source: string; requirements: string[] }> = {
@@ -65,7 +66,7 @@ export function classifyPrescription(input: ComplianceInput): ComplianceResult {
     const med = findMedication(item.medicationName);
     if (!med) {
       unknownItems++;
-      warnings.push(`"${item.medicationName}": Categoria regulatória não identificada (mock).`);
+      warnings.push(`"${item.medicationName}": Categoria regulatória não identificada.`);
       continue;
     }
 
@@ -75,17 +76,17 @@ export function classifyPrescription(input: ComplianceInput): ComplianceResult {
       highestCategory = "antimicrobiano";
     }
 
-    // Add medication-specific cautions as warnings
     if (med.cautions.length > 0) {
       warnings.push(`${med.name}: ${med.cautions[0]}`);
     }
   }
 
-  const needsConfirmation = unknownItems > 0 || highestCategory === "controle_especial";
+  const autoClassified = unknownItems === 0;
+  const needsConfirmation = !autoClassified || highestCategory === "controle_especial";
   const config = RECIPE_CONFIG[highestCategory];
 
-  if (unknownItems > 0) {
-    warnings.push("Selecione o tipo de receita manualmente se necessário.");
+  if (!autoClassified) {
+    warnings.push("Confirme o tipo de receita manualmente.");
   }
 
   return {
@@ -94,7 +95,8 @@ export function classifyPrescription(input: ComplianceInput): ComplianceResult {
     warnings,
     needsConfirmation,
     suggestedTemplateId: config.templateId,
-    regulatorySource: `${config.source} (mock)`,
+    regulatorySource: config.source,
+    autoClassified,
   };
 }
 

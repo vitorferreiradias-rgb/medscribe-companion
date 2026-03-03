@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Shield, FileSignature, Edit3, X, Loader2 } from "lucide-react";
+import { AlertTriangle, Shield, FileSignature, Edit3, X, Loader2, CheckCircle2 } from "lucide-react";
 import { getRecipeTypes, type RecipeType, type ComplianceResult } from "@/lib/compliance-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -183,18 +183,34 @@ export function SmartPrescriptionPreview({
       </div>
 
       {/* Recipe type selector */}
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">Tipo:</span>
-        <Select value={recipeType} onValueChange={(v) => setRecipeType(v as RecipeType)}>
-          <SelectTrigger className="h-8 w-auto text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {recipeTypes.map((rt) => (
-              <SelectItem key={rt.value} value={rt.value} className="text-xs">{rt.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Tipo:</span>
+          <Select value={recipeType} onValueChange={(v) => setRecipeType(v as RecipeType)}>
+            <SelectTrigger className="h-8 w-auto text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {recipeTypes.map((rt) => (
+                <SelectItem key={rt.value} value={rt.value} className="text-xs">{rt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {compliance.autoClassified && (
+            <Badge variant="outline" className="text-[10px] border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Classificado automaticamente
+            </Badge>
+          )}
+        </div>
+        {!compliance.autoClassified && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+            <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              Medicamento não encontrado no banco de dados. Confirme o tipo de receita acima.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Control special banner */}

@@ -150,6 +150,49 @@ const MEDICATIONS_DB: MedicationKnowledge[] = [
     commonForms: ["cápsula", "suspensão"],
     cautions: ["Alergia a cefalosporinas", "Reação cruzada com penicilinas"],
   },
+  {
+    name: "Ciprofloxacino",
+    aliases: ["cipro", "ciprobiot"],
+    category: "antimicrobiano",
+    defaultDosePatterns: [
+      { concentration: "500 mg", dosage: "1 comprimido de 12/12 horas", duration: "7 dias", quantity: "14 comprimidos" },
+    ],
+    commonForms: ["comprimido"],
+    cautions: ["Risco de tendinopatia", "Fotossensibilidade", "Evitar em < 18 anos"],
+  },
+  {
+    name: "Metronidazol",
+    aliases: ["flagyl"],
+    category: "antimicrobiano",
+    defaultDosePatterns: [
+      { concentration: "400 mg", dosage: "1 comprimido de 8/8 horas", duration: "7 dias", quantity: "21 comprimidos" },
+      { concentration: "250 mg", dosage: "1 comprimido de 8/8 horas", duration: "7 dias", quantity: "21 comprimidos" },
+    ],
+    commonForms: ["comprimido", "suspensão", "creme vaginal"],
+    cautions: ["Efeito antabuse (não ingerir álcool)", "Gosto metálico"],
+  },
+  {
+    name: "Levofloxacino",
+    aliases: ["levaquin", "tavanic"],
+    category: "antimicrobiano",
+    defaultDosePatterns: [
+      { concentration: "500 mg", dosage: "1 comprimido 1x ao dia", duration: "7 dias", quantity: "7 comprimidos" },
+      { concentration: "750 mg", dosage: "1 comprimido 1x ao dia", duration: "5 dias", quantity: "5 comprimidos" },
+    ],
+    commonForms: ["comprimido"],
+    cautions: ["Risco de tendinopatia", "Prolongamento de QT"],
+  },
+  {
+    name: "Sulfametoxazol + Trimetoprima",
+    aliases: ["bactrim", "bactrim f"],
+    category: "antimicrobiano",
+    defaultDosePatterns: [
+      { concentration: "800/160 mg", dosage: "1 comprimido de 12/12 horas", duration: "7 dias", quantity: "14 comprimidos" },
+      { concentration: "400/80 mg", dosage: "1 comprimido de 12/12 horas", duration: "7 dias", quantity: "14 comprimidos" },
+    ],
+    commonForms: ["comprimido", "suspensão"],
+    cautions: ["Alergia a sulfonamidas", "Monitorar função renal", "Risco de hipercalemia"],
+  },
 
   // ====== CONTROLADOS ======
   {
@@ -162,6 +205,17 @@ const MEDICATIONS_DB: MedicationKnowledge[] = [
     ],
     commonForms: ["comprimido", "gotas"],
     cautions: ["Risco de dependência", "Evitar uso prolongado", "Sonolência"],
+  },
+  {
+    name: "Alprazolam",
+    aliases: ["frontal"],
+    category: "controlado",
+    defaultDosePatterns: [
+      { concentration: "0,25 mg", dosage: "1 comprimido de 12/12 horas", duration: "30 dias", quantity: "60 comprimidos" },
+      { concentration: "0,5 mg", dosage: "1 comprimido de 12/12 horas", duration: "30 dias", quantity: "60 comprimidos" },
+    ],
+    commonForms: ["comprimido"],
+    cautions: ["Risco de dependência", "Evitar uso prolongado", "Sonolência intensa"],
   },
   {
     name: "Fluoxetina",
@@ -185,6 +239,17 @@ const MEDICATIONS_DB: MedicationKnowledge[] = [
     cautions: ["Pode levar 2-4 semanas para efeito", "Cuidado com interações medicamentosas"],
   },
   {
+    name: "Escitalopram",
+    aliases: ["lexapro", "cipralex"],
+    category: "controlado",
+    defaultDosePatterns: [
+      { concentration: "10 mg", dosage: "1 comprimido 1x ao dia", duration: "30 dias", quantity: "30 comprimidos" },
+      { concentration: "20 mg", dosage: "1 comprimido 1x ao dia", duration: "30 dias", quantity: "30 comprimidos" },
+    ],
+    commonForms: ["comprimido"],
+    cautions: ["Pode levar 2-4 semanas para efeito", "Prolongamento de QT em doses altas"],
+  },
+  {
     name: "Metilfenidato",
     aliases: ["ritalina", "concerta"],
     category: "controlado",
@@ -194,6 +259,16 @@ const MEDICATIONS_DB: MedicationKnowledge[] = [
     ],
     commonForms: ["comprimido", "comprimido LA"],
     cautions: ["Monitorar PA e FC", "Risco de insônia e inapetência", "Receita tipo A3"],
+  },
+  {
+    name: "Zolpidem",
+    aliases: ["stilnox"],
+    category: "controlado",
+    defaultDosePatterns: [
+      { concentration: "10 mg", dosage: "1 comprimido ao deitar", duration: "30 dias", quantity: "30 comprimidos" },
+    ],
+    commonForms: ["comprimido"],
+    cautions: ["Risco de dependência", "Sonambulismo", "Uso apenas a curto prazo"],
   },
 
   // ====== COM VARIANTES ======
