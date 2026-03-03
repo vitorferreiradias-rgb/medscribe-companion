@@ -176,10 +176,30 @@ export function SmartPrescriptionPreview({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-base">Preview da Receita</h3>
-        <Badge variant="outline" className="text-[10px]">
-          <Shield className="h-3 w-3 mr-1" />
-          {compliance.regulatorySource}
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          {compliance.tipoReceitaCor && compliance.tipoReceitaNome && (
+            <Badge
+              className="text-[10px] font-semibold border"
+              style={{
+                backgroundColor: `${compliance.tipoReceitaCor}18`,
+                borderColor: `${compliance.tipoReceitaCor}60`,
+                color: compliance.tipoReceitaCor,
+              }}
+            >
+              {compliance.tipoReceitaNome}
+              {compliance.validadeDias && (
+                <span className="ml-1 opacity-70">• {compliance.validadeDias}d</span>
+              )}
+              {compliance.vias && compliance.vias > 1 && (
+                <span className="ml-1 opacity-70">• {compliance.vias} vias</span>
+              )}
+            </Badge>
+          )}
+          <Badge variant="outline" className="text-[10px]">
+            <Shield className="h-3 w-3 mr-1" />
+            {compliance.regulatorySource}
+          </Badge>
+        </div>
       </div>
 
       {/* Recipe type selector */}
