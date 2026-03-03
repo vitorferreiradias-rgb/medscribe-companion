@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle, Shield, FileSignature, Edit3, X, Loader2, CheckCircle2 } from "lucide-react";
 import { getRecipeTypes, type RecipeType, type ComplianceResult } from "@/lib/compliance-router";
@@ -47,6 +48,7 @@ export function SmartPrescriptionPreview({
   const [recipeType, setRecipeType] = useState<RecipeType>(compliance.recipeType);
   const [showSignPrompt, setShowSignPrompt] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const recipeTypes = getRecipeTypes();
 
   const now = new Date().toISOString();
@@ -75,10 +77,12 @@ export function SmartPrescriptionPreview({
     return lines.join("\n");
   };
 
+  const [editableContent, setEditableContent] = useState(() => buildContent());
+
   const handleSign = async () => {
     setSaving(true);
     try {
-      const content = buildContent();
+      const content = isEditing ? editableContent : buildContent();
 
       const { error } = await supabase.from("clinical_documents").insert({
         patient_id: patient.id,
@@ -116,7 +120,7 @@ export function SmartPrescriptionPreview({
   const handleSaveDraft = async () => {
     setSaving(true);
     try {
-      const content = buildContent();
+      const content = isEditing ? editableContent : buildContent();
       const { error } = await supabase.from("clinical_documents").insert({
         patient_id: patient.id,
         clinician_id: clinicianId,
@@ -257,43 +261,64 @@ export function SmartPrescriptionPreview({
 
       <Separator />
 
-      {/* Document preview */}
-      <Card>
-        <CardContent className="p-4 space-y-3 text-sm">
-          <div className="text-center">
-            <p className="font-bold uppercase text-xs tracking-wider text-muted-foreground">
-              Receita {recipeType.replace("_", " ")}
-            </p>
+      {/* Document preview — editable or read-only */}
+      {isEditing ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground">Editando texto da receita</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setIsEditing(false)}
+            >
+              Concluir edição
+            </Button>
           </div>
-
-          <div className="text-xs text-muted-foreground">
-            <p><strong>Paciente:</strong> {patient.name}</p>
-            <p><strong>Data:</strong> {dateStr}</p>
-          </div>
-
-          <Separator />
-
-          {items.map((item, i) => (
-            <div key={i} className="space-y-0.5">
-              <p className="font-medium">
-                {i + 1}) {item.medicationName} {item.concentration}
+          <Textarea
+            value={editableContent}
+            onChange={(e) => setEditableContent(e.target.value)}
+            className="min-h-[250px] font-mono text-xs leading-relaxed"
+          />
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="p-4 space-y-3 text-sm">
+            <div className="text-center">
+              <p className="font-bold uppercase text-xs tracking-wider text-muted-foreground">
+                Receita {recipeType.replace("_", " ")}
               </p>
-              {item.form && <p className="text-xs text-muted-foreground">Forma: {item.form}</p>}
-              <p className="text-xs">{item.dosage}</p>
-              {item.duration && <p className="text-xs text-muted-foreground">Duração: {item.duration}</p>}
-              {item.quantity && <p className="text-xs text-muted-foreground">Quantidade: {item.quantity}</p>}
             </div>
-          ))}
 
-          <Separator />
+            <div className="text-xs text-muted-foreground">
+              <p><strong>Paciente:</strong> {patient.name}</p>
+              <p><strong>Data:</strong> {dateStr}</p>
+            </div>
 
-          <div className="text-xs text-muted-foreground text-right">
-            <p>Dr(a). {prescriber.name}</p>
-            <p>CRM: {prescriber.crm}</p>
-            <p className="italic mt-1">— Não assinado —</p>
-          </div>
-        </CardContent>
-      </Card>
+            <Separator />
+
+            {items.map((item, i) => (
+              <div key={i} className="space-y-0.5">
+                <p className="font-medium">
+                  {i + 1}) {item.medicationName} {item.concentration}
+                </p>
+                {item.form && <p className="text-xs text-muted-foreground">Forma: {item.form}</p>}
+                <p className="text-xs">{item.dosage}</p>
+                {item.duration && <p className="text-xs text-muted-foreground">Duração: {item.duration}</p>}
+                {item.quantity && <p className="text-xs text-muted-foreground">Quantidade: {item.quantity}</p>}
+              </div>
+            ))}
+
+            <Separator />
+
+            <div className="text-xs text-muted-foreground text-right">
+              <p>Dr(a). {prescriber.name}</p>
+              <p>CRM: {prescriber.crm}</p>
+              <p className="italic mt-1">— Não assinado —</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Requirements */}
       <div className="text-xs text-muted-foreground space-y-1">
@@ -307,12 +332,19 @@ export function SmartPrescriptionPreview({
 
       <Separator />
 
-      {/* Actions */}
+      {/* Actions — no more "Editar" that goes back to command input */}
       <div className="flex gap-2">
         <Button onClick={() => setShowSignPrompt(true)} className="flex-1">
           <FileSignature className="mr-2 h-4 w-4" /> Assinar
         </Button>
-        <Button variant="secondary" onClick={onBack}>Editar</Button>
+        <Button variant="secondary" onClick={() => {
+          if (!isEditing) {
+            setEditableContent(buildContent());
+          }
+          setIsEditing(!isEditing);
+        }}>
+          <Edit3 className="mr-2 h-4 w-4" /> {isEditing ? "Visualizar" : "Editar"}
+        </Button>
         <Button variant="ghost" onClick={handleSaveDraft}>Cancelar</Button>
       </div>
     </div>
