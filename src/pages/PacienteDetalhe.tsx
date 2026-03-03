@@ -1194,15 +1194,9 @@ export default function PacienteDetalhe() {
 
                             {/* Photo */}
                             <div className={cn(
-                              "rounded-lg overflow-hidden bg-muted/30 border border-border/30 transition-all relative",
-                              zoomPhotoId === photo.id ? "aspect-auto" : "aspect-auto max-h-[300px]",
-                              editingPhotoId === photo.id && editFocus && "cursor-crosshair ring-2 ring-amber-500/50"
+                              "rounded-lg overflow-hidden bg-muted/30 border border-border/30 transition-all",
+                              zoomPhotoId === photo.id ? "aspect-auto" : "aspect-auto max-h-[300px]"
                             )}>
-                              {editingPhotoId === photo.id && editFocus && (
-                                <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-background/90 backdrop-blur-sm text-[10px] text-amber-700 dark:text-amber-400 px-2.5 py-1 rounded-full border border-amber-500/30 flex items-center gap-1 shadow-sm pointer-events-none">
-                                  <Target className="h-3 w-3" /> Clique na foto para marcar o local
-                                </div>
-                              )}
                               <EvolutionPhotoImage
                                 imagePath={photo.image_path}
                                 alt={photo.label}
