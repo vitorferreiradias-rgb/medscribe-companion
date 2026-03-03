@@ -184,6 +184,9 @@ export default function PacienteDetalhe() {
   const [photoWaist, setPhotoWaist] = useState("");
   const [photoGoal, setPhotoGoal] = useState("");
   const [photoFocus, setPhotoFocus] = useState("");
+  const [photoFocusX, setPhotoFocusX] = useState<number | null>(null);
+  const [photoFocusY, setPhotoFocusY] = useState<number | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [showPhotoForm, setShowPhotoForm] = useState(false);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
   const [zoomPhotoId, setZoomPhotoId] = useState<string | null>(null);
@@ -201,6 +204,8 @@ export default function PacienteDetalhe() {
   const [editWaist, setEditWaist] = useState("");
   const [editGoal, setEditGoal] = useState("");
   const [editFocus, setEditFocus] = useState("");
+  const [editFocusX, setEditFocusX] = useState<number | null>(null);
+  const [editFocusY, setEditFocusY] = useState<number | null>(null);
 
   const { data: dbEvolutionPhotos = [] } = useEvolutionPhotos(id);
   const addEvolutionPhotoMutation = useAddEvolutionPhoto();
@@ -222,6 +227,8 @@ export default function PacienteDetalhe() {
       waist_circumference: photoWaist ? parseFloat(photoWaist) : undefined,
       treatment_goal: photoGoal || undefined,
       analysis_focus: photoFocus || undefined,
+      focus_x: photoFocusX ?? undefined,
+      focus_y: photoFocusY ?? undefined,
     });
     setPhotoLabel("");
     setPhotoDate("");
@@ -232,8 +239,30 @@ export default function PacienteDetalhe() {
     setPhotoWaist("");
     setPhotoGoal("");
     setPhotoFocus("");
+    setPhotoFocusX(null);
+    setPhotoFocusY(null);
+    setPhotoPreviewUrl(null);
     setShowPhotoForm(false);
     e.target.value = "";
+  };
+
+  const handlePhotoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && photoFocus) {
+      const url = URL.createObjectURL(file);
+      setPhotoPreviewUrl(url);
+    }
+    if (file) {
+      handleAddEvolutionPhoto(e);
+    }
+  };
+
+  const handlePhotoPreviewClick = (e: React.MouseEvent<HTMLImageElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setPhotoFocusX(Math.round(x * 10) / 10);
+    setPhotoFocusY(Math.round(y * 10) / 10);
   };
 
   const handleRemoveEvolutionPhoto = (photoId: string, imagePath: string) => {
@@ -266,6 +295,8 @@ export default function PacienteDetalhe() {
     setEditWaist((photo as any).waist_circumference?.toString() || "");
     setEditGoal((photo as any).treatment_goal || "");
     setEditFocus((photo as any).analysis_focus || "");
+    setEditFocusX((photo as any).focus_x ?? null);
+    setEditFocusY((photo as any).focus_y ?? null);
   };
 
   const saveEditPhoto = () => {
@@ -282,6 +313,8 @@ export default function PacienteDetalhe() {
         waist_circumference: editWaist ? parseFloat(editWaist) : null,
         treatment_goal: editGoal || null,
         analysis_focus: editFocus || null,
+        focus_x: editFocusX,
+        focus_y: editFocusY,
       },
     });
     setEditingPhotoId(null);
@@ -349,6 +382,13 @@ export default function PacienteDetalhe() {
       const focusText = before.analysis_focus || after.analysis_focus;
       if (focusText) {
         contextParts.push(`FOCO DA ANÁLISE: ${focusText}`);
+        // Include marker coordinates if available
+        if (before.focus_x != null && before.focus_y != null) {
+          contextParts.push(`Localização do marcador (foto antes): ${before.focus_x.toFixed(1)}% da esquerda, ${before.focus_y.toFixed(1)}% do topo`);
+        }
+        if (after.focus_x != null && after.focus_y != null) {
+          contextParts.push(`Localização do marcador (foto depois): ${after.focus_x.toFixed(1)}% da esquerda, ${after.focus_y.toFixed(1)}% do topo`);
+        }
       }
 
       const patientContext = contextParts.join(". ");
@@ -894,7 +934,11 @@ export default function PacienteDetalhe() {
                         <span className="text-xs text-muted-foreground">{format(parseISO(photo.date), "dd/MM/yyyy")}</span>
                       </div>
                       <div className="relative rounded-xl overflow-hidden bg-muted/30 border border-border/40">
-                        <EvolutionPhotoImage imagePath={photo.image_path} alt={photo.label} />
+                        <EvolutionPhotoImage
+                          imagePath={photo.image_path}
+                          alt={photo.label}
+                          marker={(photo as any).focus_x != null && (photo as any).focus_y != null ? { x: (photo as any).focus_x, y: (photo as any).focus_y } : undefined}
+                        />
                       </div>
                       {photo.weight && (
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -1032,6 +1076,11 @@ export default function PacienteDetalhe() {
                                   <div>
                                     <Label className="text-xs text-muted-foreground mb-1 block">Foco da análise (opcional)</Label>
                                     <Input placeholder="Ex: mancha no antebraço esquerdo" value={editFocus} onChange={(e) => setEditFocus(e.target.value)} className="h-8 text-sm" />
+                                    {editFocus && (
+                                      <p className="text-[10px] text-muted-foreground mt-1">
+                                        Clique na foto abaixo para marcar o local • {editFocusX != null && editFocusY != null ? `Marcado: ${editFocusX.toFixed(1)}%, ${editFocusY.toFixed(1)}%` : "Sem marcação"}
+                                      </p>
+                                    )}
                                   </div>
                                   <div className="flex gap-1.5">
                                     <Button size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); saveEditPhoto(); }}>
@@ -1151,7 +1200,20 @@ export default function PacienteDetalhe() {
                               <EvolutionPhotoImage
                                 imagePath={photo.image_path}
                                 alt={photo.label}
-                                onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
+                                onClick={editingPhotoId === photo.id && editFocus ? (e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  const x = ((e.clientX - rect.left) / rect.width) * 100;
+                                  const y = ((e.clientY - rect.top) / rect.height) * 100;
+                                  setEditFocusX(Math.round(x * 10) / 10);
+                                  setEditFocusY(Math.round(y * 10) / 10);
+                                } : () => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
+                                marker={
+                                  editingPhotoId === photo.id && editFocusX != null && editFocusY != null
+                                    ? { x: editFocusX, y: editFocusY }
+                                    : (photo as any).focus_x != null && (photo as any).focus_y != null
+                                      ? { x: (photo as any).focus_x, y: (photo as any).focus_y }
+                                      : undefined
+                                }
                               />
                             </div>
                           </div>
@@ -1198,6 +1260,11 @@ export default function PacienteDetalhe() {
                   <div>
                     <Label className="text-xs text-muted-foreground mb-1 block">Foco da análise (opcional)</Label>
                     <Input placeholder="Ex: mancha no antebraço esquerdo, lesão no dorso" value={photoFocus} onChange={(e) => setPhotoFocus(e.target.value)} />
+                    {photoFocus && (
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Após enviar a foto, edite o registro para marcar o local exato na imagem.
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <label className="cursor-pointer">
