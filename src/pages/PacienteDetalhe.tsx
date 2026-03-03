@@ -1006,14 +1006,12 @@ export default function PacienteDetalhe() {
                                    <GoalCheckboxGroup value={editGoal} onChange={setEditGoal} compact />
                                   <div>
                                     <Label className="text-xs text-muted-foreground mb-1 block">Ângulo</Label>
-                                    <TooltipProvider delayDuration={300}>
-                                      <ToggleGroup type="single" value={editAngle} onValueChange={(v) => v && setEditAngle(v)} className="justify-start">
-                                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="frontal" aria-label="Frontal" className="h-8 w-8 p-0"><User className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Frontal</TooltipContent></Tooltip>
-                                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="posterior" aria-label="Posterior" className="h-8 w-8 p-0"><UserRound className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Posterior</TooltipContent></Tooltip>
-                                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="lateral_direito" aria-label="Lateral Dir." className="h-8 w-8 p-0"><ArrowRight className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Lateral Dir.</TooltipContent></Tooltip>
-                                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="lateral_esquerdo" aria-label="Lateral Esq." className="h-8 w-8 p-0"><ArrowLeft className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Lateral Esq.</TooltipContent></Tooltip>
-                                      </ToggleGroup>
-                                    </TooltipProvider>
+                                    <ToggleGroup type="single" value={editAngle} onValueChange={(v) => v && setEditAngle(v)} className="justify-start flex-wrap gap-1">
+                                      <ToggleGroupItem value="frontal" className="h-7 px-2 gap-1 text-xs"><User className="h-3 w-3" /> Frontal</ToggleGroupItem>
+                                      <ToggleGroupItem value="posterior" className="h-7 px-2 gap-1 text-xs"><UserRound className="h-3 w-3" /> Posterior</ToggleGroupItem>
+                                      <ToggleGroupItem value="lateral_direito" className="h-7 px-2 gap-1 text-xs"><ArrowRight className="h-3 w-3" /> Lat. Dir.</ToggleGroupItem>
+                                      <ToggleGroupItem value="lateral_esquerdo" className="h-7 px-2 gap-1 text-xs"><ArrowLeft className="h-3 w-3" /> Lat. Esq.</ToggleGroupItem>
+                                    </ToggleGroup>
                                   </div>
                                   <Input placeholder="Observações" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="h-8 text-sm" />
                                   <div className="flex gap-1.5">
@@ -1162,14 +1160,12 @@ export default function PacienteDetalhe() {
                   <GoalCheckboxGroup value={photoGoal} onChange={setPhotoGoal} />
                   <div>
                     <Label className="text-xs text-muted-foreground mb-1 block">Ângulo</Label>
-                    <TooltipProvider delayDuration={300}>
-                      <ToggleGroup type="single" value={photoAngle} onValueChange={(v) => v && setPhotoAngle(v)} className="justify-start">
-                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="frontal" aria-label="Frontal" className="h-9 w-9 p-0"><User className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Frontal</TooltipContent></Tooltip>
-                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="posterior" aria-label="Posterior" className="h-9 w-9 p-0"><UserRound className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Posterior</TooltipContent></Tooltip>
-                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="lateral_direito" aria-label="Lateral Dir." className="h-9 w-9 p-0"><ArrowRight className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Lateral Dir.</TooltipContent></Tooltip>
-                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="lateral_esquerdo" aria-label="Lateral Esq." className="h-9 w-9 p-0"><ArrowLeft className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Lateral Esq.</TooltipContent></Tooltip>
-                      </ToggleGroup>
-                    </TooltipProvider>
+                    <ToggleGroup type="single" value={photoAngle} onValueChange={(v) => v && setPhotoAngle(v)} className="justify-start flex-wrap gap-1.5">
+                      <ToggleGroupItem value="frontal" className="h-8 px-3 gap-1.5 text-xs"><User className="h-3.5 w-3.5" /> Frontal</ToggleGroupItem>
+                      <ToggleGroupItem value="posterior" className="h-8 px-3 gap-1.5 text-xs"><UserRound className="h-3.5 w-3.5" /> Posterior</ToggleGroupItem>
+                      <ToggleGroupItem value="lateral_direito" className="h-8 px-3 gap-1.5 text-xs"><ArrowRight className="h-3.5 w-3.5" /> Lat. Dir.</ToggleGroupItem>
+                      <ToggleGroupItem value="lateral_esquerdo" className="h-8 px-3 gap-1.5 text-xs"><ArrowLeft className="h-3.5 w-3.5" /> Lat. Esq.</ToggleGroupItem>
+                    </ToggleGroup>
                   </div>
                   <Input placeholder="Observações — opcional" value={photoNotes} onChange={(e) => setPhotoNotes(e.target.value)} />
                   <div className="flex items-center gap-2">
