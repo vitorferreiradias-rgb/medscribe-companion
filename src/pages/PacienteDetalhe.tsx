@@ -1006,12 +1006,15 @@ export default function PacienteDetalhe() {
                                    <GoalCheckboxGroup value={editGoal} onChange={setEditGoal} compact />
                                   <div>
                                     <Label className="text-xs text-muted-foreground mb-1 block">Ângulo</Label>
-                                    <ToggleGroup type="single" value={editAngle} onValueChange={(v) => v && setEditAngle(v)} className="justify-start flex-wrap gap-1">
-                                      <ToggleGroupItem value="frontal" className="h-7 px-2 gap-1 text-xs"><User className="h-3 w-3" /> Frontal</ToggleGroupItem>
-                                      <ToggleGroupItem value="posterior" className="h-7 px-2 gap-1 text-xs"><UserRound className="h-3 w-3" /> Posterior</ToggleGroupItem>
-                                      <ToggleGroupItem value="lateral_direito" className="h-7 px-2 gap-1 text-xs"><ArrowRight className="h-3 w-3" /> Lat. Dir.</ToggleGroupItem>
-                                      <ToggleGroupItem value="lateral_esquerdo" className="h-7 px-2 gap-1 text-xs"><ArrowLeft className="h-3 w-3" /> Lat. Esq.</ToggleGroupItem>
-                                    </ToggleGroup>
+                                    <Select value={editAngle} onValueChange={setEditAngle}>
+                                      <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Ângulo" /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="frontal">Frontal</SelectItem>
+                                        <SelectItem value="posterior">Posterior</SelectItem>
+                                        <SelectItem value="lateral_direito">Lateral Dir.</SelectItem>
+                                        <SelectItem value="lateral_esquerdo">Lateral Esq.</SelectItem>
+                                      </SelectContent>
+                                    </Select>
                                   </div>
                                   <Input placeholder="Observações" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="h-8 text-sm" />
                                   <div className="flex gap-1.5">
@@ -1160,12 +1163,15 @@ export default function PacienteDetalhe() {
                   <GoalCheckboxGroup value={photoGoal} onChange={setPhotoGoal} />
                   <div>
                     <Label className="text-xs text-muted-foreground mb-1 block">Ângulo</Label>
-                    <ToggleGroup type="single" value={photoAngle} onValueChange={(v) => v && setPhotoAngle(v)} className="justify-start flex-wrap gap-1.5">
-                      <ToggleGroupItem value="frontal" className="h-8 px-3 gap-1.5 text-xs"><User className="h-3.5 w-3.5" /> Frontal</ToggleGroupItem>
-                      <ToggleGroupItem value="posterior" className="h-8 px-3 gap-1.5 text-xs"><UserRound className="h-3.5 w-3.5" /> Posterior</ToggleGroupItem>
-                      <ToggleGroupItem value="lateral_direito" className="h-8 px-3 gap-1.5 text-xs"><ArrowRight className="h-3.5 w-3.5" /> Lat. Dir.</ToggleGroupItem>
-                      <ToggleGroupItem value="lateral_esquerdo" className="h-8 px-3 gap-1.5 text-xs"><ArrowLeft className="h-3.5 w-3.5" /> Lat. Esq.</ToggleGroupItem>
-                    </ToggleGroup>
+                    <Select value={photoAngle} onValueChange={setPhotoAngle}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione o ângulo" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="frontal">Frontal</SelectItem>
+                        <SelectItem value="posterior">Posterior</SelectItem>
+                        <SelectItem value="lateral_direito">Lateral Dir.</SelectItem>
+                        <SelectItem value="lateral_esquerdo">Lateral Esq.</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <Input placeholder="Observações — opcional" value={photoNotes} onChange={(e) => setPhotoNotes(e.target.value)} />
                   <div className="flex items-center gap-2">
