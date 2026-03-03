@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Mic, MicOff, Send, Sparkles, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
+import { Mic, MicOff, Send, Sparkles, CheckCircle2, XCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { parseIntent, type ParsedIntent } from "@/lib/intent-parser";
 import { useSpeechRecognition, isSpeechRecognitionSupported } from "@/hooks/useSpeechRecognition";
 import { addQuickNoteExternal } from "@/components/QuickNotesCard";
@@ -24,7 +24,7 @@ interface SmartAssistantDialogProps {
   onNavigate?: (path: string) => void;
 }
 
-type DialogStep = "input" | "confirm-cancel" | "result" | "prescription-preview";
+type DialogStep = "input" | "confirm-cancel" | "result" | "prescription-preview" | "processing";
 
 interface PrescriptionPreviewData {
   items: PrescriptionItem[];
@@ -322,6 +322,7 @@ export function SmartAssistantDialog({
       }
 
       case "prescrever": {
+        setStep("processing");
         await buildPrescriptionPreview(intent);
         break;
       }
@@ -429,8 +430,8 @@ export function SmartAssistantDialog({
               </div>
             )}
 
-            <Button onClick={handleSubmit} disabled={!inputText.trim()} className="w-full">
-              <Send className="mr-2 h-4 w-4" /> Processar comando
+            <Button onClick={handleSubmit} disabled={!inputText.trim()} className="w-full gap-2">
+              <Send className="h-4 w-4" /> Processar comando
             </Button>
           </div>
         )}
@@ -455,6 +456,13 @@ export function SmartAssistantDialog({
                 <XCircle className="mr-2 h-4 w-4" /> Confirmar cancelamento
               </Button>
             </div>
+          </div>
+        )}
+
+        {step === "processing" && (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <Loader2 className="h-10 w-10 text-ai animate-spin" />
+            <p className="text-sm text-muted-foreground animate-pulse">Buscando medicamentos e classificando receita…</p>
           </div>
         )}
 
