@@ -220,7 +220,7 @@ export interface ClinicalDocument {
   signedAt?: string;
   signedBy?: string;
   status: "draft" | "ready_to_sign" | "signed";
-  recipeType?: "simples" | "antimicrobiano" | "controle_especial";
+  recipeType?: "simples" | "controle_especial";
   compliance?: DocumentCompliance;
 }
 

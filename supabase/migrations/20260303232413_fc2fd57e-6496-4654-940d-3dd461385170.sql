@@ -1,0 +1,1 @@
+UPDATE medicamentos SET id_tipo_receita = 2 WHERE id_tipo_receita = 5;
