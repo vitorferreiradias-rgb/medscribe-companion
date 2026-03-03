@@ -390,14 +390,12 @@ export async function findMedicationAsync(query: string): Promise<MedicationKnow
       .from("medicamentos")
       .select("*")
       .or(`nome_comercial.ilike.%${q}%,principio_ativo.ilike.%${q}%`)
-      .limit(1);
+      .limit(5);
     
     if (!error && data && data.length > 0) {
       const dbMed = data[0] as unknown as MedicamentoDB;
-      // Check if we have a richer local entry (with dose patterns, variants)
       const localMed = findMedicationLocal(q);
       if (localMed) {
-        // Merge: use local dose patterns but DB category mapping
         return {
           ...localMed,
           category: mapTipoReceitaToCategory(dbMed.id_tipo_receita),
@@ -405,11 +403,45 @@ export async function findMedicationAsync(query: string): Promise<MedicationKnow
       }
       return dbToMedicationKnowledge(dbMed);
     }
+
+    // If exact DB search failed, try broader search (first 4+ chars for fuzzy)
+    if (q.length >= 4) {
+      const prefix = q.slice(0, Math.ceil(q.length * 0.6));
+      const { data: fuzzyData } = await supabase
+        .from("medicamentos")
+        .select("*")
+        .or(`nome_comercial.ilike.%${prefix}%,principio_ativo.ilike.%${prefix}%`)
+        .limit(10);
+      
+      if (fuzzyData && fuzzyData.length > 0) {
+        // Find best fuzzy match
+        let bestMatch: MedicamentoDB | null = null;
+        let bestDist = Infinity;
+        for (const row of fuzzyData) {
+          const med = row as unknown as MedicamentoDB;
+          const d1 = levenshtein(q, med.nome_comercial.toLowerCase());
+          const d2 = levenshtein(q, med.principio_ativo.toLowerCase());
+          const dist = Math.min(d1, d2);
+          const maxAllowed = Math.max(q.length, med.nome_comercial.length) >= 8 ? 3 : 2;
+          if (dist <= maxAllowed && dist < bestDist) {
+            bestDist = dist;
+            bestMatch = med;
+          }
+        }
+        if (bestMatch) {
+          const localMed = findMedicationLocal(bestMatch.nome_comercial);
+          if (localMed) {
+            return { ...localMed, category: mapTipoReceitaToCategory(bestMatch.id_tipo_receita) };
+          }
+          return dbToMedicationKnowledge(bestMatch);
+        }
+      }
+    }
   } catch (err) {
     console.warn("[medication-knowledge] DB search failed, using local fallback:", err);
   }
   
-  // Fallback to local
+  // Fallback to local (now includes fuzzy matching)
   return findMedicationLocal(q);
 }
 
@@ -434,23 +466,71 @@ export async function getMedicationTipoReceita(query: string): Promise<number | 
   return null;
 }
 
+// ============= FUZZY MATCHING =============
+
+/** Simple Levenshtein distance for typo tolerance */
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+  );
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+/** Check if query fuzzy-matches a target (max 2 edits for short names, 3 for longer) */
+function fuzzyMatch(query: string, target: string): boolean {
+  const q = query.toLowerCase();
+  const t = target.toLowerCase();
+  if (t === q || t.includes(q) || q.includes(t)) return true;
+  const maxDist = Math.max(q.length, t.length) >= 8 ? 3 : 2;
+  return levenshtein(q, t) <= maxDist;
+}
+
 // ============= LOCAL SEARCH (sync, fallback) =============
 
 function findMedicationLocal(query: string): MedicationKnowledge | null {
   const q = query.toLowerCase().trim();
-  return (
-    MEDICATIONS_DB.find(
-      (m) =>
-        m.name.toLowerCase() === q ||
-        m.aliases.some((a) => a.toLowerCase() === q)
-    ) ||
-    MEDICATIONS_DB.find(
-      (m) =>
-        m.name.toLowerCase().includes(q) ||
-        m.aliases.some((a) => a.toLowerCase().includes(q))
-    ) ||
-    null
+  // 1. Exact match
+  const exact = MEDICATIONS_DB.find(
+    (m) =>
+      m.name.toLowerCase() === q ||
+      m.aliases.some((a) => a.toLowerCase() === q)
   );
+  if (exact) return exact;
+
+  // 2. Substring match
+  const partial = MEDICATIONS_DB.find(
+    (m) =>
+      m.name.toLowerCase().includes(q) ||
+      m.aliases.some((a) => a.toLowerCase().includes(q))
+  );
+  if (partial) return partial;
+
+  // 3. Fuzzy match (typo tolerance)
+  let bestMatch: MedicationKnowledge | null = null;
+  let bestDist = Infinity;
+  for (const m of MEDICATIONS_DB) {
+    const names = [m.name, ...m.aliases];
+    for (const name of names) {
+      if (fuzzyMatch(q, name)) {
+        const dist = levenshtein(q, name.toLowerCase());
+        if (dist < bestDist) {
+          bestDist = dist;
+          bestMatch = m;
+        }
+      }
+    }
+  }
+  return bestMatch;
 }
 
 /**
