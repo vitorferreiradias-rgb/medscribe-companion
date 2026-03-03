@@ -1,12 +1,5 @@
 
 
-# Prompt descritivo para a função One Click
-
-O que segue abaixo é o texto para ser adicionado na Knowledge do projeto (Settings → Manage Knowledge), substituindo qualquer instrução anterior sobre o One Click.
-
----
-
-```text
 # Função One Click — Assistente de Comando por Voz/Texto
 
 ## Visão Geral
@@ -117,11 +110,3 @@ O fluxo é: falar/digitar → clicar "Processar" → ação executada. Nenhuma t
 - NÃO pedir confirmação (exceto cancelamento)
 - NÃO usar getData() diretamente — receber dados via props/hooks
 - NÃO usar forwardRef no componente (causa crash de HMR)
-```
-
----
-
-Este texto deve ser colado em **Settings → Manage Knowledge** do projeto, substituindo qualquer descrição anterior do One Click. Ele serve como referência para que futuras edições no código respeitem o comportamento esperado da função.
-
-A implementação completa do fluxo de prescrição direto (itens 7-9) requer mudanças significativas no `SmartAssistantDialog.tsx` para integrar o parsing de prescrição, busca de posologia, classificação regulatória e geração do preview — tudo sem passar pelo `SmartPrescriptionDialog`. Se quiser, posso elaborar um plano de implementação separado para essa parte.
-
