@@ -7,8 +7,9 @@ import {
   Plus, CalendarIcon, Heart, MapPin, Users, Activity, Megaphone,
   AlertTriangle, FileText, Search, Copy, Clock, Stethoscope, FolderOpen,
   Camera, ImageIcon, Eye, ZoomIn, TrendingUp, Weight, StickyNote, Sparkles, Loader2,
-  User, UserRound, ArrowRight,
+  User, UserRound, ArrowRight, Target,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAppData } from "@/hooks/useAppData";
 import { updatePatient, deletePatient, duplicateEncounter, deleteEncounter } from "@/lib/store";
 import { useEvolutionPhotos, useAddEvolutionPhoto, useDeleteEvolutionPhoto, useUpdateEvolutionPhoto } from "@/hooks/useSupabaseData";
@@ -96,6 +97,44 @@ function FieldView({ label, value }: { label: string; value?: string }) {
     <div className="space-y-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       <p className="text-sm min-h-[1.5rem]">{value || "—"}</p>
+    </div>
+  );
+}
+
+const GOAL_OPTIONS = [
+  { value: "emagrecimento", label: "Emagrecimento" },
+  { value: "hipertrofia", label: "Hipertrofia" },
+  { value: "recomposicao", label: "Recomposição corporal" },
+  { value: "pos_bariatrica", label: "Pós-bariátrica" },
+  { value: "manutencao", label: "Manutenção" },
+  { value: "outro", label: "Outro" },
+];
+
+function toggleGoal(current: string, value: string): string {
+  const goals = current ? current.split(",").filter(Boolean) : [];
+  const idx = goals.indexOf(value);
+  if (idx >= 0) goals.splice(idx, 1);
+  else goals.push(value);
+  return goals.join(",");
+}
+
+function GoalCheckboxGroup({ value, onChange, compact }: { value: string; onChange: (v: string) => void; compact?: boolean }) {
+  const selected = value ? value.split(",").filter(Boolean) : [];
+  return (
+    <div className={cn("space-y-1.5", compact && "space-y-1")}>
+      <Label className="text-xs text-muted-foreground">Objetivo do tratamento</Label>
+      <div className={cn("grid gap-1.5", compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3")}>
+        {GOAL_OPTIONS.map((opt) => (
+          <label key={opt.value} className="flex items-center gap-1.5 cursor-pointer text-sm">
+            <Checkbox
+              checked={selected.includes(opt.value)}
+              onCheckedChange={() => onChange(toggleGoal(value, opt.value))}
+              className="h-3.5 w-3.5"
+            />
+            <span className={compact ? "text-xs" : "text-sm"}>{opt.label}</span>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }
@@ -960,20 +999,11 @@ export default function PacienteDetalhe() {
                                     <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-8 text-sm" />
                                     <Input type="number" step="0.1" placeholder="Peso (kg)" value={editWeight} onChange={(e) => setEditWeight(e.target.value)} className="h-8 text-sm" />
                                   </div>
-                                  <div className="grid grid-cols-3 gap-2">
+                                   <div className="grid grid-cols-2 gap-2">
                                     <Input type="number" step="0.1" placeholder="Altura (cm)" value={editHeight} onChange={(e) => setEditHeight(e.target.value)} className="h-8 text-sm" />
                                     <Input type="number" step="0.1" placeholder="Circ. abd. (cm)" value={editWaist} onChange={(e) => setEditWaist(e.target.value)} className="h-8 text-sm" />
-                                    <Select value={editGoal} onValueChange={setEditGoal}>
-                                      <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Objetivo" /></SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="emagrecimento">Emagrecimento</SelectItem>
-                                        <SelectItem value="hipertrofia">Hipertrofia</SelectItem>
-                                        <SelectItem value="recomposicao">Recomposição</SelectItem>
-                                        <SelectItem value="pos_bariatrica">Pós-bariátrica</SelectItem>
-                                        <SelectItem value="outro">Outro</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
+                                   </div>
+                                   <GoalCheckboxGroup value={editGoal} onChange={setEditGoal} compact />
                                   <div>
                                     <Label className="text-xs text-muted-foreground mb-1 block">Ângulo</Label>
                                     <TooltipProvider delayDuration={300}>
@@ -1072,6 +1102,16 @@ export default function PacienteDetalhe() {
                                       )}
                                     </div>
                                   )}
+                                  {(photo as any).treatment_goal && (
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                      <Target className="h-3 w-3 text-muted-foreground" />
+                                      {(photo as any).treatment_goal.split(",").filter(Boolean).map((g: string) => (
+                                        <Badge key={g} variant="secondary" className="text-[10px] py-0">
+                                          {GOAL_OPTIONS.find(o => o.value === g)?.label || g}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
                                   {photo.notes && (
                                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                       <StickyNote className="h-3 w-3" /> {photo.notes}
@@ -1115,20 +1155,11 @@ export default function PacienteDetalhe() {
                     <Input type="date" value={photoDate} onChange={(e) => setPhotoDate(e.target.value)} placeholder="Data" />
                     <Input type="number" step="0.1" placeholder="Peso (kg) — opcional" value={photoWeight} onChange={(e) => setPhotoWeight(e.target.value)} />
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <Input type="number" step="0.1" placeholder="Altura (cm)" value={photoHeight} onChange={(e) => setPhotoHeight(e.target.value)} />
                     <Input type="number" step="0.1" placeholder="Circ. abd. (cm)" value={photoWaist} onChange={(e) => setPhotoWaist(e.target.value)} />
-                    <Select value={photoGoal} onValueChange={setPhotoGoal}>
-                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Objetivo" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="emagrecimento">Emagrecimento</SelectItem>
-                        <SelectItem value="hipertrofia">Hipertrofia</SelectItem>
-                        <SelectItem value="recomposicao">Recomposição</SelectItem>
-                        <SelectItem value="pos_bariatrica">Pós-bariátrica</SelectItem>
-                        <SelectItem value="outro">Outro</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
+                  <GoalCheckboxGroup value={photoGoal} onChange={setPhotoGoal} />
                   <div>
                     <Label className="text-xs text-muted-foreground mb-1 block">Ângulo</Label>
                     <TooltipProvider delayDuration={300}>
