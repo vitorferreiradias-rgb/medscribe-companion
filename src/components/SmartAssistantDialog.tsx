@@ -1,10 +1,9 @@
-import { useState, useCallback, useMemo } from "react";
-import { useAppData } from "@/hooks/useAppData";
+import { useState, useCallback } from "react";
+import { useAppData, useClinicianId } from "@/hooks/useAppData";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff, Send, Sparkles, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { parseIntent, type ParsedIntent } from "@/lib/intent-parser";
 import { useSpeechRecognition, isSpeechRecognitionSupported } from "@/hooks/useSpeechRecognition";
@@ -12,45 +11,47 @@ import { addQuickNoteExternal } from "@/components/QuickNotesCard";
 import { getData, updateScheduleEvent } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { toLocalDateStr } from "@/lib/format";
-
-const EXAMPLES = [
-  "Agendar Maria amanhã às 14h",
-  "Remarcar João para sexta 10h",
-  "Cancelar consulta da Ana hoje",
-  "Anotar: pedir exames do Carlos",
-  "Prescrever Amoxicilina 500mg",
-  "Quando é o congresso de clínica médica?",
-  "Abrir pacientes",
-];
+import { parsePrescriptionInput } from "@/lib/smart-prescription-parser";
+import { findMedication, findDosePattern } from "@/lib/medication-knowledge";
+import { classifyPrescription, type ComplianceResult } from "@/lib/compliance-router";
+import { SmartPrescriptionPreview, type PrescriptionItem } from "@/components/smart-prescription/SmartPrescriptionPreview";
 
 interface SmartAssistantDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSchedule?: (defaults: { patientId?: string; date?: string; startTime?: string; endTime?: string }) => void;
   onReschedule?: (eventId: string) => void;
-  onPrescription?: (text: string) => void;
   onNavigate?: (path: string) => void;
 }
 
-type DialogStep = "input" | "confirm-cancel" | "result";
+type DialogStep = "input" | "confirm-cancel" | "result" | "prescription-preview";
+
+interface PrescriptionPreviewData {
+  items: PrescriptionItem[];
+  compliance: ComplianceResult;
+  patient: { id: string; name: string };
+  prescriber: { name: string; crm: string };
+  action: "prescrever" | "renovar" | "suspender" | "continuar";
+}
 
 export function SmartAssistantDialog({
   open,
   onOpenChange,
   onSchedule,
   onReschedule,
-  onPrescription,
   onNavigate,
 }: SmartAssistantDialogProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const data = useAppData();
+  const clinicianId = useClinicianId();
   const [inputText, setInputText] = useState("");
   const [step, setStep] = useState<DialogStep>("input");
   const [parsedResult, setParsedResult] = useState<ParsedIntent | null>(null);
   const [cancelTarget, setCancelTarget] = useState<{ eventId: string; patientName: string; date: string; time: string } | null>(null);
   const [resultMessage, setResultMessage] = useState("");
   const [resultType, setResultType] = useState<"success" | "error" | "warning">("success");
+  const [prescriptionData, setPrescriptionData] = useState<PrescriptionPreviewData | null>(null);
 
   const speechSupported = isSpeechRecognitionSupported();
   const { isListening, interimText, start: startListening, stop: stopListening } = useSpeechRecognition({
@@ -65,6 +66,7 @@ export function SmartAssistantDialog({
     setParsedResult(null);
     setCancelTarget(null);
     setResultMessage("");
+    setPrescriptionData(null);
   }, []);
 
   const handleClose = () => {
@@ -79,13 +81,109 @@ export function SmartAssistantDialog({
     setStep("result");
   };
 
+  // Build prescription preview data directly from parsed intent
+  const buildPrescriptionPreview = useCallback((intent: ParsedIntent) => {
+    const clinician = data.clinicians?.[0];
+    if (!clinician) {
+      showResult("Perfil de médico não encontrado. Configure seu perfil primeiro.", "error");
+      return;
+    }
+
+    // Parse the prescription text
+    const parsed = parsePrescriptionInput(intent.rawInput);
+
+    if (!parsed.medicationName) {
+      showResult("Não identifiquei o nome da medicação. Tente: 'prescrever dipirona 500mg para Maria'.", "warning");
+      return;
+    }
+
+    // Resolve patient
+    const patientId = intent.patientId;
+    const patientName = intent.patientName;
+    if (!patientId || !patientName) {
+      showResult("Não identifiquei o paciente. Inclua o nome: 'prescrever dipirona 500mg para Maria'.", "warning");
+      return;
+    }
+
+    // Look up medication in local knowledge base
+    const med = findMedication(parsed.medicationName);
+    
+    let finalDosage = parsed.dosage || "";
+    let finalConcentration = parsed.concentration || "";
+    let finalDuration = parsed.duration || "";
+    let finalQuantity = parsed.quantity || "";
+    let finalForm = "";
+
+    if (med) {
+      // If doctor provided dosage, use it (doctor takes priority)
+      // Otherwise use default from knowledge base
+      if (!finalConcentration && med.defaultDosePatterns[0]) {
+        finalConcentration = med.defaultDosePatterns[0].concentration;
+      }
+
+      const dosePattern = findDosePattern(med, finalConcentration || undefined);
+
+      if (!parsed.dosage && dosePattern) {
+        finalDosage = dosePattern.dosage;
+      }
+      if (!finalDuration && dosePattern?.duration) {
+        finalDuration = dosePattern.duration;
+      }
+      if (!finalQuantity && dosePattern?.quantity) {
+        finalQuantity = dosePattern.quantity;
+      }
+
+      // For medications with variants, auto-select first variant
+      if (med.variants && med.variants.length > 0 && !parsed.dosage) {
+        const firstVariant = med.variants[0];
+        finalDosage = firstVariant.dosage;
+        if (firstVariant.concentration) finalConcentration = firstVariant.concentration;
+        if (firstVariant.duration) finalDuration = firstVariant.duration;
+      }
+
+      finalForm = med.commonForms[0] || "";
+    }
+
+    // Fallback if still no dosage
+    if (!finalDosage) {
+      finalDosage = "Conforme orientação médica";
+    }
+    if (!finalConcentration) {
+      finalConcentration = "";
+    }
+
+    const prescriptionItem: PrescriptionItem = {
+      medicationName: med?.name || parsed.medicationName,
+      concentration: finalConcentration,
+      dosage: finalDosage,
+      duration: finalDuration || undefined,
+      quantity: finalQuantity || undefined,
+      form: finalForm || undefined,
+    };
+
+    // Classify prescription type
+    const compliance = classifyPrescription({
+      items: [{ medicationName: prescriptionItem.medicationName, concentration: finalConcentration }],
+      patient: { id: patientId, name: patientName },
+      prescriber: { name: clinician.name, crm: clinician.crm },
+    });
+
+    setPrescriptionData({
+      items: [prescriptionItem],
+      compliance,
+      patient: { id: patientId, name: patientName },
+      prescriber: { name: clinician.name, crm: clinician.crm },
+      action: parsed.action,
+    });
+    setStep("prescription-preview");
+  }, [data.clinicians]);
+
   const executeIntent = useCallback((intent: ParsedIntent) => {
     setParsedResult(intent);
 
     switch (intent.intent) {
       case "agendar": {
         handleClose();
-        // Calculate endTime = startTime + 30min
         let endTime: string | undefined;
         if (intent.time) {
           const [h, m] = intent.time.split(":").map(Number);
@@ -105,7 +203,6 @@ export function SmartAssistantDialog({
       case "remarcar": {
         const data = getData();
         const events = data.scheduleEvents ?? [];
-        // Find next upcoming event for this patient
         const today = toLocalDateStr();
         const evt = events.find((e) =>
           intent.patientId
@@ -165,13 +262,11 @@ export function SmartAssistantDialog({
       }
 
       case "prescrever": {
-        handleClose();
-        onPrescription?.(intent.rawInput);
+        buildPrescriptionPreview(intent);
         break;
       }
 
       case "buscar": {
-        // Search in news
         handleClose();
         const nav = onNavigate || ((p: string) => navigate(p));
         nav("/noticias");
@@ -199,7 +294,7 @@ export function SmartAssistantDialog({
         );
         break;
     }
-  }, [onSchedule, onReschedule, onPrescription, onNavigate, navigate, toast]);
+  }, [onSchedule, onReschedule, onNavigate, navigate, toast, buildPrescriptionPreview]);
 
   const handleSubmit = useCallback(() => {
     const fullText = isListening && interimText ? inputText + " " + interimText : inputText;
@@ -208,7 +303,7 @@ export function SmartAssistantDialog({
     setInputText(fullText);
     const intent = parseIntent(fullText, data.patients);
     executeIntent(intent);
-  }, [inputText, isListening, interimText, stopListening, executeIntent]);
+  }, [inputText, isListening, interimText, stopListening, executeIntent, data.patients]);
 
   const handleStopAndProcess = useCallback(() => {
     if (isListening) stopListening();
@@ -239,7 +334,7 @@ export function SmartAssistantDialog({
           <div className="space-y-4">
             <div className="relative">
               <Textarea
-                placeholder="O que você precisa? Ex: 'Agendar Maria amanhã às 14h'"
+                placeholder="O que você precisa? Ex: 'Prescrever dipirona 500mg para Maria'"
                 value={isListening && interimText ? inputText + " " + interimText : inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 className="min-h-[100px] pr-12 resize-none focus-visible:!shadow-[0_0_0_4px_hsl(var(--ai-ring))]"
@@ -301,6 +396,19 @@ export function SmartAssistantDialog({
               </Button>
             </div>
           </div>
+        )}
+
+        {step === "prescription-preview" && prescriptionData && (
+          <SmartPrescriptionPreview
+            items={prescriptionData.items}
+            compliance={prescriptionData.compliance}
+            patient={prescriptionData.patient}
+            prescriber={prescriptionData.prescriber}
+            action={prescriptionData.action}
+            onDone={handleClose}
+            onBack={() => setStep("input")}
+            onCancel={handleClose}
+          />
         )}
 
         {step === "result" && (
