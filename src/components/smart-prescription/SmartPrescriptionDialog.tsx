@@ -31,6 +31,7 @@ interface SmartPrescriptionDialogProps {
   onOpenChange: (open: boolean) => void;
   patient?: { id: string; name: string };
   prescriber?: { name: string; crm: string };
+  clinicianId?: string;
   encounterId?: string;
   initialText?: string;
 }
@@ -40,6 +41,7 @@ export function SmartPrescriptionDialog({
   onOpenChange,
   patient: patientProp,
   prescriber: prescriberProp,
+  clinicianId: clinicianIdProp,
   encounterId,
   initialText = "",
 }: SmartPrescriptionDialogProps) {
@@ -56,6 +58,12 @@ export function SmartPrescriptionDialog({
     const c = d?.clinicians?.[0];
     return c ? { name: c.name, crm: c.crm } : { name: "Médico", crm: "000000" };
   }, [prescriberProp]);
+
+  const clinicianId = useMemo(() => {
+    if (clinicianIdProp) return clinicianIdProp;
+    const d = getData();
+    return d?.clinicians?.[0]?.id || "";
+  }, [clinicianIdProp]);
 
   // Patient list for selection
   const patients = useMemo(() => {
@@ -425,6 +433,7 @@ export function SmartPrescriptionDialog({
             compliance={compliance}
             patient={patient}
             prescriber={prescriber}
+            clinicianId={clinicianId}
             encounterId={encounterId}
             action={parsedAction}
             onDone={handleClose}

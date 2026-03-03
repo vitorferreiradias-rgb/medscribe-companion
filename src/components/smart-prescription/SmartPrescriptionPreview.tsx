@@ -4,10 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, Shield, FileSignature, Edit3, X } from "lucide-react";
+import { AlertTriangle, Shield, FileSignature, Edit3, X, Loader2 } from "lucide-react";
 import { getRecipeTypes, type RecipeType, type ComplianceResult } from "@/lib/compliance-router";
-import { addDocument } from "@/lib/clinical-documents";
-import { addMedicationEvent } from "@/lib/medication-history";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export interface PrescriptionItem {
@@ -24,6 +23,7 @@ interface SmartPrescriptionPreviewProps {
   compliance: ComplianceResult;
   patient: { id: string; name: string };
   prescriber: { name: string; crm: string };
+  clinicianId: string;
   encounterId?: string;
   action: "prescrever" | "renovar" | "suspender" | "continuar";
   onDone: () => void;
@@ -36,6 +36,7 @@ export function SmartPrescriptionPreview({
   compliance,
   patient,
   prescriber,
+  clinicianId,
   encounterId,
   action,
   onDone,
@@ -45,6 +46,7 @@ export function SmartPrescriptionPreview({
   const { toast } = useToast();
   const [recipeType, setRecipeType] = useState<RecipeType>(compliance.recipeType);
   const [showSignPrompt, setShowSignPrompt] = useState(false);
+  const [saving, setSaving] = useState(false);
   const recipeTypes = getRecipeTypes();
 
   const now = new Date().toISOString();
@@ -73,68 +75,75 @@ export function SmartPrescriptionPreview({
     return lines.join("\n");
   };
 
-  const handleSign = () => {
-    const content = buildContent();
-    const docType = recipeType === "simples" ? "prescricao" : "prescricao";
+  const handleSign = async () => {
+    setSaving(true);
+    try {
+      const content = buildContent();
 
-    addDocument({
-      patientId: patient.id,
-      encounterId,
-      type: docType,
-      title: `Receita ${recipeType.replace("_", " ")} — ${items.map((i) => i.medicationName).join(", ")}`,
-      content,
-      createdAt: now,
-      signedAt: now,
-      signedBy: `${prescriber.name} (CRM ${prescriber.crm})`,
-      status: "signed",
-      recipeType,
-      compliance: {
-        regulatorySource: compliance.regulatorySource,
-        requirements: compliance.requirements,
-        warnings: compliance.warnings,
-        needsConfirmation: compliance.needsConfirmation,
-        confirmedByDoctor: true,
-        confirmedAt: now,
-      },
-    });
-
-    // Create medication events
-    const medStatus = action === "suspender" ? "suspenso" : "prescrito";
-    for (const item of items) {
-      addMedicationEvent({
-        patientId: patient.id,
-        encounterId,
-        medicationName: `${item.medicationName} ${item.concentration}`,
-        date: now.slice(0, 10),
-        status: medStatus as "prescrito" | "suspenso" | "nao_renovado",
-        note: action === "suspender" ? "Suspenso via prescrição inteligente" : undefined,
+      const { error } = await supabase.from("clinical_documents").insert({
+        patient_id: patient.id,
+        clinician_id: clinicianId,
+        encounter_id: encounterId || null,
+        type: "prescricao",
+        title: `Receita ${recipeType.replace("_", " ")} — ${items.map((i) => i.medicationName).join(", ")}`,
+        content,
+        status: "signed",
+        recipe_type: recipeType,
+        signed_at: now,
+        signed_by: `${prescriber.name} (CRM ${prescriber.crm})`,
+        compliance: {
+          regulatorySource: compliance.regulatorySource,
+          requirements: compliance.requirements,
+          warnings: compliance.warnings,
+          needsConfirmation: compliance.needsConfirmation,
+          confirmedByDoctor: true,
+          confirmedAt: now,
+        },
       });
-    }
 
-    toast({ title: "Receita assinada e salva com sucesso." });
-    onDone();
+      if (error) throw error;
+
+      toast({ title: "Receita assinada e salva com sucesso." });
+      onDone();
+    } catch (err: any) {
+      console.error("Error saving document:", err);
+      toast({ title: "Erro ao salvar receita", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSaveDraft = () => {
-    const content = buildContent();
-    addDocument({
-      patientId: patient.id,
-      encounterId,
-      type: "prescricao",
-      title: `Rascunho — ${items.map((i) => i.medicationName).join(", ")}`,
-      content,
-      createdAt: now,
-      status: "draft",
-      recipeType,
-      compliance: {
-        regulatorySource: compliance.regulatorySource,
-        requirements: compliance.requirements,
-        warnings: compliance.warnings,
-        needsConfirmation: compliance.needsConfirmation,
-      },
-    });
-    toast({ title: "Rascunho salvo." });
-    onCancel();
+  const handleSaveDraft = async () => {
+    setSaving(true);
+    try {
+      const content = buildContent();
+      const { error } = await supabase.from("clinical_documents").insert({
+        patient_id: patient.id,
+        clinician_id: clinicianId,
+        encounter_id: encounterId || null,
+        type: "prescricao",
+        title: `Rascunho — ${items.map((i) => i.medicationName).join(", ")}`,
+        content,
+        status: "draft",
+        recipe_type: recipeType,
+        compliance: {
+          regulatorySource: compliance.regulatorySource,
+          requirements: compliance.requirements,
+          warnings: compliance.warnings,
+          needsConfirmation: compliance.needsConfirmation,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Rascunho salvo." });
+      onCancel();
+    } catch (err: any) {
+      console.error("Error saving draft:", err);
+      toast({ title: "Erro ao salvar rascunho", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (showSignPrompt) {
@@ -148,13 +157,13 @@ export function SmartPrescriptionPreview({
           </p>
         </div>
         <div className="flex flex-col gap-2">
-          <Button onClick={handleSign} className="w-full">
-            <FileSignature className="mr-2 h-4 w-4" /> Assinar agora
+          <Button onClick={handleSign} className="w-full" disabled={saving}>
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSignature className="mr-2 h-4 w-4" />} Assinar agora
           </Button>
-          <Button variant="secondary" onClick={() => setShowSignPrompt(false)} className="w-full">
+          <Button variant="secondary" onClick={() => setShowSignPrompt(false)} className="w-full" disabled={saving}>
             <Edit3 className="mr-2 h-4 w-4" /> Revisar
           </Button>
-          <Button variant="ghost" onClick={handleSaveDraft} className="w-full">
+          <Button variant="ghost" onClick={handleSaveDraft} className="w-full" disabled={saving}>
             <X className="mr-2 h-4 w-4" /> Cancelar (salvar rascunho)
           </Button>
         </div>

@@ -31,6 +31,7 @@ interface PrescriptionPreviewData {
   compliance: ComplianceResult;
   patient: { id: string; name: string };
   prescriber: { name: string; crm: string };
+  clinicianId: string;
   action: "prescrever" | "renovar" | "suspender" | "continuar";
 }
 
@@ -173,6 +174,7 @@ export function SmartAssistantDialog({
       compliance,
       patient: { id: patientId, name: patientName },
       prescriber: { name: clinician.name, crm: clinician.crm },
+      clinicianId: clinician.id,
       action: parsed.action,
     });
     setStep("prescription-preview");
@@ -404,6 +406,7 @@ export function SmartAssistantDialog({
             compliance={prescriptionData.compliance}
             patient={prescriptionData.patient}
             prescriber={prescriptionData.prescriber}
+            clinicianId={prescriptionData.clinicianId}
             action={prescriptionData.action}
             onDone={handleClose}
             onBack={() => setStep("input")}
