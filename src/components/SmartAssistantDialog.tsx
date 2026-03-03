@@ -12,8 +12,8 @@ import { getData, updateScheduleEvent } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { toLocalDateStr } from "@/lib/format";
 import { parsePrescriptionInput, type PrescriptionAction } from "@/lib/smart-prescription-parser";
-import { findMedication, findDosePattern } from "@/lib/medication-knowledge";
-import { classifyPrescription, type ComplianceResult } from "@/lib/compliance-router";
+import { findMedicationAsync, findDosePattern } from "@/lib/medication-knowledge";
+import { classifyPrescriptionAsync, type ComplianceResult } from "@/lib/compliance-router";
 import { SmartPrescriptionPreview, type PrescriptionItem } from "@/components/smart-prescription/SmartPrescriptionPreview";
 
 interface SmartAssistantDialogProps {
@@ -83,7 +83,7 @@ export function SmartAssistantDialog({
   };
 
   // Build prescription preview data directly from parsed intent
-  const buildPrescriptionPreview = useCallback((intent: ParsedIntent) => {
+  const buildPrescriptionPreview = useCallback(async (intent: ParsedIntent) => {
     const clinician = data.clinicians?.[0];
     if (!clinician) {
       showResult("Perfil de médico não encontrado. Configure seu perfil primeiro.", "error");
@@ -139,7 +139,7 @@ export function SmartAssistantDialog({
 
       if (!parsed.medicationName) continue;
 
-      const med = findMedication(parsed.medicationName);
+      const med = await findMedicationAsync(parsed.medicationName);
       
       let finalDosage = parsed.dosage || "";
       let finalConcentration = parsed.concentration || "";
@@ -194,7 +194,7 @@ export function SmartAssistantDialog({
     }
 
     // Classify prescription type (uses highest requirement among all items)
-    const compliance = classifyPrescription({
+    const compliance = await classifyPrescriptionAsync({
       items: prescriptionItems.map(item => ({ medicationName: item.medicationName, concentration: item.concentration })),
       patient: { id: patientId, name: patientName },
       prescriber: { name: clinician.name, crm: clinician.crm },
