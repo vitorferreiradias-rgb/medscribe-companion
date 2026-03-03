@@ -18,7 +18,7 @@ const ACTION_PATTERNS: { regex: RegExp; action: PrescriptionAction }[] = [
   { regex: /\b(suspender|suspend[aeo]|parar|retirar)\b/i, action: "suspender" },
   { regex: /\b(renovar|renova[rção]|repetir)\b/i, action: "renovar" },
   { regex: /\b(continuar|manter|mantenha)\b/i, action: "continuar" },
-  { regex: /\b(prescrever|receitar|prescrev[aeo]|receit[aeo]|iniciar)\b/i, action: "prescrever" },
+  { regex: /\b(prescrever|por\s*escrever|receitar|prescrev[aeo]|receit[aeo]|iniciar)\b/i, action: "prescrever" },
 ];
 
 // Match concentration like "2,5 mg", "500mg", "0,25 mg/ml", "8/90 mg"
@@ -120,5 +120,5 @@ export function parsePrescriptionInput(text: string): ParsedPrescription {
  * Detect if text contains prescription intent (for CommandBar)
  */
 export function hasPrescriptionIntent(text: string): boolean {
-  return /\b(prescrever|prescrição|receita|receitar|renovar|suspender|continuar\s+(?:com|uso))\b/i.test(text);
+  return /\b(prescrever|por\s*escrever|prescrição|receita|receitar|renovar|suspender|continuar\s+(?:com|uso))\b/i.test(text);
 }
