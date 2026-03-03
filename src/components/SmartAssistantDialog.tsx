@@ -233,35 +233,23 @@ export function SmartAssistantDialog({
       return;
     }
 
-    // Group items by recipe category to generate separate prescriptions
-    const categoryOrder: Array<"simples" | "antimicrobiano" | "controlado"> = ["controle_especial" as any, "controlado", "antimicrobiano", "simples"];
-    const groups = new Map<string, PrescriptionItemWithCategory[]>();
-    for (const item of prescriptionItems) {
-      const key = item._recipeCategory;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(item);
-    }
+    // All items go in a single prescription using the highest regulatory category
+    const cleanItems: PrescriptionItem[] = prescriptionItems.map(({ _recipeCategory, ...rest }) => rest);
+    
+    const compliance = await classifyPrescriptionAsync({
+      items: cleanItems.map(item => ({ medicationName: item.medicationName, concentration: item.concentration })),
+      patient: { id: patientId, name: patientName },
+      prescriber: { name: clinician.name, crm: clinician.crm },
+    });
 
-    // Build separate prescription data for each group
-    const allPrescriptions: PrescriptionPreviewData[] = [];
-    for (const [, groupItems] of groups) {
-      const cleanItems: PrescriptionItem[] = groupItems.map(({ _recipeCategory, ...rest }) => rest);
-      
-      const compliance = await classifyPrescriptionAsync({
-        items: cleanItems.map(item => ({ medicationName: item.medicationName, concentration: item.concentration })),
-        patient: { id: patientId, name: patientName },
-        prescriber: { name: clinician.name, crm: clinician.crm },
-      });
-
-      allPrescriptions.push({
-        items: cleanItems,
-        compliance,
-        patient: { id: patientId, name: patientName },
-        prescriber: { name: clinician.name, crm: clinician.crm },
-        clinicianId: clinician.id,
-        action: overallAction,
-      });
-    }
+    const allPrescriptions: PrescriptionPreviewData[] = [{
+      items: cleanItems,
+      compliance,
+      patient: { id: patientId, name: patientName },
+      prescriber: { name: clinician.name, crm: clinician.crm },
+      clinicianId: clinician.id,
+      action: overallAction,
+    }];
 
     // Sort: controle_especial first, then antimicrobiano, then simples
     const typePriority: Record<string, number> = { controle_especial: 0, antimicrobiano: 1, simples: 2 };
