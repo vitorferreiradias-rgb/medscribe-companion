@@ -7,7 +7,6 @@ import { Topbar } from "./Topbar";
 import { CommandBar } from "./CommandBar";
 import { NewScheduleDialog } from "./NewScheduleDialog";
 import { NewTimeBlockDialog } from "./NewTimeBlockDialog";
-import { SmartPrescriptionDialog } from "./smart-prescription/SmartPrescriptionDialog";
 import { SmartAssistantDialog } from "./SmartAssistantDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -31,8 +30,6 @@ export function AppLayout() {
   const [showNewSchedule, setShowNewSchedule] = useState(false);
   const [showCommandBar, setShowCommandBar] = useState(false);
   const [showTimeBlock, setShowTimeBlock] = useState(false);
-  const [showSmartPrescription, setShowSmartPrescription] = useState(false);
-  const [smartPrescriptionText, setSmartPrescriptionText] = useState("");
   const [showAssistant, setShowAssistant] = useState(false);
   const [editScheduleEvent, setEditScheduleEvent] = useState<import("@/types").ScheduleEvent | null>(null);
 
@@ -96,9 +93,8 @@ export function AppLayout() {
   const onOpenCommandBar = useCallback(() => setShowCommandBar(true), []);
   const onNewTimeBlock = useCallback(() => setShowTimeBlock(true), []);
   const onSmartAssistant = useCallback(() => setShowAssistant(true), []);
-  const onSmartPrescription = useCallback((text?: string) => {
-    setSmartPrescriptionText(text || "");
-    setShowSmartPrescription(true);
+  const onSmartPrescription = useCallback(() => {
+    setShowAssistant(true);
   }, []);
   const onReschedule = useCallback((eventId: string) => {
     const evt = data.scheduleEvents?.find((e) => e.id === eventId);
@@ -110,11 +106,6 @@ export function AppLayout() {
     setScheduleDefaults(defaults);
     setEditScheduleEvent(null);
     setShowNewSchedule(true);
-  }, []);
-
-  const handleAssistantPrescription = useCallback((text: string) => {
-    setSmartPrescriptionText(text);
-    setShowSmartPrescription(true);
   }, []);
 
   const handleAssistantNavigate = useCallback((path: string) => {
@@ -231,18 +222,11 @@ export function AppLayout() {
         </DialogContent>
       </Dialog>
 
-      <SmartPrescriptionDialog
-        open={showSmartPrescription}
-        onOpenChange={setShowSmartPrescription}
-        initialText={smartPrescriptionText}
-      />
-
       <SmartAssistantDialog
         open={showAssistant}
         onOpenChange={setShowAssistant}
         onSchedule={handleAssistantSchedule}
         onReschedule={onReschedule}
-        onPrescription={handleAssistantPrescription}
         onNavigate={handleAssistantNavigate}
       />
     </SidebarProvider>
