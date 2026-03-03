@@ -17,7 +17,7 @@ const INTENT_PATTERNS: Array<{ intent: ParsedIntent["intent"]; pattern: RegExp }
   { intent: "remarcar", pattern: /\b(remarcar|reagendar|mudar\s+hor[aá]rio|trocar\s+hor[aá]rio)/i },
   { intent: "cancelar", pattern: /\b(cancelar|desmarcar|cancelar\s+consulta)/i },
   { intent: "nota", pattern: /\b(anotar|anota|nota|lembrar|lembrete|lembrar\s+de)/i },
-  { intent: "prescrever", pattern: /\b(prescrever|por\s*escrever|pres\s*crever|pr[eé]\s*escrever|pr[eé]\s*screver|prescrev[eê]|prescreve[rn]?|receita[r]?|renovar|suspender|prescri[çc][ãa]o|presc\w*ver)/i },
+  { intent: "prescrever", pattern: /\b(prescrev\w+|por\s*escrever|pres\s*crever|pr[eé]\s*escrever|pr[eé]\s*screver|receita[r]?|renovar|suspender|prescri[çc][ãa]o|presc\w*ver)/i },
   { intent: "buscar", pattern: /\b(quando\s+[eé]|buscar|pesquisar|data\s+d[oea]|qual\s+evento|procurar)/i },
   { intent: "navegar", pattern: /\b(abrir|ir\s+para|mostrar|ver\s+|acessar)/i },
 ];
