@@ -1,0 +1,1 @@
+ALTER TABLE public.evolution_photos ADD COLUMN analysis_focus text;
