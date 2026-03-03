@@ -1,27 +1,32 @@
 
 
-# Corrigir persistencia da receita: localStorage para Supabase
+# Migrar MedicationHistory de localStorage para banco de dados
 
-## Problema
-A receita esta sendo gerada e exibida corretamente no preview (confirmado pelo session replay - o usuario conseguiu selecionar "Receita Controle Especial"). Porem, ao assinar, o documento e salvo em **localStorage** (`src/lib/clinical-documents.ts`) em vez de ser inserido na tabela `clinical_documents` do banco de dados. Resultado: a receita "desaparece" ao recarregar e nao aparece no prontuario do paciente.
+## O que precisa ser feito
 
-O mesmo problema afeta o historico de medicacoes (`medication-history.ts`), tambem em localStorage.
+### 1. Criar tabela `medication_events` no banco
+Nova tabela com colunas: `id`, `patient_id`, `clinician_id`, `medication_name`, `date`, `status`, `note`, `encounter_id`, `created_at`. RLS baseada em `clinician_id` (mesmo padrão das outras tabelas).
 
-## Solucao
+### 2. Atualizar `medication-history.ts`
+Substituir as funções localStorage por versões async que usam o Supabase client:
+- `addMedicationEvent(event, clinicianId)` → `supabase.from("medication_events").insert()`
+- `getMedicationHistoryForPatient(patientId)` → `supabase.from("medication_events").select().eq("patient_id", patientId)`
 
-### 1. Atualizar SmartPrescriptionPreview para salvar no Supabase
-- Substituir `addDocument()` (localStorage) por `supabase.from("clinical_documents").insert()`
-- Substituir `addMedicationEvent()` (localStorage) por insert na tabela de prescriptions ou clinical_documents
-- Passar `clinicianId` como prop (necessario pela tabela e RLS)
-- A tabela `clinical_documents` ja existe com as colunas: `id`, `patient_id`, `clinician_id`, `type`, `title`, `content`, `status`, `recipe_type`, `compliance` (jsonb), `signed_at`, `signed_by`, `encounter_id`, `created_at`
+### 3. Atualizar `MedicationHistorySheet.tsx`
+- Carregar eventos via `useEffect` async em vez de `useState` com initializer síncrono
+- `handleAddEvent` passa a ser async com insert no Supabase
+- Receber `clinicianId` como prop
 
-### 2. Atualizar SmartAssistantDialog
-- Passar `clinicianId` para o `PrescriptionPreviewData` e para o componente `SmartPrescriptionPreview`
+### 4. Atualizar `PrescriptionFlow.tsx`
+- Trocar chamada `addMedicationEvent()` síncrona por versão async com `clinicianId`
 
-### 3. Arquivos modificados
-- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — trocar localStorage por Supabase client
-- `src/components/SmartAssistantDialog.tsx` — passar clinicianId ao preview
+### 5. Atualizar `SmartPrescriptionPreview.tsx`
+- Mesmo ajuste: chamada async com `clinicianId` (se ainda usa `addMedicationEvent`)
 
-### 4. Nao precisa de migracao
-A tabela `clinical_documents` ja existe com RLS configurada. So precisa usar o client Supabase em vez do localStorage.
+## Arquivos modificados
+- **Migração SQL**: criar tabela `medication_events` + RLS
+- `src/lib/medication-history.ts` — reescrever para Supabase
+- `src/components/MedicationHistorySheet.tsx` — async loading + clinicianId prop
+- `src/components/receita/PrescriptionFlow.tsx` — async addMedicationEvent
+- Componentes que montam MedicationHistorySheet — passar clinicianId
 
