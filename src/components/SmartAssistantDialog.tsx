@@ -102,30 +102,30 @@ export function SmartAssistantDialog({
     // Clean up text: remove patient name, action verbs, and connectors before parsing medications
     let cleanedText = intent.rawInput;
     if (patientName) {
-      const fullNameEscaped = patientName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const nameParts = patientName.split(/\s+/).filter(p => p.length >= 3);
+      const escName = (n: string) => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const fullNameEscaped = escName(patientName);
+      const nameParts = patientName.split(/\s+/).filter(p => p.length >= 2);
       
-      // Build regex that matches any contiguous subset of the name parts (e.g. "Ana Beatriz" from "Ana Beatriz Costa")
-      // First try removing "para ... <name>" pattern with the full name
+      // Remove "para (o/a) (paciente) Full Name" first
       cleanedText = cleanedText.replace(new RegExp(`\\s*para\\s+(?:o\\s+|a\\s+)?(?:paciente\\s+)?${fullNameEscaped}\\s*`, "gi"), " ");
-      cleanedText = cleanedText.replace(new RegExp(`\\b${fullNameEscaped}\\b`, "gi"), "");
+      // Remove standalone full name (unicode-safe boundaries)
+      cleanedText = cleanedText.replace(new RegExp(`(?:^|\\s)${fullNameEscaped}(?:\\s|$)`, "gi"), " ");
       
       // Try partial name combinations (longest first): "Ana Beatriz", then individual parts
       if (nameParts.length > 1) {
         for (let len = nameParts.length - 1; len >= 2; len--) {
           for (let start = 0; start <= nameParts.length - len; start++) {
-            const partial = nameParts.slice(start, start + len).join("\\s+");
+            const partial = nameParts.slice(start, start + len).map(escName).join("\\s+");
             cleanedText = cleanedText.replace(new RegExp(`\\s*para\\s+(?:o\\s+|a\\s+)?(?:paciente\\s+)?${partial}\\s*`, "gi"), " ");
-            cleanedText = cleanedText.replace(new RegExp(`\\b${partial}\\b`, "gi"), "");
+            cleanedText = cleanedText.replace(new RegExp(`(?:^|\\s)${partial}(?:\\s|$)`, "gi"), " ");
           }
         }
       }
       
-      // Remove individual name parts (only if they're standalone words, not part of medication names)
+      // Remove individual name parts (unicode-safe: use lookahead/lookbehind with \s)
       for (const part of nameParts) {
-        const escaped = part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        // Only remove if preceded by space/start and followed by space/end (not part of a compound word)
-        cleanedText = cleanedText.replace(new RegExp(`(?<=^|\\s)${escaped}(?=\\s|$)`, "gi"), "");
+        const escaped = escName(part);
+        cleanedText = cleanedText.replace(new RegExp(`(?:^|(?<=\\s))${escaped}(?=\\s|$)`, "gi"), "");
       }
       
       cleanedText = cleanedText.replace(/\s{2,}/g, " ").trim();

@@ -148,20 +148,37 @@ function matchPatient(text: string, patients?: Patient[]): { name: string; id: s
   const list = patients ?? [];
   const lower = text.toLowerCase();
 
-  // Try exact match first, then partial (first name, last name)
-  let best: { name: string; id: string; score: number } | undefined;
-
+  // Try exact full name match first
   for (const p of list) {
     if (p.archived) continue;
     const pLower = p.name.toLowerCase();
-
-    // Full name match
     if (lower.includes(pLower)) {
       return { name: p.name, id: p.id };
     }
+  }
 
-    // First name match
-    const firstName = pLower.split(" ")[0];
+  // Try multi-word partial matches (e.g. "João Pedro" matching "João Pedro Oliveira")
+  let best: { name: string; id: string; score: number } | undefined;
+  
+  for (const p of list) {
+    if (p.archived) continue;
+    const nameParts = p.name.toLowerCase().split(/\s+/);
+    
+    // Try combinations from longest to shortest (2+ words first)
+    for (let len = nameParts.length - 1; len >= 2; len--) {
+      for (let start = 0; start <= nameParts.length - len; start++) {
+        const partial = nameParts.slice(start, start + len).join(" ");
+        if (lower.includes(partial)) {
+          const score = partial.length + 100; // Multi-word matches always beat single-word
+          if (!best || score > best.score) {
+            best = { name: p.name, id: p.id, score };
+          }
+        }
+      }
+    }
+    
+    // Single first name match (lowest priority)
+    const firstName = nameParts[0];
     if (firstName.length >= 3 && lower.includes(firstName)) {
       const score = firstName.length;
       if (!best || score > best.score) {
