@@ -192,6 +192,8 @@ export default function PacienteDetalhe() {
   const [singleAnalysisId, setSingleAnalysisId] = useState<string | null>(null);
   const [singleAnalysisResult, setSingleAnalysisResult] = useState<Record<string, string>>({});
   const [singleAnalysisLoading, setSingleAnalysisLoading] = useState<string | null>(null);
+  const [editingAnalysisId, setEditingAnalysisId] = useState<string | null>(null);
+  const [editingAnalysisText, setEditingAnalysisText] = useState("");
 
   // Inline photo editing
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
@@ -301,6 +303,20 @@ export default function PacienteDetalhe() {
     [...dbEvolutionPhotos].sort((a, b) => a.date.localeCompare(b.date)),
     [dbEvolutionPhotos]
   );
+
+  // Initialize analysis results from saved DB data
+  useMemo(() => {
+    const saved: Record<string, string> = {};
+    dbEvolutionPhotos.forEach((p: any) => {
+      if (p.ai_analysis) saved[p.id] = p.ai_analysis;
+    });
+    if (Object.keys(saved).length > 0) {
+      setSingleAnalysisResult(prev => {
+        const merged = { ...saved, ...prev };
+        return merged;
+      });
+    }
+  }, [dbEvolutionPhotos]);
 
   const comparePhotos = useMemo(() => {
     if (!compareIds || !compareIds[1]) return null;
@@ -1207,14 +1223,90 @@ export default function PacienteDetalhe() {
                                   )}
                                 </Button>
                                 {singleAnalysisResult[photo.id] && (
-                                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
-                                    <div className="flex items-center gap-1.5 mb-1">
-                                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                                      <span className="text-xs font-semibold text-primary">Análise Focal com IA</span>
+                                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-1.5">
+                                        <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                        <span className="text-xs font-semibold text-primary">Análise Focal com IA</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        {editingAnalysisId === photo.id ? (
+                                          <>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 text-[10px] gap-1"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSingleAnalysisResult(prev => ({ ...prev, [photo.id]: editingAnalysisText }));
+                                                setEditingAnalysisId(null);
+                                              }}
+                                            >
+                                              <Check className="h-3 w-3" /> OK
+                                            </Button>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 text-[10px]"
+                                              onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(null); }}
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </>
+                                        ) : (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 text-[10px] gap-1"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setEditingAnalysisId(photo.id);
+                                              setEditingAnalysisText(singleAnalysisResult[photo.id]);
+                                            }}
+                                          >
+                                            <Pencil className="h-3 w-3" /> Editar
+                                          </Button>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="text-xs prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                                      {singleAnalysisResult[photo.id]}
-                                    </div>
+                                    {editingAnalysisId === photo.id ? (
+                                      <textarea
+                                        className="w-full min-h-[120px] text-xs rounded-md border border-input bg-background p-2 resize-y focus:outline-none focus:ring-1 focus:ring-ring"
+                                        value={editingAnalysisText}
+                                        onChange={(e) => setEditingAnalysisText(e.target.value)}
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                    ) : (
+                                      <div className="text-xs prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                                        {singleAnalysisResult[photo.id]}
+                                      </div>
+                                    )}
+                                    {/* Save to DB button */}
+                                    {editingAnalysisId !== photo.id && (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full gap-2 text-xs"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          updateEvolutionPhotoMutation.mutate({
+                                            id: photo.id,
+                                            updates: { ai_analysis: singleAnalysisResult[photo.id] } as any,
+                                          }, {
+                                            onSuccess: () => {
+                                              toast({ title: "Análise salva no prontuário." });
+                                            }
+                                          });
+                                        }}
+                                        disabled={updateEvolutionPhotoMutation.isPending}
+                                      >
+                                        {(photo as any).ai_analysis === singleAnalysisResult[photo.id] ? (
+                                          <><Check className="h-3.5 w-3.5 text-emerald-600" /> Salvo no prontuário</>
+                                        ) : (
+                                          <><Save className="h-3.5 w-3.5" /> Salvar no prontuário</>
+                                        )}
+                                      </Button>
+                                    )}
                                   </div>
                                 )}
                               </div>
