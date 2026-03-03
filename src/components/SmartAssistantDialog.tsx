@@ -274,19 +274,6 @@ export function SmartAssistantDialog({
               </div>
             )}
 
-            <div className="flex flex-wrap gap-1.5">
-              {EXAMPLES.map((ex, i) => (
-                <Badge
-                  key={i}
-                  variant="outline"
-                  className="cursor-pointer hover:bg-ai-soft text-xs"
-                  onClick={() => setInputText(ex)}
-                >
-                  {ex}
-                </Badge>
-              ))}
-            </div>
-
             <Button onClick={handleSubmit} disabled={!inputText.trim()} className="w-full">
               <Send className="mr-2 h-4 w-4" /> Processar comando
             </Button>
