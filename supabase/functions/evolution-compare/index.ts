@@ -14,9 +14,11 @@ Deno.serve(async (req) => {
   try {
     const { beforeImagePath, afterImagePath, patientContext } = await req.json();
 
-    if (!beforeImagePath || !afterImagePath) {
+    const isSinglePhoto = !afterImagePath;
+
+    if (!beforeImagePath) {
       return new Response(
-        JSON.stringify({ error: "beforeImagePath and afterImagePath are required" }),
+        JSON.stringify({ error: "beforeImagePath is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -25,18 +27,24 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get signed URLs for both images
-    const [beforeUrlResult, afterUrlResult] = await Promise.all([
+    // Get signed URLs
+    const signedUrlPromises = [
       supabase.storage.from("evolution-photos").createSignedUrl(beforeImagePath, 600),
-      supabase.storage.from("evolution-photos").createSignedUrl(afterImagePath, 600),
-    ]);
+    ];
+    if (!isSinglePhoto) {
+      signedUrlPromises.push(supabase.storage.from("evolution-photos").createSignedUrl(afterImagePath, 600));
+    }
+    const urlResults = await Promise.all(signedUrlPromises);
 
-    if (beforeUrlResult.error || afterUrlResult.error) {
+    if (urlResults.some(r => r.error)) {
       return new Response(
         JSON.stringify({ error: "Failed to access photos" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const beforeSignedUrl = urlResults[0].data.signedUrl;
+    const afterSignedUrl = isSinglePhoto ? null : urlResults[1].data.signedUrl;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -263,20 +271,31 @@ Com base na análise visual da lesão/região e nas observações clínicas forn
 
 ⚠️ Este modo substitui completamente a análise corporal padrão. NÃO inclua tabela resumo de regiões corporais nem estimativas de composição corporal.`;
 
-    const userContent: any[] = [
-      {
-        type: "text",
-        text: `Analise a evolução do paciente comparando as duas fotos a seguir.${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nA primeira imagem é o ANTES e a segunda é o DEPOIS.`,
-      },
-      {
-        type: "image_url",
-        image_url: { url: beforeUrlResult.data.signedUrl },
-      },
-      {
-        type: "image_url",
-        image_url: { url: afterUrlResult.data.signedUrl },
-      },
-    ];
+    const userContent: any[] = isSinglePhoto
+      ? [
+          {
+            type: "text",
+            text: `Analise a foto a seguir de uma região/lesão específica do paciente. Gere um relatório descritivo detalhado no MODO DE ANÁLISE FOCAL.${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nAnalise esta imagem:`,
+          },
+          {
+            type: "image_url",
+            image_url: { url: beforeSignedUrl },
+          },
+        ]
+      : [
+          {
+            type: "text",
+            text: `Analise a evolução do paciente comparando as duas fotos a seguir.${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nA primeira imagem é o ANTES e a segunda é o DEPOIS.`,
+          },
+          {
+            type: "image_url",
+            image_url: { url: beforeSignedUrl },
+          },
+          {
+            type: "image_url",
+            image_url: { url: afterSignedUrl! },
+          },
+        ];
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
