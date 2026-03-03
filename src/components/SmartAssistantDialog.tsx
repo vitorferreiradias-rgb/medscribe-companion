@@ -35,6 +35,10 @@ interface PrescriptionPreviewData {
   action: "prescrever" | "renovar" | "suspender" | "continuar";
 }
 
+interface PrescriptionItemWithCategory extends PrescriptionItem {
+  _recipeCategory: "simples" | "antimicrobiano" | "controlado";
+}
+
 export function SmartAssistantDialog({
   open,
   onOpenChange,
@@ -52,7 +56,8 @@ export function SmartAssistantDialog({
   const [cancelTarget, setCancelTarget] = useState<{ eventId: string; patientName: string; date: string; time: string } | null>(null);
   const [resultMessage, setResultMessage] = useState("");
   const [resultType, setResultType] = useState<"success" | "error" | "warning">("success");
-  const [prescriptionData, setPrescriptionData] = useState<PrescriptionPreviewData | null>(null);
+  const [prescriptionData, setPrescriptionData] = useState<PrescriptionPreviewData[] | null>(null);
+  const [currentPrescriptionIndex, setCurrentPrescriptionIndex] = useState(0);
 
   const speechSupported = isSpeechRecognitionSupported();
   const { isListening, interimText, start: startListening, stop: stopListening } = useSpeechRecognition({
@@ -68,6 +73,7 @@ export function SmartAssistantDialog({
     setCancelTarget(null);
     setResultMessage("");
     setPrescriptionData(null);
+    setCurrentPrescriptionIndex(0);
   }, []);
 
   const handleClose = () => {
@@ -151,7 +157,7 @@ export function SmartAssistantDialog({
       return;
     }
 
-    const prescriptionItems: PrescriptionItem[] = [];
+    const prescriptionItems: PrescriptionItemWithCategory[] = [];
     let overallAction: PrescriptionAction = "prescrever";
 
     for (const segment of medSegments) {
@@ -208,6 +214,7 @@ export function SmartAssistantDialog({
         duration: finalDuration || undefined,
         quantity: finalQuantity || undefined,
         form: finalForm || undefined,
+        _recipeCategory: med?.category || "simples",
       });
     }
 
@@ -216,21 +223,42 @@ export function SmartAssistantDialog({
       return;
     }
 
-    // Classify prescription type (uses highest requirement among all items)
-    const compliance = await classifyPrescriptionAsync({
-      items: prescriptionItems.map(item => ({ medicationName: item.medicationName, concentration: item.concentration })),
-      patient: { id: patientId, name: patientName },
-      prescriber: { name: clinician.name, crm: clinician.crm },
-    });
+    // Group items by recipe category to generate separate prescriptions
+    const categoryOrder: Array<"simples" | "antimicrobiano" | "controlado"> = ["controle_especial" as any, "controlado", "antimicrobiano", "simples"];
+    const groups = new Map<string, PrescriptionItemWithCategory[]>();
+    for (const item of prescriptionItems) {
+      const key = item._recipeCategory;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(item);
+    }
 
-    setPrescriptionData({
-      items: prescriptionItems,
-      compliance,
-      patient: { id: patientId, name: patientName },
-      prescriber: { name: clinician.name, crm: clinician.crm },
-      clinicianId: clinician.id,
-      action: overallAction,
-    });
+    // Build separate prescription data for each group
+    const allPrescriptions: PrescriptionPreviewData[] = [];
+    for (const [, groupItems] of groups) {
+      const cleanItems: PrescriptionItem[] = groupItems.map(({ _recipeCategory, ...rest }) => rest);
+      
+      const compliance = await classifyPrescriptionAsync({
+        items: cleanItems.map(item => ({ medicationName: item.medicationName, concentration: item.concentration })),
+        patient: { id: patientId, name: patientName },
+        prescriber: { name: clinician.name, crm: clinician.crm },
+      });
+
+      allPrescriptions.push({
+        items: cleanItems,
+        compliance,
+        patient: { id: patientId, name: patientName },
+        prescriber: { name: clinician.name, crm: clinician.crm },
+        clinicianId: clinician.id,
+        action: overallAction,
+      });
+    }
+
+    // Sort: controle_especial first, then antimicrobiano, then simples
+    const typePriority: Record<string, number> = { controle_especial: 0, antimicrobiano: 1, simples: 2 };
+    allPrescriptions.sort((a, b) => (typePriority[a.compliance.recipeType] ?? 9) - (typePriority[b.compliance.recipeType] ?? 9));
+
+    setPrescriptionData(allPrescriptions);
+    setCurrentPrescriptionIndex(0);
     setStep("prescription-preview");
     } catch (err) {
       console.error("[OneClick] Erro ao montar prescrição:", err);
@@ -466,19 +494,53 @@ export function SmartAssistantDialog({
           </div>
         )}
 
-        {step === "prescription-preview" && prescriptionData && (
-          <SmartPrescriptionPreview
-            items={prescriptionData.items}
-            compliance={prescriptionData.compliance}
-            patient={prescriptionData.patient}
-            prescriber={prescriptionData.prescriber}
-            clinicianId={prescriptionData.clinicianId}
-            action={prescriptionData.action}
-            onDone={handleClose}
-            onBack={() => setStep("input")}
-            onCancel={handleClose}
-          />
-        )}
+        {step === "prescription-preview" && prescriptionData && prescriptionData.length > 0 && (() => {
+          const current = prescriptionData[currentPrescriptionIndex];
+          const total = prescriptionData.length;
+          return (
+            <div className="space-y-3">
+              {total > 1 && (
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Receita {currentPrescriptionIndex + 1} de {total}
+                    <span className="ml-1 text-foreground">
+                      ({current.compliance.recipeType.replace("_", " ")})
+                    </span>
+                  </p>
+                  <div className="flex gap-1">
+                    {prescriptionData.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCurrentPrescriptionIndex(i)}
+                        className={`h-2 w-2 rounded-full transition-colors ${
+                          i === currentPrescriptionIndex ? "bg-primary" : "bg-muted-foreground/30"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+              <SmartPrescriptionPreview
+                items={current.items}
+                compliance={current.compliance}
+                patient={current.patient}
+                prescriber={current.prescriber}
+                clinicianId={current.clinicianId}
+                action={current.action}
+                onDone={() => {
+                  if (currentPrescriptionIndex < total - 1) {
+                    setCurrentPrescriptionIndex(currentPrescriptionIndex + 1);
+                    toast({ title: `Receita ${currentPrescriptionIndex + 1} salva!`, description: `Avançando para receita ${currentPrescriptionIndex + 2} de ${total}.` });
+                  } else {
+                    handleClose();
+                  }
+                }}
+                onBack={() => setStep("input")}
+                onCancel={handleClose}
+              />
+            </div>
+          );
+        })()}
 
         {step === "result" && (
           <div className="space-y-4">
