@@ -390,7 +390,9 @@ export function SmartAssistantDialog({
     if (!fullText.trim()) return;
     if (isListening) stopListening();
     setInputText(fullText);
+    console.log("[OneClick] Texto completo para parsing:", JSON.stringify(fullText));
     const intent = parseIntent(fullText, data.patients);
+    console.log("[OneClick] Intent detectada:", intent.intent, "| rawInput:", intent.rawInput);
     await executeIntent(intent);
   }, [inputText, isListening, interimText, stopListening, executeIntent, data.patients]);
 
