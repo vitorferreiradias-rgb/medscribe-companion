@@ -1,38 +1,108 @@
 
 
-# Remover ¾ e adicionar ícones nos seletores de ângulo
+# Enriquecer análise de evolução com dados clínicos + alertas cutâneos + ícones nos ângulos
 
-## O que muda
+## Resumo
 
-- Remove a opção "¾ (Três Quartos)" de todos os seletores de ângulo e do prompt da IA
-- Adiciona ícones Lucide ao lado de cada opção de ângulo para tornar visualmente descritivo
-- Troca os `<select>` nativos por botões visuais (toggle group) com ícone + texto
+Adicionar dados clínicos automáticos e manuais ao contexto da IA, reforçar alertas cutâneos no prompt, remover opção ¾, e trocar selects por botões visuais com ícones.
 
-## Mudanças
+---
 
-### 1. `src/pages/PacienteDetalhe.tsx`
+## 1. Migração de banco
 
-**3 locais** onde ângulos aparecem:
+Adicionar 3 colunas à tabela `evolution_photos`:
 
-1. **Formulário de upload** (~linha 1051): trocar `<select>` por grupo de botões visuais com ícones:
-   - `User` → Frontal
-   - `UserCheck` (ou similar) → Posterior  
-   - `ArrowRight` → Lateral Dir.
-   - `ArrowLeft` → Lateral Esq.
+- `height` numeric nullable — altura em cm
+- `waist_circumference` numeric nullable — circunferência abdominal em cm
+- `treatment_goal` text nullable — objetivo do tratamento
 
-2. **Formulário de edição inline** (~linha 910): mesma troca
+---
 
-3. **Badge de exibição** (~linha 990): remover referência a `tres_quartos`
+## 2. Frontend — `src/pages/PacienteDetalhe.tsx`
 
-4. **Contexto da IA** (~linha 243): remover `tres_quartos` do `angleLabels`
+### 2a. Contexto da IA (~linha 243)
 
-### 2. `supabase/functions/evolution-compare/index.ts`
+Montar `patientContext` incluindo dados automáticos do prontuário:
+- **Idade** (calculada de `patient.birthDate`)
+- **Sexo** (`patient.sex`)
+- **Diagnósticos** (`patient.diagnoses`)
+- **Alergias medicamentosas** (`patient.drugAllergies`)
 
-Remover menção a "¾ (três quartos)" do `systemPrompt` — manter apenas Frontal, Posterior, Lateral direito, Lateral esquerdo.
+E dados das fotos:
+- Peso, altura, circunferência abdominal, objetivo do tratamento, ângulo, notas
 
-### Seção técnica
+Remover `tres_quartos` do `angleLabels`.
 
-- Ícones Lucide disponíveis: `User`, `PersonStanding`, `ArrowLeft`, `ArrowRight` (ou similares que representem orientação corporal)
-- Os botões de ângulo usarão estilo toggle: borda destacada quando selecionado, visual compacto
-- Sem mudanças no banco — o campo `angle` continua sendo texto livre, apenas os valores possíveis mudam no frontend
+### 2b. Formulário de upload (~linha 1044)
+
+Adicionar inputs para:
+- Altura (cm)
+- Circunferência abdominal (cm)
+- Objetivo do tratamento (select: emagrecimento, hipertrofia, recomposição corporal, pós-bariátrica, outro)
+
+### 2c. Formulário de edição inline (~linha 903)
+
+Adicionar os mesmos 3 campos novos.
+
+### 2d. Seletores de ângulo (upload + edição)
+
+Trocar `<select>` por grupo de botões visuais (ToggleGroup) com ícones Lucide:
+- `User` → Frontal
+- `UserRound` → Posterior
+- `ArrowRight` → Lateral Dir.
+- `ArrowLeft` → Lateral Esq.
+
+Remover opção `tres_quartos` de ambos os formulários.
+
+### 2e. Badge de exibição (~linha 990)
+
+Remover referência a `tres_quartos`.
+
+---
+
+## 3. Mutations — `src/hooks/useSupabaseData.tsx`
+
+- `useAddEvolutionPhoto`: aceitar `height`, `waist_circumference`, `treatment_goal` e incluí-los no insert
+- `useUpdateEvolutionPhoto`: aceitar os 3 novos campos no objeto `updates`
+
+---
+
+## 4. Edge Function — `supabase/functions/evolution-compare/index.ts`
+
+### 4a. Remover ¾ do prompt
+
+Remover "¾ (três quartos)" do Passo 0 e da tabela de visibilidade.
+
+### 4b. Reforçar alertas cutâneos
+
+Adicionar ao `systemPrompt` uma seção dedicada:
+
+```
+## ALERTAS CUTÂNEOS
+
+Ao analisar a seção de Pele, observe e alerte sobre:
+- Eritema difuso ou localizado
+- Urticária ou pápulas
+- Edema visível
+- Lesões pigmentadas novas ou alteradas
+- Padrões compatíveis com dermatite
+- Textura anormal (ressecamento extremo, descamação)
+- Cicatrizes não previamente documentadas
+
+Se o paciente possui alergias medicamentosas informadas, correlacione achados cutâneos 
+com possíveis reações alérgicas e destaque como ⚠️ ALERTA.
+```
+
+### 4c. Instruir IA a usar novos dados
+
+Adicionar instrução para usar idade, sexo, diagnósticos, alergias, altura e circunferência abdominal nas estimativas de composição corporal e na correlação com dados antropométricos.
+
+---
+
+## Seção técnica
+
+- Ícones Lucide: `User`, `UserRound`, `ArrowLeft`, `ArrowRight`
+- ToggleGroup já está disponível no projeto (`src/components/ui/toggle-group.tsx`)
+- O campo `angle` continua texto livre no banco — sem breaking change
+- States para novos campos: `photoHeight`, `photoWaist`, `photoGoal` (upload) e `editHeight`, `editWaist`, `editGoal` (edição)
 
