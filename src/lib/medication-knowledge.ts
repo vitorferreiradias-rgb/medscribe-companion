@@ -1,5 +1,8 @@
 // MedicationKnowledgeMock — local knowledge base for smart prescription
-// Designed to be replaced by a backend API in the future
+// Now integrated with database tables (tipos_receita, categorias_medicamentos, medicamentos)
+// Local array kept as offline fallback
+
+import { supabase } from "@/integrations/supabase/client";
 
 export interface DosePattern {
   concentration: string;
@@ -25,6 +28,60 @@ export interface MedicationKnowledge {
   cautions: string[];
   variants?: DoseVariant[];
 }
+
+// DB record shape from the medicamentos table
+export interface MedicamentoDB {
+  id: number;
+  nome_comercial: string;
+  principio_ativo: string;
+  dosagem_padrao: string;
+  forma_administracao: string;
+  apresentacao: string | null;
+  indicacoes: string | null;
+  contraindicacoes: string | null;
+  interacoes: string | null;
+  efeitos_colaterais: string | null;
+  id_categoria: number;
+  id_tipo_receita: number;
+}
+
+// Map id_tipo_receita to our internal category
+function mapTipoReceitaToCategory(idTipoReceita: number): "simples" | "antimicrobiano" | "controlado" {
+  switch (idTipoReceita) {
+    case 1: return "simples";       // Receita Simples
+    case 2: return "controlado";    // Receita de Controle Especial
+    case 3: return "controlado";    // Receita Azul (psicotrópicos)
+    case 4: return "controlado";    // Receita Amarela (entorpecentes)
+    default: return "simples";
+  }
+}
+
+// Convert a DB record to MedicationKnowledge format
+function dbToMedicationKnowledge(med: MedicamentoDB): MedicationKnowledge {
+  const forms = med.apresentacao?.split(",").map(s => s.trim()) || [med.forma_administracao];
+  const cautions: string[] = [];
+  if (med.contraindicacoes) cautions.push(med.contraindicacoes);
+  if (med.efeitos_colaterais) cautions.push(med.efeitos_colaterais);
+
+  return {
+    name: med.nome_comercial,
+    aliases: med.principio_ativo.toLowerCase() !== med.nome_comercial.toLowerCase()
+      ? [med.principio_ativo.toLowerCase()]
+      : [],
+    category: mapTipoReceitaToCategory(med.id_tipo_receita),
+    defaultDosePatterns: [{
+      concentration: med.dosagem_padrao,
+      dosage: `Conforme orientação médica`,
+      duration: undefined,
+      quantity: undefined,
+    }],
+    commonForms: forms,
+    cautions,
+  };
+}
+
+// ============= LOCAL FALLBACK DATA =============
+// ... keep existing code (MEDICATIONS_DB array from line 29 to line 320)
 
 const MEDICATIONS_DB: MedicationKnowledge[] = [
   // ====== SIMPLES ======
@@ -319,11 +376,67 @@ const MEDICATIONS_DB: MedicationKnowledge[] = [
   },
 ];
 
+// ============= DATABASE SEARCH =============
+
 /**
- * Find medication by name or alias (case-insensitive, partial match)
- * Pluggable: replace this with an API call in the future
+ * Search medication in the database first, then fallback to local array
  */
-export function findMedication(query: string): MedicationKnowledge | null {
+export async function findMedicationAsync(query: string): Promise<MedicationKnowledge | null> {
+  const q = query.toLowerCase().trim();
+  
+  try {
+    // Search by nome_comercial or principio_ativo (case-insensitive)
+    const { data, error } = await supabase
+      .from("medicamentos")
+      .select("*")
+      .or(`nome_comercial.ilike.%${q}%,principio_ativo.ilike.%${q}%`)
+      .limit(1);
+    
+    if (!error && data && data.length > 0) {
+      const dbMed = data[0] as unknown as MedicamentoDB;
+      // Check if we have a richer local entry (with dose patterns, variants)
+      const localMed = findMedicationLocal(q);
+      if (localMed) {
+        // Merge: use local dose patterns but DB category mapping
+        return {
+          ...localMed,
+          category: mapTipoReceitaToCategory(dbMed.id_tipo_receita),
+        };
+      }
+      return dbToMedicationKnowledge(dbMed);
+    }
+  } catch (err) {
+    console.warn("[medication-knowledge] DB search failed, using local fallback:", err);
+  }
+  
+  // Fallback to local
+  return findMedicationLocal(q);
+}
+
+/**
+ * Get the id_tipo_receita from the database for a medication
+ */
+export async function getMedicationTipoReceita(query: string): Promise<number | null> {
+  const q = query.toLowerCase().trim();
+  try {
+    const { data, error } = await supabase
+      .from("medicamentos")
+      .select("id_tipo_receita")
+      .or(`nome_comercial.ilike.%${q}%,principio_ativo.ilike.%${q}%`)
+      .limit(1);
+    
+    if (!error && data && data.length > 0) {
+      return (data[0] as any).id_tipo_receita;
+    }
+  } catch {
+    // fallback
+  }
+  return null;
+}
+
+// ============= LOCAL SEARCH (sync, fallback) =============
+
+function findMedicationLocal(query: string): MedicationKnowledge | null {
   const q = query.toLowerCase().trim();
   return (
     MEDICATIONS_DB.find(
@@ -338,6 +451,14 @@ export function findMedication(query: string): MedicationKnowledge | null {
     ) ||
     null
   );
+}
+
+/**
+ * Find medication by name or alias (case-insensitive, partial match)
+ * Synchronous version — uses local array only (kept for backward compatibility)
+ */
+export function findMedication(query: string): MedicationKnowledge | null {
+  return findMedicationLocal(query);
 }
 
 /**

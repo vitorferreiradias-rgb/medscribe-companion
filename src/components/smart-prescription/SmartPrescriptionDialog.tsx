@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff, Sparkles, Send, Search, User } from "lucide-react";
 import { parsePrescriptionInput } from "@/lib/smart-prescription-parser";
-import { findMedication, findDosePattern, type MedicationKnowledge, type DoseVariant } from "@/lib/medication-knowledge";
-import { classifyPrescription, type ComplianceResult } from "@/lib/compliance-router";
+import { findMedicationAsync, findDosePattern, type MedicationKnowledge, type DoseVariant } from "@/lib/medication-knowledge";
+import { classifyPrescriptionAsync, type ComplianceResult } from "@/lib/compliance-router";
 import { useSpeechRecognition, isSpeechRecognitionSupported } from "@/hooks/useSpeechRecognition";
 import { PosologyPrompt } from "./PosologyPrompt";
 import { DivergenceConfirmation } from "./DivergenceConfirmation";
@@ -118,7 +118,7 @@ export function SmartPrescriptionDialog({
     setItems([]);
   }, [initialText, patientProp]);
 
-  const proceedToPreview = useCallback((dosage: string, duration?: string, quantity?: string, form?: string, concentration?: string) => {
+  const proceedToPreview = useCallback(async (dosage: string, duration?: string, quantity?: string, form?: string, concentration?: string) => {
     if (!patient) return;
     const finalConc = concentration || parsedConcentration;
     const finalItem: PrescriptionItem = {
@@ -131,7 +131,7 @@ export function SmartPrescriptionDialog({
     };
     setItems([finalItem]);
 
-    const compResult = classifyPrescription({
+    const compResult = await classifyPrescriptionAsync({
       items: [{ medicationName: parsedMedName, concentration: finalConc }],
       patient,
       prescriber,
@@ -140,7 +140,7 @@ export function SmartPrescriptionDialog({
     setStep("preview");
   }, [parsedMedName, parsedConcentration, patient, prescriber]);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     const fullText = isListening && interimText ? inputText + " " + interimText : inputText;
     if (!fullText.trim()) return;
     if (isListening) stopListening();
@@ -168,7 +168,7 @@ export function SmartPrescriptionDialog({
     setParsedMedName(medName);
     setParsedConcentration(parsed.concentration || "");
 
-    const med = findMedication(medName);
+    const med = await findMedicationAsync(medName);
     setFoundMed(med);
 
     if (parsed.action === "suspender") {
@@ -179,7 +179,7 @@ export function SmartPrescriptionDialog({
       };
       setItems([item]);
       if (patient) {
-        const compResult = classifyPrescription({
+        const compResult = await classifyPrescriptionAsync({
           items: [{ medicationName: medName, concentration: parsed.concentration || undefined }],
           patient,
           prescriber,

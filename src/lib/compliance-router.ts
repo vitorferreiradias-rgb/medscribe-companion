@@ -1,7 +1,9 @@
 // ComplianceRouter — regulatory classification for prescriptions
-// Uses mock data now, designed to be replaced by a backend API
+// Now integrated with database tables (tipos_receita, medicamentos)
+// Local config kept as fallback
 
-import { findMedication } from "./medication-knowledge";
+import { findMedication, findMedicationAsync, getMedicationTipoReceita } from "./medication-knowledge";
+import { supabase } from "@/integrations/supabase/client";
 
 export type RecipeType = "simples" | "antimicrobiano" | "controle_especial";
 
@@ -19,6 +21,11 @@ export interface ComplianceResult {
   suggestedTemplateId: string;
   regulatorySource: string;
   autoClassified: boolean;
+  tipoReceitaId?: number;
+  tipoReceitaCor?: string;
+  tipoReceitaNome?: string;
+  validadeDias?: number;
+  vias?: number;
 }
 
 const RECIPE_CONFIG: Record<RecipeType, { templateId: string; source: string; requirements: string[] }> = {
@@ -53,9 +60,113 @@ const RECIPE_CONFIG: Record<RecipeType, { templateId: string; source: string; re
   },
 };
 
+// Map id_tipo_receita from DB to our RecipeType
+function mapIdToRecipeType(id: number): RecipeType {
+  switch (id) {
+    case 1: return "simples";
+    case 2: return "controle_especial";
+    case 3: return "controle_especial"; // Receita Azul
+    case 4: return "controle_especial"; // Receita Amarela
+    default: return "simples";
+  }
+}
+
 /**
- * Classify a prescription based on its items
- * Pluggable: replace this function body with an API call in the future
+ * Async version: classifies prescription using database data with local fallback
+ */
+export async function classifyPrescriptionAsync(input: ComplianceInput): Promise<ComplianceResult> {
+  const warnings: string[] = [];
+  let highestCategory: RecipeType = "simples";
+  let highestTipoReceitaId = 1;
+  let unknownItems = 0;
+
+  for (const item of input.items) {
+    // Try DB first
+    const tipoId = await getMedicationTipoReceita(item.medicationName);
+    
+    if (tipoId !== null) {
+      const mappedType = mapIdToRecipeType(tipoId);
+      if (tipoId > highestTipoReceitaId) {
+        highestTipoReceitaId = tipoId;
+      }
+      if (mappedType === "controle_especial" && highestCategory !== "controle_especial") {
+        highestCategory = "controle_especial";
+      } else if (mappedType === "antimicrobiano" && highestCategory === "simples") {
+        highestCategory = "antimicrobiano";
+      }
+    } else {
+      // Fallback to local
+      const med = findMedication(item.medicationName);
+      if (!med) {
+        unknownItems++;
+        warnings.push(`"${item.medicationName}": Categoria regulatória não identificada.`);
+        continue;
+      }
+      if (med.category === "controlado" && highestCategory !== "controle_especial") {
+        highestCategory = "controle_especial";
+        highestTipoReceitaId = 2;
+      } else if (med.category === "antimicrobiano" && highestCategory === "simples") {
+        highestCategory = "antimicrobiano";
+      }
+    }
+
+    // Get cautions from async search
+    const med = await findMedicationAsync(item.medicationName);
+    if (med && med.cautions.length > 0) {
+      warnings.push(`${med.name}: ${med.cautions[0]}`);
+    }
+  }
+
+  const autoClassified = unknownItems === 0;
+  const needsConfirmation = !autoClassified || highestCategory === "controle_especial";
+  const config = RECIPE_CONFIG[highestCategory];
+
+  if (!autoClassified) {
+    warnings.push("Confirme o tipo de receita manualmente.");
+  }
+
+  // Fetch tipo_receita details from DB
+  let tipoReceitaCor: string | undefined;
+  let tipoReceitaNome: string | undefined;
+  let validadeDias: number | undefined;
+  let vias: number | undefined;
+
+  try {
+    const { data } = await supabase
+      .from("tipos_receita")
+      .select("*")
+      .eq("id", highestTipoReceitaId)
+      .limit(1);
+    
+    if (data && data.length > 0) {
+      const tipo = data[0] as any;
+      tipoReceitaCor = tipo.cor;
+      tipoReceitaNome = tipo.nome;
+      validadeDias = tipo.validade_dias;
+      vias = tipo.vias;
+    }
+  } catch {
+    // Use defaults from config
+  }
+
+  return {
+    recipeType: highestCategory,
+    requirements: config.requirements,
+    warnings,
+    needsConfirmation,
+    suggestedTemplateId: config.templateId,
+    regulatorySource: config.source,
+    autoClassified,
+    tipoReceitaId: highestTipoReceitaId,
+    tipoReceitaCor,
+    tipoReceitaNome,
+    validadeDias,
+    vias,
+  };
+}
+
+/**
+ * Synchronous version (local only) — kept for backward compatibility
  */
 export function classifyPrescription(input: ComplianceInput): ComplianceResult {
   const warnings: string[] = [];
