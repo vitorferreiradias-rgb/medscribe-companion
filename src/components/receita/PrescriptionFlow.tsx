@@ -48,6 +48,7 @@ function savePrescriptions(prescriptions: Prescription[]) {
 interface PrescriptionFlowProps {
   encounterId?: string;
   patientId?: string;
+  clinicianId?: string;
   clinicianName?: string;
   clinicianCrm?: string;
   clinicianCpf?: string;
@@ -55,7 +56,7 @@ interface PrescriptionFlowProps {
   patientName?: string;
 }
 
-export function PrescriptionFlow({ encounterId, patientId, clinicianName, clinicianCrm, clinicianCpf, clinicAddress, patientName }: PrescriptionFlowProps) {
+export function PrescriptionFlow({ encounterId, patientId, clinicianId, clinicianName, clinicianCrm, clinicianCpf, clinicAddress, patientName }: PrescriptionFlowProps) {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>(() => {
     const loaded = loadPrescriptions();
     if (loaded.length === 0) {
@@ -122,6 +123,7 @@ export function PrescriptionFlow({ encounterId, patientId, clinicianName, clinic
               if (name) {
                 addMedicationEvent({
                   patientId,
+                  clinicianId: clinicianId || "",
                   medicationName: name,
                   date: now,
                   status: "prescrito",

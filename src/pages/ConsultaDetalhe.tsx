@@ -443,6 +443,7 @@ export default function ConsultaDetalhe() {
               <ReceitaPlaceholder
                 encounterId={enc.id}
                 patientId={enc.patientId}
+                clinicianId={clinician?.id}
                 clinicianName={clinician?.name}
                 clinicianCrm={clinician?.crm}
                 clinicianCpf={clinician?.cpf}
@@ -506,11 +507,12 @@ export default function ConsultaDetalhe() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {patient && (
+      {patient && clinician && (
         <MedicationHistorySheet
           open={showMedHistory}
           onOpenChange={setShowMedHistory}
           patientId={enc.patientId}
+          clinicianId={clinician.id}
         />
       )}
 

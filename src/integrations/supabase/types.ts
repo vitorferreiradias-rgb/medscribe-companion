@@ -287,6 +287,64 @@ export type Database = {
         }
         Relationships: []
       }
+      medication_events: {
+        Row: {
+          clinician_id: string
+          created_at: string
+          date: string
+          encounter_id: string | null
+          id: string
+          medication_name: string
+          note: string | null
+          patient_id: string
+          status: string
+        }
+        Insert: {
+          clinician_id: string
+          created_at?: string
+          date?: string
+          encounter_id?: string | null
+          id?: string
+          medication_name: string
+          note?: string | null
+          patient_id: string
+          status?: string
+        }
+        Update: {
+          clinician_id?: string
+          created_at?: string
+          date?: string
+          encounter_id?: string | null
+          id?: string
+          medication_name?: string
+          note?: string | null
+          patient_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medication_events_clinician_id_fkey"
+            columns: ["clinician_id"]
+            isOneToOne: false
+            referencedRelation: "clinicians"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medication_events_encounter_id_fkey"
+            columns: ["encounter_id"]
+            isOneToOne: false
+            referencedRelation: "encounters"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medication_events_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           created_at: string

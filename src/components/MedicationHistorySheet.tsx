@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Pill, Search, ChevronDown, Plus } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Pill, Search, ChevronDown, Plus, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -9,58 +9,77 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { getMedicationHistoryForPatient, addMedicationEvent } from "@/lib/medication-history";
+import { getMedicationHistoryForPatient, addMedicationEvent, type MedicationEventRow } from "@/lib/medication-history";
 import { formatDateBR } from "@/lib/format";
-import type { MedicationEvent } from "@/types";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   patientId: string;
+  clinicianId: string;
 }
 
-const statusConfig: Record<MedicationEvent["status"], { label: string; className: string }> = {
+type MedStatus = "prescrito" | "suspenso" | "nao_renovado";
+
+const statusConfig: Record<MedStatus, { label: string; className: string }> = {
   prescrito: { label: "Prescrito", className: "bg-success/15 text-success border-success/30" },
   suspenso: { label: "Suspenso", className: "bg-destructive/15 text-destructive border-destructive/30" },
   nao_renovado: { label: "Não renovado", className: "bg-warning/15 text-warning border-warning/30" },
 };
 
-export function MedicationHistorySheet({ open, onOpenChange, patientId }: Props) {
+export function MedicationHistorySheet({ open, onOpenChange, patientId, clinicianId }: Props) {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
-  const [events, setEvents] = useState<MedicationEvent[]>(() => getMedicationHistoryForPatient(patientId));
+  const [events, setEvents] = useState<MedicationEventRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [addingFor, setAddingFor] = useState<string | null>(null);
-  const [newStatus, setNewStatus] = useState<MedicationEvent["status"]>("suspenso");
+  const [newStatus, setNewStatus] = useState<MedStatus>("suspenso");
   const [newNote, setNewNote] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const refreshEvents = () => setEvents(getMedicationHistoryForPatient(patientId));
+  useEffect(() => {
+    if (open) {
+      setLoading(true);
+      getMedicationHistoryForPatient(patientId).then((data) => {
+        setEvents(data);
+        setLoading(false);
+      });
+    }
+  }, [open, patientId]);
 
   const grouped = useMemo(() => {
     const filtered = events.filter((e) =>
-      !search || e.medicationName.toLowerCase().includes(search.toLowerCase())
+      !search || e.medication_name.toLowerCase().includes(search.toLowerCase())
     );
-    const map = new Map<string, MedicationEvent[]>();
+    const map = new Map<string, MedicationEventRow[]>();
     for (const e of filtered) {
-      const key = e.medicationName;
+      const key = e.medication_name;
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(e);
     }
     return Array.from(map.entries());
   }, [events, search]);
 
-  const handleAddEvent = (medicationName: string) => {
-    addMedicationEvent({
+  const handleAddEvent = async (medicationName: string) => {
+    setSaving(true);
+    const result = await addMedicationEvent({
       patientId,
+      clinicianId,
       medicationName,
       date: new Date().toISOString(),
       status: newStatus,
       note: newNote || undefined,
     });
-    refreshEvents();
+    if (result) {
+      setEvents((prev) => [result, ...prev]);
+      toast({ title: `Evento registrado para ${medicationName}.` });
+    } else {
+      toast({ title: "Erro ao registrar evento", variant: "destructive" });
+    }
     setAddingFor(null);
     setNewNote("");
     setNewStatus("suspenso");
-    toast({ title: `Evento registrado para ${medicationName}.` });
+    setSaving(false);
   };
 
   return (
@@ -85,7 +104,11 @@ export function MedicationHistorySheet({ open, onOpenChange, patientId }: Props)
             />
           </div>
 
-          {grouped.length === 0 ? (
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : grouped.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
               Nenhum histórico de medicação encontrado.
             </p>
@@ -103,7 +126,7 @@ export function MedicationHistorySheet({ open, onOpenChange, patientId }: Props)
                   </CollapsibleTrigger>
                   <CollapsibleContent className="pl-4 pr-2 pt-1 space-y-1">
                     {medEvents.map((ev) => {
-                      const cfg = statusConfig[ev.status];
+                      const cfg = statusConfig[ev.status as MedStatus] || statusConfig.prescrito;
                       return (
                         <div key={ev.id} className="flex items-start gap-3 py-1.5">
                           <div className="mt-1 h-2 w-2 rounded-full bg-muted-foreground/40 shrink-0" />
@@ -123,7 +146,7 @@ export function MedicationHistorySheet({ open, onOpenChange, patientId }: Props)
                     })}
                     {addingFor === name ? (
                       <div className="space-y-2 py-2 pl-5">
-                        <Select value={newStatus} onValueChange={(v) => setNewStatus(v as MedicationEvent["status"])}>
+                        <Select value={newStatus} onValueChange={(v) => setNewStatus(v as MedStatus)}>
                           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="suspenso">Suspenso</SelectItem>
@@ -138,7 +161,9 @@ export function MedicationHistorySheet({ open, onOpenChange, patientId }: Props)
                           className="min-h-[60px] text-xs"
                         />
                         <div className="flex gap-2">
-                          <Button size="sm" className="h-7 text-xs" onClick={() => handleAddEvent(name)}>Salvar</Button>
+                          <Button size="sm" className="h-7 text-xs" onClick={() => handleAddEvent(name)} disabled={saving}>
+                            {saving ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}Salvar
+                          </Button>
                           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setAddingFor(null)}>Cancelar</Button>
                         </div>
                       </div>
