@@ -499,26 +499,50 @@ export function SmartAssistantDialog({
         {step === "prescription-preview" && prescriptionData && prescriptionData.length > 0 && (() => {
           const current = prescriptionData[currentPrescriptionIndex];
           const total = prescriptionData.length;
+
+          const recipeLabel = (type: string) => {
+            switch (type) {
+              case "simples": return "Simples";
+              case "antimicrobiano": return "Antimicrobiano";
+              case "controle_especial": return "Controle Especial";
+              default: return type.replace("_", " ");
+            }
+          };
+
           return (
             <div className="space-y-3">
               {total > 1 && (
-                <div className="flex items-center justify-between px-1">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Receita {currentPrescriptionIndex + 1} de {total}
-                    <span className="ml-1 text-foreground">
-                      ({current.compliance.recipeType.replace("_", " ")})
-                    </span>
-                  </p>
-                  <div className="flex gap-1">
-                    {prescriptionData.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setCurrentPrescriptionIndex(i)}
-                        className={`h-2 w-2 rounded-full transition-colors ${
-                          i === currentPrescriptionIndex ? "bg-primary" : "bg-muted-foreground/30"
-                        }`}
-                      />
-                    ))}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="font-medium">📋 {total} receitas geradas</span>
+                    <span>•</span>
+                    <span>Assine uma por vez</span>
+                  </div>
+                  <div className="flex gap-1.5">
+                    {prescriptionData.map((pd, i) => {
+                      const isActive = i === currentPrescriptionIndex;
+                      const isDone = false; // could track signed state later
+                      const label = recipeLabel(pd.compliance.recipeType);
+                      const meds = pd.items.map(it => it.medicationName).join(", ");
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setCurrentPrescriptionIndex(i)}
+                          className={`flex-1 rounded-lg border px-3 py-2 text-left transition-all ${
+                            isActive
+                              ? "border-primary bg-primary/10 shadow-sm"
+                              : "border-border bg-muted/30 hover:bg-muted/60"
+                          }`}
+                        >
+                          <p className={`text-[11px] font-semibold ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                            {i + 1}. {label}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                            {meds}
+                          </p>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
