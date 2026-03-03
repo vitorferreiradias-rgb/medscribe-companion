@@ -11,7 +11,7 @@ import { addQuickNoteExternal } from "@/components/QuickNotesCard";
 import { getData, updateScheduleEvent } from "@/lib/store";
 import { useToast } from "@/hooks/use-toast";
 import { toLocalDateStr } from "@/lib/format";
-import { parsePrescriptionInput } from "@/lib/smart-prescription-parser";
+import { parsePrescriptionInput, type PrescriptionAction } from "@/lib/smart-prescription-parser";
 import { findMedication, findDosePattern } from "@/lib/medication-knowledge";
 import { classifyPrescription, type ComplianceResult } from "@/lib/compliance-router";
 import { SmartPrescriptionPreview, type PrescriptionItem } from "@/components/smart-prescription/SmartPrescriptionPreview";
@@ -90,14 +90,6 @@ export function SmartAssistantDialog({
       return;
     }
 
-    // Parse the prescription text
-    const parsed = parsePrescriptionInput(intent.rawInput);
-
-    if (!parsed.medicationName) {
-      showResult("Não identifiquei o nome da medicação. Tente: 'prescrever dipirona 500mg para Maria'.", "warning");
-      return;
-    }
-
     // Resolve patient
     const patientId = intent.patientId;
     const patientName = intent.patientName;
@@ -106,76 +98,115 @@ export function SmartAssistantDialog({
       return;
     }
 
-    // Look up medication in local knowledge base
-    const med = findMedication(parsed.medicationName);
+    // Clean up text: remove patient name, action verbs, and connectors before parsing medications
+    let cleanedText = intent.rawInput;
+    // Remove "para o paciente [name]", "para [name]", etc.
+    if (patientName) {
+      const nameVariants = [patientName];
+      const firstName = patientName.split(" ")[0];
+      if (firstName.length >= 3) nameVariants.push(firstName);
+      for (const n of nameVariants) {
+        cleanedText = cleanedText.replace(new RegExp(`(?:para\\s+(?:o\\s+|a\\s+)?(?:paciente\\s+)?)?${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, "gi"), "");
+      }
+    }
+    // Remove leading action words
+    cleanedText = cleanedText.replace(/^\s*(por\s*escrever|prescrever|receitar|renovar|suspender|prescri[çc][ãa]o)\s*/i, "");
+
+    console.debug("[prescription-build] cleaned text:", cleanedText);
+
+    // Split by "e" to handle multiple medications: "Dipirona 500mg e Amoxicilina 500mg por 8 dias"
+    // First detect if there's a global duration/quantity at the end
+    const globalDurationMatch = cleanedText.match(/\bpor\s+(\d+\s*(?:dias?|semanas?|meses?))\s*$/i);
+    let globalDuration = globalDurationMatch?.[1] || "";
+    if (globalDurationMatch) {
+      cleanedText = cleanedText.replace(globalDurationMatch[0], "").trim();
+    }
+
+    // Split by " e " to separate multiple medications
+    const medSegments = cleanedText.split(/\s+e\s+/i).map(s => s.trim()).filter(s => s.length >= 2);
     
-    let finalDosage = parsed.dosage || "";
-    let finalConcentration = parsed.concentration || "";
-    let finalDuration = parsed.duration || "";
-    let finalQuantity = parsed.quantity || "";
-    let finalForm = "";
-
-    if (med) {
-      // If doctor provided dosage, use it (doctor takes priority)
-      // Otherwise use default from knowledge base
-      if (!finalConcentration && med.defaultDosePatterns[0]) {
-        finalConcentration = med.defaultDosePatterns[0].concentration;
-      }
-
-      const dosePattern = findDosePattern(med, finalConcentration || undefined);
-
-      if (!parsed.dosage && dosePattern) {
-        finalDosage = dosePattern.dosage;
-      }
-      if (!finalDuration && dosePattern?.duration) {
-        finalDuration = dosePattern.duration;
-      }
-      if (!finalQuantity && dosePattern?.quantity) {
-        finalQuantity = dosePattern.quantity;
-      }
-
-      // For medications with variants, auto-select first variant
-      if (med.variants && med.variants.length > 0 && !parsed.dosage) {
-        const firstVariant = med.variants[0];
-        finalDosage = firstVariant.dosage;
-        if (firstVariant.concentration) finalConcentration = firstVariant.concentration;
-        if (firstVariant.duration) finalDuration = firstVariant.duration;
-      }
-
-      finalForm = med.commonForms[0] || "";
+    if (medSegments.length === 0) {
+      showResult("Não identifiquei o nome da medicação. Tente: 'prescrever dipirona 500mg para Maria'.", "warning");
+      return;
     }
 
-    // Fallback if still no dosage
-    if (!finalDosage) {
-      finalDosage = "Conforme orientação médica";
-    }
-    if (!finalConcentration) {
-      finalConcentration = "";
+    const prescriptionItems: PrescriptionItem[] = [];
+    let overallAction: PrescriptionAction = "prescrever";
+
+    for (const segment of medSegments) {
+      const parsed = parsePrescriptionInput(segment);
+      overallAction = parsed.action;
+
+      if (!parsed.medicationName) continue;
+
+      const med = findMedication(parsed.medicationName);
+      
+      let finalDosage = parsed.dosage || "";
+      let finalConcentration = parsed.concentration || "";
+      let finalDuration = parsed.duration || globalDuration || "";
+      let finalQuantity = parsed.quantity || "";
+      let finalForm = "";
+
+      if (med) {
+        if (!finalConcentration && med.defaultDosePatterns[0]) {
+          finalConcentration = med.defaultDosePatterns[0].concentration;
+        }
+
+        const dosePattern = findDosePattern(med, finalConcentration || undefined);
+
+        if (!parsed.dosage && dosePattern) {
+          finalDosage = dosePattern.dosage;
+        }
+        if (!finalDuration && dosePattern?.duration) {
+          finalDuration = dosePattern.duration;
+        }
+        if (!finalQuantity && dosePattern?.quantity) {
+          finalQuantity = dosePattern.quantity;
+        }
+
+        if (med.variants && med.variants.length > 0 && !parsed.dosage) {
+          const firstVariant = med.variants[0];
+          finalDosage = firstVariant.dosage;
+          if (firstVariant.concentration) finalConcentration = firstVariant.concentration;
+          if (firstVariant.duration) finalDuration = firstVariant.duration;
+        }
+
+        finalForm = med.commonForms[0] || "";
+      }
+
+      if (!finalDosage) {
+        finalDosage = "Conforme orientação médica";
+      }
+
+      prescriptionItems.push({
+        medicationName: med?.name || parsed.medicationName,
+        concentration: finalConcentration,
+        dosage: finalDosage,
+        duration: finalDuration || undefined,
+        quantity: finalQuantity || undefined,
+        form: finalForm || undefined,
+      });
     }
 
-    const prescriptionItem: PrescriptionItem = {
-      medicationName: med?.name || parsed.medicationName,
-      concentration: finalConcentration,
-      dosage: finalDosage,
-      duration: finalDuration || undefined,
-      quantity: finalQuantity || undefined,
-      form: finalForm || undefined,
-    };
+    if (prescriptionItems.length === 0) {
+      showResult("Não identifiquei o nome da medicação. Tente: 'prescrever dipirona 500mg para Maria'.", "warning");
+      return;
+    }
 
-    // Classify prescription type
+    // Classify prescription type (uses highest requirement among all items)
     const compliance = classifyPrescription({
-      items: [{ medicationName: prescriptionItem.medicationName, concentration: finalConcentration }],
+      items: prescriptionItems.map(item => ({ medicationName: item.medicationName, concentration: item.concentration })),
       patient: { id: patientId, name: patientName },
       prescriber: { name: clinician.name, crm: clinician.crm },
     });
 
     setPrescriptionData({
-      items: [prescriptionItem],
+      items: prescriptionItems,
       compliance,
       patient: { id: patientId, name: patientName },
       prescriber: { name: clinician.name, crm: clinician.crm },
       clinicianId: clinician.id,
-      action: parsed.action,
+      action: overallAction,
     });
     setStep("prescription-preview");
   }, [data.clinicians]);
