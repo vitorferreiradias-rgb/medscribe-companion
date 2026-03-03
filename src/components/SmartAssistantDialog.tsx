@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useAppData, useClinicianId } from "@/hooks/useAppData";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -60,11 +60,21 @@ export function SmartAssistantDialog({
   const [currentPrescriptionIndex, setCurrentPrescriptionIndex] = useState(0);
 
   const speechSupported = isSpeechRecognitionSupported();
+  const interimTextRef = useRef("");
+  const inputTextRef = useRef("");
   const { isListening, interimText, start: startListening, stop: stopListening } = useSpeechRecognition({
     onUtterance: (u) => {
-      setInputText((prev) => (prev ? prev + " " + u.text : u.text));
+      setInputText((prev) => {
+        const next = prev ? prev + " " + u.text : u.text;
+        inputTextRef.current = next;
+        return next;
+      });
     },
   });
+
+  // Keep refs in sync with latest state values
+  interimTextRef.current = interimText;
+  inputTextRef.current = inputText;
 
   const resetFlow = useCallback(() => {
     setStep("input");
@@ -385,11 +395,12 @@ export function SmartAssistantDialog({
     }
   }, [onSchedule, onReschedule, onNavigate, navigate, toast, buildPrescriptionPreview]);
 
-  const handleSubmit = useCallback(async () => {
-    const fullText = isListening && interimText ? inputText + " " + interimText : inputText;
+  const handleSubmit = useCallback(async (explicitText?: string) => {
+    const fullText = explicitText || (isListening && interimText ? inputText + " " + interimText : inputText);
     if (!fullText.trim()) return;
     if (isListening) stopListening();
     setInputText(fullText);
+    inputTextRef.current = fullText;
     console.log("[OneClick] Texto completo para parsing:", JSON.stringify(fullText));
     const intent = parseIntent(fullText, data.patients);
     console.log("[OneClick] Intent detectada:", intent.intent, "| rawInput:", intent.rawInput);
@@ -397,8 +408,14 @@ export function SmartAssistantDialog({
   }, [inputText, isListening, interimText, stopListening, executeIntent, data.patients]);
 
   const handleStopAndProcess = useCallback(() => {
+    // Snapshot text BEFORE stopping — refs hold current values, immune to state clearing
+    const snapshotText = interimTextRef.current
+      ? (inputTextRef.current ? inputTextRef.current + " " + interimTextRef.current : interimTextRef.current)
+      : inputTextRef.current;
+    console.log("[OneClick] Snapshot antes de parar:", JSON.stringify(snapshotText));
     if (isListening) stopListening();
-    setTimeout(() => handleSubmit(), 150);
+    // Pass snapshot directly — no dependency on stale state
+    setTimeout(() => handleSubmit(snapshotText), 100);
   }, [isListening, stopListening, handleSubmit]);
 
   const confirmCancel = useCallback(() => {
@@ -460,7 +477,7 @@ export function SmartAssistantDialog({
               </div>
             )}
 
-            <Button onClick={handleSubmit} disabled={!inputText.trim()} className="w-full gap-2">
+            <Button onClick={() => handleSubmit()} disabled={!inputText.trim()} className="w-full gap-2">
               <Send className="h-4 w-4" /> Processar comando
             </Button>
           </div>
