@@ -101,14 +101,34 @@ export function SmartAssistantDialog({
 
     // Clean up text: remove patient name, action verbs, and connectors before parsing medications
     let cleanedText = intent.rawInput;
-    // Remove "para o paciente [name]", "para [name]", etc.
     if (patientName) {
-      const nameVariants = [patientName];
-      const firstName = patientName.split(" ")[0];
-      if (firstName.length >= 3) nameVariants.push(firstName);
-      for (const n of nameVariants) {
-        cleanedText = cleanedText.replace(new RegExp(`(?:para\\s+(?:o\\s+|a\\s+)?(?:paciente\\s+)?)?${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, "gi"), "");
+      const fullNameEscaped = patientName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const nameParts = patientName.split(/\s+/).filter(p => p.length >= 3);
+      
+      // Build regex that matches any contiguous subset of the name parts (e.g. "Ana Beatriz" from "Ana Beatriz Costa")
+      // First try removing "para ... <name>" pattern with the full name
+      cleanedText = cleanedText.replace(new RegExp(`\\s*para\\s+(?:o\\s+|a\\s+)?(?:paciente\\s+)?${fullNameEscaped}\\s*`, "gi"), " ");
+      cleanedText = cleanedText.replace(new RegExp(`\\b${fullNameEscaped}\\b`, "gi"), "");
+      
+      // Try partial name combinations (longest first): "Ana Beatriz", then individual parts
+      if (nameParts.length > 1) {
+        for (let len = nameParts.length - 1; len >= 2; len--) {
+          for (let start = 0; start <= nameParts.length - len; start++) {
+            const partial = nameParts.slice(start, start + len).join("\\s+");
+            cleanedText = cleanedText.replace(new RegExp(`\\s*para\\s+(?:o\\s+|a\\s+)?(?:paciente\\s+)?${partial}\\s*`, "gi"), " ");
+            cleanedText = cleanedText.replace(new RegExp(`\\b${partial}\\b`, "gi"), "");
+          }
+        }
       }
+      
+      // Remove individual name parts (only if they're standalone words, not part of medication names)
+      for (const part of nameParts) {
+        const escaped = part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Only remove if preceded by space/start and followed by space/end (not part of a compound word)
+        cleanedText = cleanedText.replace(new RegExp(`(?<=^|\\s)${escaped}(?=\\s|$)`, "gi"), "");
+      }
+      
+      cleanedText = cleanedText.replace(/\s{2,}/g, " ").trim();
     }
     // Remove leading action words
     cleanedText = cleanedText.replace(/^\s*(por\s*escrever|prescrever|receitar|renovar|suspender|prescri[çc][ãa]o)\s*/i, "");
