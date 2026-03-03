@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      categorias_medicamentos: {
+        Row: {
+          created_at: string
+          id: number
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       clinical_documents: {
         Row: {
           clinician_id: string
