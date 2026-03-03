@@ -36,7 +36,7 @@ interface PrescriptionPreviewData {
 }
 
 interface PrescriptionItemWithCategory extends PrescriptionItem {
-  _recipeCategory: "simples" | "antimicrobiano" | "controlado";
+  _recipeCategory: "simples" | "controlado";
 }
 
 export function SmartAssistantDialog({
@@ -251,8 +251,8 @@ export function SmartAssistantDialog({
       action: overallAction,
     }];
 
-    // Sort: controle_especial first, then antimicrobiano, then simples
-    const typePriority: Record<string, number> = { controle_especial: 0, antimicrobiano: 1, simples: 2 };
+    // Sort: controle_especial first, then simples
+    const typePriority: Record<string, number> = { controle_especial: 0, simples: 1 };
     allPrescriptions.sort((a, b) => (typePriority[a.compliance.recipeType] ?? 9) - (typePriority[b.compliance.recipeType] ?? 9));
 
     setPrescriptionData(allPrescriptions);
@@ -508,7 +508,6 @@ export function SmartAssistantDialog({
           const recipeLabel = (type: string) => {
             switch (type) {
               case "simples": return "Simples";
-              case "antimicrobiano": return "Antimicrobiano";
               case "controle_especial": return "Controle Especial";
               default: return type.replace("_", " ");
             }

@@ -5,7 +5,7 @@
 import { findMedication, findMedicationAsync, getMedicationTipoReceita } from "./medication-knowledge";
 import { supabase } from "@/integrations/supabase/client";
 
-export type RecipeType = "simples" | "antimicrobiano" | "controle_especial";
+export type RecipeType = "simples" | "controle_especial";
 
 export interface ComplianceInput {
   items: { medicationName: string; concentration?: string }[];
@@ -34,17 +34,6 @@ const RECIPE_CONFIG: Record<RecipeType, { templateId: string; source: string; re
     source: "Geral",
     requirements: ["Identificação do paciente", "Identificação do prescritor com CRM", "Data"],
   },
-  antimicrobiano: {
-    templateId: "receita_antimicrobiano",
-    source: "RDC_471_2021",
-    requirements: [
-      "Receita em 2 vias (1ª via retida pela farmácia)",
-      "Identificação completa do paciente",
-      "Identificação do prescritor com CRM",
-      "Validade: 10 dias",
-      "Data",
-    ],
-  },
   controle_especial: {
     templateId: "receita_controle_especial",
     source: "Portaria_344_98",
@@ -67,7 +56,7 @@ function mapIdToRecipeType(id: number): RecipeType {
     case 2: return "controle_especial";
     case 3: return "controle_especial"; // Receita Azul
     case 4: return "controle_especial"; // Receita Amarela
-    case 5: return "antimicrobiano";    // RDC 471/2021
+    case 5: return "controle_especial"; // Antimicrobianos → Especial
     default: return "simples";
   }
 }
@@ -92,8 +81,6 @@ export async function classifyPrescriptionAsync(input: ComplianceInput): Promise
       }
       if (mappedType === "controle_especial" && highestCategory !== "controle_especial") {
         highestCategory = "controle_especial";
-      } else if (mappedType === "antimicrobiano" && highestCategory === "simples") {
-        highestCategory = "antimicrobiano";
       }
     } else {
       // Fallback to local
@@ -106,8 +93,6 @@ export async function classifyPrescriptionAsync(input: ComplianceInput): Promise
       if (med.category === "controlado" && highestCategory !== "controle_especial") {
         highestCategory = "controle_especial";
         highestTipoReceitaId = 2;
-      } else if (med.category === "antimicrobiano" && highestCategory === "simples") {
-        highestCategory = "antimicrobiano";
       }
     }
 
@@ -184,12 +169,6 @@ export function classifyPrescription(input: ComplianceInput): ComplianceResult {
 
     if (med.category === "controlado" && highestCategory !== "controle_especial") {
       highestCategory = "controle_especial";
-    } else if (med.category === "antimicrobiano" && highestCategory === "simples") {
-      highestCategory = "antimicrobiano";
-    }
-
-    if (med.cautions.length > 0) {
-      warnings.push(`${med.name}: ${med.cautions[0]}`);
     }
   }
 
@@ -218,7 +197,6 @@ export function classifyPrescription(input: ComplianceInput): ComplianceResult {
 export function getRecipeTypes(): { value: RecipeType; label: string }[] {
   return [
     { value: "simples", label: "Receita Simples" },
-    { value: "antimicrobiano", label: "Receita Antimicrobiano" },
     { value: "controle_especial", label: "Receita Controle Especial" },
   ];
 }

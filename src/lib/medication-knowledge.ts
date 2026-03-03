@@ -22,7 +22,7 @@ export interface DoseVariant {
 export interface MedicationKnowledge {
   name: string;
   aliases: string[];
-  category: "simples" | "antimicrobiano" | "controlado";
+  category: "simples" | "controlado";
   defaultDosePatterns: DosePattern[];
   commonForms: string[];
   cautions: string[];
@@ -46,13 +46,13 @@ export interface MedicamentoDB {
 }
 
 // Map id_tipo_receita to our internal category
-function mapTipoReceitaToCategory(idTipoReceita: number): "simples" | "antimicrobiano" | "controlado" {
+function mapTipoReceitaToCategory(idTipoReceita: number): "simples" | "controlado" {
   switch (idTipoReceita) {
     case 1: return "simples";       // Receita Simples
     case 2: return "controlado";    // Receita de Controle Especial
     case 3: return "controlado";    // Receita Azul (psicotrópicos)
     case 4: return "controlado";    // Receita Amarela (entorpecentes)
-    case 5: return "antimicrobiano"; // RDC 471/2021
+    case 5: return "controlado";    // Antimicrobianos → Especial
     default: return "simples";
   }
 }
@@ -175,11 +175,11 @@ const MEDICATIONS_DB: MedicationKnowledge[] = [
     cautions: ["Risco de sangramento gastrointestinal", "Suspender antes de cirurgias"],
   },
 
-  // ====== ANTIMICROBIANOS ======
+  // ====== ANTIMICROBIANOS (agora classificados como controlados/especial) ======
   {
     name: "Amoxicilina",
     aliases: ["amoxil"],
-    category: "antimicrobiano",
+    category: "controlado",
     defaultDosePatterns: [
       { concentration: "500 mg", dosage: "1 cápsula de 8/8 horas", duration: "7 dias", quantity: "21 cápsulas" },
       { concentration: "875 mg", dosage: "1 comprimido de 12/12 horas", duration: "7 dias", quantity: "14 comprimidos" },
@@ -190,7 +190,7 @@ const MEDICATIONS_DB: MedicationKnowledge[] = [
   {
     name: "Azitromicina",
     aliases: ["zitromax", "astro"],
-    category: "antimicrobiano",
+    category: "controlado",
     defaultDosePatterns: [
       { concentration: "500 mg", dosage: "1 comprimido 1x ao dia", duration: "3 dias", quantity: "3 comprimidos" },
       { concentration: "500 mg", dosage: "1 comprimido 1x ao dia", duration: "5 dias", quantity: "5 comprimidos" },
@@ -201,7 +201,7 @@ const MEDICATIONS_DB: MedicationKnowledge[] = [
   {
     name: "Cefalexina",
     aliases: ["keflex"],
-    category: "antimicrobiano",
+    category: "controlado",
     defaultDosePatterns: [
       { concentration: "500 mg", dosage: "1 cápsula de 6/6 horas", duration: "7 dias", quantity: "28 cápsulas" },
     ],
@@ -211,7 +211,7 @@ const MEDICATIONS_DB: MedicationKnowledge[] = [
   {
     name: "Ciprofloxacino",
     aliases: ["cipro", "ciprobiot"],
-    category: "antimicrobiano",
+    category: "controlado",
     defaultDosePatterns: [
       { concentration: "500 mg", dosage: "1 comprimido de 12/12 horas", duration: "7 dias", quantity: "14 comprimidos" },
     ],
@@ -221,7 +221,7 @@ const MEDICATIONS_DB: MedicationKnowledge[] = [
   {
     name: "Metronidazol",
     aliases: ["flagyl"],
-    category: "antimicrobiano",
+    category: "controlado",
     defaultDosePatterns: [
       { concentration: "400 mg", dosage: "1 comprimido de 8/8 horas", duration: "7 dias", quantity: "21 comprimidos" },
       { concentration: "250 mg", dosage: "1 comprimido de 8/8 horas", duration: "7 dias", quantity: "21 comprimidos" },
@@ -232,7 +232,7 @@ const MEDICATIONS_DB: MedicationKnowledge[] = [
   {
     name: "Levofloxacino",
     aliases: ["levaquin", "tavanic"],
-    category: "antimicrobiano",
+    category: "controlado",
     defaultDosePatterns: [
       { concentration: "500 mg", dosage: "1 comprimido 1x ao dia", duration: "7 dias", quantity: "7 comprimidos" },
       { concentration: "750 mg", dosage: "1 comprimido 1x ao dia", duration: "5 dias", quantity: "5 comprimidos" },
@@ -243,7 +243,7 @@ const MEDICATIONS_DB: MedicationKnowledge[] = [
   {
     name: "Sulfametoxazol + Trimetoprima",
     aliases: ["bactrim", "bactrim f"],
-    category: "antimicrobiano",
+    category: "controlado",
     defaultDosePatterns: [
       { concentration: "800/160 mg", dosage: "1 comprimido de 12/12 horas", duration: "7 dias", quantity: "14 comprimidos" },
       { concentration: "400/80 mg", dosage: "1 comprimido de 12/12 horas", duration: "7 dias", quantity: "14 comprimidos" },
