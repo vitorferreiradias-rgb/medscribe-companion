@@ -1,4 +1,4 @@
-import { getData } from "./store";
+import { Patient } from "@/types";
 
 export interface ParsedIntent {
   intent: "agendar" | "remarcar" | "cancelar" | "nota" | "prescrever" | "buscar" | "navegar" | "desconhecido";
@@ -144,14 +144,14 @@ function extractTime(text: string): string | undefined {
 
 // --- Patient matching ---
 
-function matchPatient(text: string): { name: string; id: string } | undefined {
-  const data = getData();
+function matchPatient(text: string, patients?: Patient[]): { name: string; id: string } | undefined {
+  const list = patients ?? [];
   const lower = text.toLowerCase();
 
   // Try exact match first, then partial (first name, last name)
   let best: { name: string; id: string; score: number } | undefined;
 
-  for (const p of data.patients) {
+  for (const p of list) {
     if (p.archived) continue;
     const pLower = p.name.toLowerCase();
 
@@ -215,7 +215,7 @@ function extractFreeText(text: string, intent: string): string {
 
 // --- Main parser ---
 
-export function parseIntent(text: string): ParsedIntent {
+export function parseIntent(text: string, patients?: Patient[]): ParsedIntent {
   const trimmed = text.trim();
   if (!trimmed) return { intent: "desconhecido", rawInput: text };
 
@@ -234,7 +234,7 @@ export function parseIntent(text: string): ParsedIntent {
   };
 
   // Extract entities
-  const patient = matchPatient(trimmed);
+  const patient = matchPatient(trimmed, patients);
   if (patient) {
     result.patientName = patient.name;
     result.patientId = patient.id;

@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
+import { useAppData } from "@/hooks/useAppData";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ export function SmartAssistantDialog({
 }: SmartAssistantDialogProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const data = useAppData();
   const [inputText, setInputText] = useState("");
   const [step, setStep] = useState<DialogStep>("input");
   const [parsedResult, setParsedResult] = useState<ParsedIntent | null>(null);
@@ -204,7 +206,7 @@ export function SmartAssistantDialog({
     if (!fullText.trim()) return;
     if (isListening) stopListening();
     setInputText(fullText);
-    const intent = parseIntent(fullText);
+    const intent = parseIntent(fullText, data.patients);
     executeIntent(intent);
   }, [inputText, isListening, interimText, stopListening, executeIntent]);
 
