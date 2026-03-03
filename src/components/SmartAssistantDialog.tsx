@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, forwardRef } from "react";
 import { useAppData } from "@/hooks/useAppData";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -34,14 +34,14 @@ interface SmartAssistantDialogProps {
 
 type DialogStep = "input" | "confirm-cancel" | "result";
 
-export function SmartAssistantDialog({
+export const SmartAssistantDialog = forwardRef<HTMLDivElement, SmartAssistantDialogProps>(function SmartAssistantDialog({
   open,
   onOpenChange,
   onSchedule,
   onReschedule,
   onPrescription,
   onNavigate,
-}: SmartAssistantDialogProps) {
+}, _ref) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const data = useAppData();
@@ -341,4 +341,4 @@ export function SmartAssistantDialog({
       </DialogContent>
     </Dialog>
   );
-}
+});
