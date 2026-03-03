@@ -1,47 +1,27 @@
 
 
-# Implementar fluxo completo de prescrição direto no One Click
+# Corrigir persistencia da receita: localStorage para Supabase
 
-## Situacao Atual
-Quando o usuario diz "prescrever dipirona 500mg para Maria" no One Click, o sistema fecha o dialog e abre o `SmartPrescriptionDialog` — que tem telas intermediarias (selecao de paciente, variantes, divergencia de posologia). Isso viola o principio do One Click.
+## Problema
+A receita esta sendo gerada e exibida corretamente no preview (confirmado pelo session replay - o usuario conseguiu selecionar "Receita Controle Especial"). Porem, ao assinar, o documento e salvo em **localStorage** (`src/lib/clinical-documents.ts`) em vez de ser inserido na tabela `clinical_documents` do banco de dados. Resultado: a receita "desaparece" ao recarregar e nao aparece no prontuario do paciente.
 
-## O que sera feito
+O mesmo problema afeta o historico de medicacoes (`medication-history.ts`), tambem em localStorage.
 
-### 1. Integrar logica de prescricao diretamente no SmartAssistantDialog
-Em vez de delegar para `SmartPrescriptionDialog`, o One Click vai:
-- Parsear a medicacao com `parsePrescriptionInput()`
-- Buscar no banco local com `findMedication()` + `findDosePattern()`
-- Se o medico informou posologia, usar a dele (prioridade medico)
-- Se nao informou, usar posologia padrao da bula
-- Para medicacoes com variantes (Mounjaro, Ozempic), usar a primeira variante (esquema inicial) automaticamente
-- Classificar com `classifyPrescription()`
-- Mostrar o preview inline no proprio dialog (novo step "prescription-preview")
+## Solucao
 
-### 2. Adicionar step de preview no SmartAssistantDialog
-Novo `DialogStep`: `"prescription-preview"`. Vai renderizar o `SmartPrescriptionPreview` diretamente dentro do One Click, sem abrir outro dialog.
+### 1. Atualizar SmartPrescriptionPreview para salvar no Supabase
+- Substituir `addDocument()` (localStorage) por `supabase.from("clinical_documents").insert()`
+- Substituir `addMedicationEvent()` (localStorage) por insert na tabela de prescriptions ou clinical_documents
+- Passar `clinicianId` como prop (necessario pela tabela e RLS)
+- A tabela `clinical_documents` ja existe com as colunas: `id`, `patient_id`, `clinician_id`, `type`, `title`, `content`, `status`, `recipe_type`, `compliance` (jsonb), `signed_at`, `signed_by`, `encounter_id`, `created_at`
 
-### 3. Extrair paciente do comando de voz
-O intent-parser ja extrai o paciente. Vamos passar `patientId` + `patientName` do intent para o fluxo de prescricao, eliminando a tela de selecao de paciente.
+### 2. Atualizar SmartAssistantDialog
+- Passar `clinicianId` para o `PrescriptionPreviewData` e para o componente `SmartPrescriptionPreview`
 
-### 4. Fluxo de suspensao e renovacao
-- **Suspender**: gera documento de suspensao direto no preview
-- **Renovar**: busca ultima prescricao do paciente (funcionalidade placeholder por enquanto)
+### 3. Arquivos modificados
+- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — trocar localStorage por Supabase client
+- `src/components/SmartAssistantDialog.tsx` — passar clinicianId ao preview
 
-## Arquivos modificados
-- `src/components/SmartAssistantDialog.tsx` — logica principal de prescricao inline + novo step de preview
-- `src/components/AppLayout.tsx` — remover `onPrescription` callback (nao mais necessario, One Click resolve internamente)
-
-## Logica de decisao automatica (sem telas intermediarias)
-
-```text
-Comando → Parser extrai medicacao + concentracao + posologia
-  ├── Medico informou posologia? → usa a do medico
-  ├── Nao informou?
-  │     ├── Medicacao no banco local? → usa posologia padrao
-  │     └── Nao encontrou? → usa texto generico "conforme orientacao medica"
-  ├── Tem variantes (Mounjaro etc)? → usa primeira variante automaticamente
-  └── Classifica tipo de receita → preview direto
-```
-
-Nenhuma tela de selecao de variantes, divergencia ou posologia manual sera mostrada.
+### 4. Nao precisa de migracao
+A tabela `clinical_documents` ja existe com RLS configurada. So precisa usar o client Supabase em vez do localStorage.
 
