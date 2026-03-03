@@ -67,6 +67,7 @@ function mapIdToRecipeType(id: number): RecipeType {
     case 2: return "controle_especial";
     case 3: return "controle_especial"; // Receita Azul
     case 4: return "controle_especial"; // Receita Amarela
+    case 5: return "antimicrobiano";    // RDC 471/2021
     default: return "simples";
   }
 }

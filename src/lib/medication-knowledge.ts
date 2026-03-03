@@ -52,6 +52,7 @@ function mapTipoReceitaToCategory(idTipoReceita: number): "simples" | "antimicro
     case 2: return "controlado";    // Receita de Controle Especial
     case 3: return "controlado";    // Receita Azul (psicotrópicos)
     case 4: return "controlado";    // Receita Amarela (entorpecentes)
+    case 5: return "antimicrobiano"; // RDC 471/2021
     default: return "simples";
   }
 }
