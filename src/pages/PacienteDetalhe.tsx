@@ -7,7 +7,7 @@ import {
   Plus, CalendarIcon, Heart, MapPin, Users, Activity, Megaphone,
   AlertTriangle, FileText, Search, Copy, Clock, Stethoscope, FolderOpen,
   Camera, ImageIcon, Eye, ZoomIn, TrendingUp, Weight, StickyNote, Sparkles, Loader2,
-  User, UserRound, ArrowRight, Target,
+  User, UserRound, ArrowRight, Target, ScanSearch,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppData } from "@/hooks/useAppData";
@@ -183,6 +183,7 @@ export default function PacienteDetalhe() {
   const [photoHeight, setPhotoHeight] = useState("");
   const [photoWaist, setPhotoWaist] = useState("");
   const [photoGoal, setPhotoGoal] = useState("");
+  const [photoFocus, setPhotoFocus] = useState("");
   const [showPhotoForm, setShowPhotoForm] = useState(false);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
   const [zoomPhotoId, setZoomPhotoId] = useState<string | null>(null);
@@ -199,6 +200,7 @@ export default function PacienteDetalhe() {
   const [editHeight, setEditHeight] = useState("");
   const [editWaist, setEditWaist] = useState("");
   const [editGoal, setEditGoal] = useState("");
+  const [editFocus, setEditFocus] = useState("");
 
   const { data: dbEvolutionPhotos = [] } = useEvolutionPhotos(id);
   const addEvolutionPhotoMutation = useAddEvolutionPhoto();
@@ -219,6 +221,7 @@ export default function PacienteDetalhe() {
       height: photoHeight ? parseFloat(photoHeight) : undefined,
       waist_circumference: photoWaist ? parseFloat(photoWaist) : undefined,
       treatment_goal: photoGoal || undefined,
+      analysis_focus: photoFocus || undefined,
     });
     setPhotoLabel("");
     setPhotoDate("");
@@ -228,6 +231,7 @@ export default function PacienteDetalhe() {
     setPhotoHeight("");
     setPhotoWaist("");
     setPhotoGoal("");
+    setPhotoFocus("");
     setShowPhotoForm(false);
     e.target.value = "";
   };
@@ -261,6 +265,7 @@ export default function PacienteDetalhe() {
     setEditHeight((photo as any).height?.toString() || "");
     setEditWaist((photo as any).waist_circumference?.toString() || "");
     setEditGoal((photo as any).treatment_goal || "");
+    setEditFocus((photo as any).analysis_focus || "");
   };
 
   const saveEditPhoto = () => {
@@ -276,6 +281,7 @@ export default function PacienteDetalhe() {
         height: editHeight ? parseFloat(editHeight) : null,
         waist_circumference: editWaist ? parseFloat(editWaist) : null,
         treatment_goal: editGoal || null,
+        analysis_focus: editFocus || null,
       },
     });
     setEditingPhotoId(null);
@@ -338,6 +344,12 @@ export default function PacienteDetalhe() {
       if (after.angle) contextParts.push(`Ângulo foto depois (informado pelo médico): ${angleLabels[after.angle] || after.angle}`);
       if (before.notes) contextParts.push(`Notas antes: ${before.notes}`);
       if (after.notes) contextParts.push(`Notas depois: ${after.notes}`);
+
+      // Focal analysis mode
+      const focusText = before.analysis_focus || after.analysis_focus;
+      if (focusText) {
+        contextParts.push(`FOCO DA ANÁLISE: ${focusText}`);
+      }
 
       const patientContext = contextParts.join(". ");
 
@@ -1017,6 +1029,10 @@ export default function PacienteDetalhe() {
                                     </Select>
                                   </div>
                                   <Input placeholder="Observações" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="h-8 text-sm" />
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground mb-1 block">Foco da análise (opcional)</Label>
+                                    <Input placeholder="Ex: mancha no antebraço esquerdo" value={editFocus} onChange={(e) => setEditFocus(e.target.value)} className="h-8 text-sm" />
+                                  </div>
                                   <div className="flex gap-1.5">
                                     <Button size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); saveEditPhoto(); }}>
                                       <Check className="mr-1 h-3 w-3" /> Salvar
@@ -1118,6 +1134,11 @@ export default function PacienteDetalhe() {
                                       <StickyNote className="h-3 w-3" /> {photo.notes}
                                     </div>
                                   )}
+                                  {(photo as any).analysis_focus && (
+                                    <Badge variant="outline" className="text-[10px] gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
+                                      <ScanSearch className="h-3 w-3" /> {(photo as any).analysis_focus}
+                                    </Badge>
+                                  )}
                                 </div>
                               </>
                             )}
@@ -1174,6 +1195,10 @@ export default function PacienteDetalhe() {
                     </Select>
                   </div>
                   <Input placeholder="Observações — opcional" value={photoNotes} onChange={(e) => setPhotoNotes(e.target.value)} />
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Foco da análise (opcional)</Label>
+                    <Input placeholder="Ex: mancha no antebraço esquerdo, lesão no dorso" value={photoFocus} onChange={(e) => setPhotoFocus(e.target.value)} />
+                  </div>
                   <div className="flex items-center gap-2">
                     <label className="cursor-pointer">
                       <Button variant="default" size="sm" asChild>

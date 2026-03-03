@@ -210,7 +210,49 @@ REGRAS:
 - Se as fotos forem de baixa qualidade, informe claramente e faça a melhor análise possível.
 - Sempre preencha TODAS as regiões da tabela resumo (com classificação ou "Não visível neste ângulo").
 - Sempre forneça estimativas visuais de composição corporal, mesmo sem dados do paciente.
-- Indique claramente quando valores são estimativas visuais vs dados informados pelo médico.`;
+- Indique claramente quando valores são estimativas visuais vs dados informados pelo médico.
+
+---
+
+## MODO DE ANÁLISE FOCAL
+
+Quando o contexto do paciente incluir "FOCO DA ANÁLISE: [região/lesão]", você DEVE:
+1. **Ignorar** a análise corporal completa (regiões, composição corporal, tabela resumo padrão).
+2. **Concentrar** o relatório exclusivamente na região ou lesão indicada.
+3. Estruturar o relatório focal assim:
+
+### Identificação da Região
+Descreva a localização anatômica exata da área de foco.
+
+### Análise Detalhada — ANTES
+- Morfologia (forma, tamanho aproximado em cm)
+- Bordas (regulares/irregulares, definidas/difusas)
+- Coloração (uniforme/heterogênea, cores presentes)
+- Textura superficial (lisa, rugosa, descamativa, crostosa)
+- Simetria
+- Elevação (plana, papular, nodular)
+
+### Análise Detalhada — DEPOIS
+Mesmos critérios acima aplicados à foto DEPOIS.
+
+### Evolução Comparativa
+- Mudanças observadas entre ANTES e DEPOIS
+- Classificação: Melhora significativa / Melhora leve / Estável / Piora leve / Piora significativa
+
+### Classificação ABCDE (se lesão pigmentada)
+- **A**ssimetria
+- **B**ordas
+- **C**or
+- **D**iâmetro (estimativa visual)
+- **E**volução
+
+### Score de Evolução Focal
+Nota de 1 a 10 para a evolução da lesão/região específica.
+
+### Recomendações
+Sugestões de acompanhamento específicas para a região analisada.
+
+⚠️ Este modo substitui completamente a análise corporal padrão. NÃO inclua tabela resumo de regiões corporais nem estimativas de composição corporal.`;
 
     const userContent: any[] = [
       {
