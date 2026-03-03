@@ -7,6 +7,7 @@ import {
   Plus, CalendarIcon, Heart, MapPin, Users, Activity, Megaphone,
   AlertTriangle, FileText, Search, Copy, Clock, Stethoscope, FolderOpen,
   Camera, ImageIcon, Eye, ZoomIn, TrendingUp, Weight, StickyNote, Sparkles, Loader2,
+  User, UserRound, ArrowRight,
 } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { updatePatient, deletePatient, duplicateEncounter, deleteEncounter } from "@/lib/store";
@@ -30,6 +31,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { differenceInYears, differenceInMonths } from "date-fns";
 import { StatusBadge } from "@/components/StatusBadge";
 
 import { useToast } from "@/hooks/use-toast";
@@ -137,6 +141,9 @@ export default function PacienteDetalhe() {
   const [photoNotes, setPhotoNotes] = useState("");
   const [photoWeight, setPhotoWeight] = useState("");
   const [photoAngle, setPhotoAngle] = useState("frontal");
+  const [photoHeight, setPhotoHeight] = useState("");
+  const [photoWaist, setPhotoWaist] = useState("");
+  const [photoGoal, setPhotoGoal] = useState("");
   const [showPhotoForm, setShowPhotoForm] = useState(false);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
   const [zoomPhotoId, setZoomPhotoId] = useState<string | null>(null);
@@ -150,6 +157,9 @@ export default function PacienteDetalhe() {
   const [editWeight, setEditWeight] = useState("");
   const [editAngle, setEditAngle] = useState("frontal");
   const [editNotes, setEditNotes] = useState("");
+  const [editHeight, setEditHeight] = useState("");
+  const [editWaist, setEditWaist] = useState("");
+  const [editGoal, setEditGoal] = useState("");
 
   const { data: dbEvolutionPhotos = [] } = useEvolutionPhotos(id);
   const addEvolutionPhotoMutation = useAddEvolutionPhoto();
@@ -167,12 +177,18 @@ export default function PacienteDetalhe() {
       notes: photoNotes || undefined,
       weight: photoWeight ? parseFloat(photoWeight) : undefined,
       angle: photoAngle,
+      height: photoHeight ? parseFloat(photoHeight) : undefined,
+      waist_circumference: photoWaist ? parseFloat(photoWaist) : undefined,
+      treatment_goal: photoGoal || undefined,
     });
     setPhotoLabel("");
     setPhotoDate("");
     setPhotoNotes("");
     setPhotoWeight("");
     setPhotoAngle("frontal");
+    setPhotoHeight("");
+    setPhotoWaist("");
+    setPhotoGoal("");
     setShowPhotoForm(false);
     e.target.value = "";
   };
@@ -203,6 +219,9 @@ export default function PacienteDetalhe() {
     setEditWeight(photo.weight?.toString() || "");
     setEditAngle(photo.angle || "frontal");
     setEditNotes(photo.notes || "");
+    setEditHeight((photo as any).height?.toString() || "");
+    setEditWaist((photo as any).waist_circumference?.toString() || "");
+    setEditGoal((photo as any).treatment_goal || "");
   };
 
   const saveEditPhoto = () => {
@@ -215,6 +234,9 @@ export default function PacienteDetalhe() {
         weight: editWeight ? parseFloat(editWeight) : null,
         angle: editAngle,
         notes: editNotes || null,
+        height: editHeight ? parseFloat(editHeight) : null,
+        waist_circumference: editWaist ? parseFloat(editWaist) : null,
+        treatment_goal: editGoal || null,
       },
     });
     setEditingPhotoId(null);
@@ -240,21 +262,51 @@ export default function PacienteDetalhe() {
     setAiAnalysisLoading(true);
     setAiAnalysis(null);
     try {
-      const angleLabels: Record<string, string> = { frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lateral Direito", lateral_esquerdo: "Lateral Esquerdo", tres_quartos: "¾" };
-      const weightContext = [
-        comparePhotos[0].weight ? `Peso antes: ${comparePhotos[0].weight}kg` : "",
-        comparePhotos[1].weight ? `Peso depois: ${comparePhotos[1].weight}kg` : "",
-        (comparePhotos[0] as any).angle ? `Ângulo foto antes (informado pelo médico): ${angleLabels[(comparePhotos[0] as any).angle] || (comparePhotos[0] as any).angle}` : "",
-        (comparePhotos[1] as any).angle ? `Ângulo foto depois (informado pelo médico): ${angleLabels[(comparePhotos[1] as any).angle] || (comparePhotos[1] as any).angle}` : "",
-        comparePhotos[0].notes ? `Notas antes: ${comparePhotos[0].notes}` : "",
-        comparePhotos[1].notes ? `Notas depois: ${comparePhotos[1].notes}` : "",
-      ].filter(Boolean).join(". ");
+      const angleLabels: Record<string, string> = { frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lateral Direito", lateral_esquerdo: "Lateral Esquerdo" };
+
+      // Build enriched patient context
+      const contextParts: string[] = [];
+
+      // Auto data from patient profile
+      if (patient?.birthDate) {
+        const age = differenceInYears(new Date(), parseISO(patient.birthDate));
+        contextParts.push(`Idade: ${age} anos`);
+      }
+      if (patient?.sex) {
+        const sexLabels: Record<string, string> = { M: "Masculino", F: "Feminino", NA: "Não informado" };
+        contextParts.push(`Sexo: ${sexLabels[patient.sex] || patient.sex}`);
+      }
+      if (patient?.diagnoses?.length) {
+        contextParts.push(`Diagnósticos: ${patient.diagnoses.join(", ")}`);
+      }
+      if (patient?.drugAllergies?.length) {
+        contextParts.push(`Alergias medicamentosas: ${patient.drugAllergies.join(", ")}`);
+      }
+
+      // Photo-specific data
+      const before = comparePhotos[0] as any;
+      const after = comparePhotos[1] as any;
+
+      if (before.weight) contextParts.push(`Peso antes: ${before.weight}kg`);
+      if (after.weight) contextParts.push(`Peso depois: ${after.weight}kg`);
+      if (before.height) contextParts.push(`Altura antes: ${before.height}cm`);
+      if (after.height) contextParts.push(`Altura depois: ${after.height}cm`);
+      if (before.waist_circumference) contextParts.push(`Circunferência abdominal antes: ${before.waist_circumference}cm`);
+      if (after.waist_circumference) contextParts.push(`Circunferência abdominal depois: ${after.waist_circumference}cm`);
+      if (before.treatment_goal) contextParts.push(`Objetivo do tratamento (antes): ${before.treatment_goal}`);
+      if (after.treatment_goal) contextParts.push(`Objetivo do tratamento (depois): ${after.treatment_goal}`);
+      if (before.angle) contextParts.push(`Ângulo foto antes (informado pelo médico): ${angleLabels[before.angle] || before.angle}`);
+      if (after.angle) contextParts.push(`Ângulo foto depois (informado pelo médico): ${angleLabels[after.angle] || after.angle}`);
+      if (before.notes) contextParts.push(`Notas antes: ${before.notes}`);
+      if (after.notes) contextParts.push(`Notas depois: ${after.notes}`);
+
+      const patientContext = contextParts.join(". ");
 
       const { data, error } = await supabase.functions.invoke("evolution-compare", {
         body: {
           beforeImagePath: comparePhotos[0].image_path,
           afterImagePath: comparePhotos[1].image_path,
-          patientContext: weightContext || undefined,
+          patientContext: patientContext || undefined,
         },
       });
       if (error) throw error;
@@ -904,20 +956,34 @@ export default function PacienteDetalhe() {
                               <>
                                 <div className="space-y-2 mb-2">
                                   <Input placeholder="Descrição" value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="h-8 text-sm" />
-                                  <div className="grid grid-cols-3 gap-2">
+                                  <div className="grid grid-cols-2 gap-2">
                                     <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-8 text-sm" />
                                     <Input type="number" step="0.1" placeholder="Peso (kg)" value={editWeight} onChange={(e) => setEditWeight(e.target.value)} className="h-8 text-sm" />
-                                    <select
-                                      value={editAngle}
-                                      onChange={(e) => setEditAngle(e.target.value)}
-                                      className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                    >
-                                      <option value="frontal">Frontal</option>
-                                      <option value="posterior">Posterior</option>
-                                      <option value="lateral_direito">Lateral Dir.</option>
-                                      <option value="lateral_esquerdo">Lateral Esq.</option>
-                                      <option value="tres_quartos">¾</option>
-                                    </select>
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <Input type="number" step="0.1" placeholder="Altura (cm)" value={editHeight} onChange={(e) => setEditHeight(e.target.value)} className="h-8 text-sm" />
+                                    <Input type="number" step="0.1" placeholder="Circ. abd. (cm)" value={editWaist} onChange={(e) => setEditWaist(e.target.value)} className="h-8 text-sm" />
+                                    <Select value={editGoal} onValueChange={setEditGoal}>
+                                      <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Objetivo" /></SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="emagrecimento">Emagrecimento</SelectItem>
+                                        <SelectItem value="hipertrofia">Hipertrofia</SelectItem>
+                                        <SelectItem value="recomposicao">Recomposição</SelectItem>
+                                        <SelectItem value="pos_bariatrica">Pós-bariátrica</SelectItem>
+                                        <SelectItem value="outro">Outro</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground mb-1 block">Ângulo</Label>
+                                    <TooltipProvider delayDuration={300}>
+                                      <ToggleGroup type="single" value={editAngle} onValueChange={(v) => v && setEditAngle(v)} className="justify-start">
+                                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="frontal" aria-label="Frontal" className="h-8 w-8 p-0"><User className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Frontal</TooltipContent></Tooltip>
+                                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="posterior" aria-label="Posterior" className="h-8 w-8 p-0"><UserRound className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Posterior</TooltipContent></Tooltip>
+                                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="lateral_direito" aria-label="Lateral Dir." className="h-8 w-8 p-0"><ArrowRight className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Lateral Dir.</TooltipContent></Tooltip>
+                                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="lateral_esquerdo" aria-label="Lateral Esq." className="h-8 w-8 p-0"><ArrowLeft className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Lateral Esq.</TooltipContent></Tooltip>
+                                      </ToggleGroup>
+                                    </TooltipProvider>
                                   </div>
                                   <Input placeholder="Observações" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="h-8 text-sm" />
                                   <div className="flex gap-1.5">
@@ -987,7 +1053,7 @@ export default function PacienteDetalhe() {
                                 <div className="flex flex-wrap items-center gap-3 mt-2">
                                   {(photo as any).angle && (
                                     <Badge variant="outline" className="text-[10px]">
-                                      {({ frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lat. Dir.", lateral_esquerdo: "Lat. Esq.", tres_quartos: "¾" } as Record<string,string>)[(photo as any).angle] || (photo as any).angle}
+                                      {({ frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lat. Dir.", lateral_esquerdo: "Lat. Esq." } as Record<string,string>)[(photo as any).angle] || (photo as any).angle}
                                     </Badge>
                                   )}
                                   {photo.weight && (
@@ -1045,20 +1111,34 @@ export default function PacienteDetalhe() {
                 <div className="rounded-xl border border-border/50 p-4 space-y-3 bg-muted/10">
                   <p className="text-sm font-medium">Nova foto de evolução</p>
                   <Input placeholder="Descrição (ex: 3ª sessão, pós-procedimento)" value={photoLabel} onChange={(e) => setPhotoLabel(e.target.value)} />
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <Input type="date" value={photoDate} onChange={(e) => setPhotoDate(e.target.value)} placeholder="Data" />
                     <Input type="number" step="0.1" placeholder="Peso (kg) — opcional" value={photoWeight} onChange={(e) => setPhotoWeight(e.target.value)} />
-                    <select
-                      value={photoAngle}
-                      onChange={(e) => setPhotoAngle(e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    >
-                      <option value="frontal">Frontal</option>
-                      <option value="posterior">Posterior</option>
-                      <option value="lateral_direito">Lateral Direito</option>
-                      <option value="lateral_esquerdo">Lateral Esquerdo</option>
-                      <option value="tres_quartos">¾ (Três Quartos)</option>
-                    </select>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <Input type="number" step="0.1" placeholder="Altura (cm)" value={photoHeight} onChange={(e) => setPhotoHeight(e.target.value)} />
+                    <Input type="number" step="0.1" placeholder="Circ. abd. (cm)" value={photoWaist} onChange={(e) => setPhotoWaist(e.target.value)} />
+                    <Select value={photoGoal} onValueChange={setPhotoGoal}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Objetivo" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="emagrecimento">Emagrecimento</SelectItem>
+                        <SelectItem value="hipertrofia">Hipertrofia</SelectItem>
+                        <SelectItem value="recomposicao">Recomposição</SelectItem>
+                        <SelectItem value="pos_bariatrica">Pós-bariátrica</SelectItem>
+                        <SelectItem value="outro">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Ângulo</Label>
+                    <TooltipProvider delayDuration={300}>
+                      <ToggleGroup type="single" value={photoAngle} onValueChange={(v) => v && setPhotoAngle(v)} className="justify-start">
+                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="frontal" aria-label="Frontal" className="h-9 w-9 p-0"><User className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Frontal</TooltipContent></Tooltip>
+                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="posterior" aria-label="Posterior" className="h-9 w-9 p-0"><UserRound className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Posterior</TooltipContent></Tooltip>
+                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="lateral_direito" aria-label="Lateral Dir." className="h-9 w-9 p-0"><ArrowRight className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Lateral Dir.</TooltipContent></Tooltip>
+                        <Tooltip><TooltipTrigger asChild><ToggleGroupItem value="lateral_esquerdo" aria-label="Lateral Esq." className="h-9 w-9 p-0"><ArrowLeft className="h-4 w-4" /></ToggleGroupItem></TooltipTrigger><TooltipContent>Lateral Esq.</TooltipContent></Tooltip>
+                      </ToggleGroup>
+                    </TooltipProvider>
                   </div>
                   <Input placeholder="Observações — opcional" value={photoNotes} onChange={(e) => setPhotoNotes(e.target.value)} />
                   <div className="flex items-center gap-2">

@@ -55,7 +55,6 @@ Antes de qualquer análise, identifique o ângulo/perfil de CADA foto:
 - **Frontal**: rosto, peito e abdômen visíveis
 - **Posterior**: costas, escápulas e glúteos visíveis
 - **Lateral direito / Lateral esquerdo**: perfil do corpo visível
-- **¾ (três quartos)**: ângulo intermediário entre frontal e lateral
 
 Declare os ângulos identificados no início do relatório:
 
@@ -169,6 +168,35 @@ Baseie-se exclusivamente nas estimativas visuais da seção anterior. Compare as
 
 ## Recomendações de Acompanhamento
 Sugira pontos específicos para o médico acompanhar nas próximas avaliações com base nas mudanças observadas.
+
+---
+
+## ALERTAS CUTÂNEOS
+
+Ao analisar a seção de Pele, observe e alerte sobre:
+- Eritema difuso ou localizado
+- Urticária ou pápulas
+- Edema visível
+- Lesões pigmentadas novas ou alteradas (forma irregular, bordas assimétricas, variação de cor)
+- Padrões compatíveis com dermatite (atópica, de contato, seborreica)
+- Textura anormal (ressecamento extremo, descamação, liquenificação)
+- Cicatrizes não previamente documentadas
+- Celulite infecciosa vs estética
+- Acne (localização, severidade, tipo — comedonal, inflamatória, cística)
+
+Se o paciente possui alergias medicamentosas informadas, correlacione achados cutâneos
+com possíveis reações alérgicas e destaque como ⚠️ ALERTA.
+
+---
+
+## USO DE DADOS CLÍNICOS
+
+Quando dados clínicos do paciente forem fornecidos no contexto:
+- **Idade e Sexo**: Ajuste as estimativas de composição corporal e as faixas de referência de acordo com o perfil demográfico.
+- **Diagnósticos**: Considere condições pré-existentes que possam afetar a aparência corporal (ex: hipotireoidismo, lipodistrofia, síndrome de Cushing).
+- **Alergias medicamentosas**: Correlacione achados cutâneos com possíveis reações adversas.
+- **Altura e Circunferência abdominal**: Utilize para estimativas mais precisas de IMC e relação cintura-altura.
+- **Objetivo do tratamento**: Direcione as recomendações de acompanhamento de acordo com o objetivo informado (emagrecimento, hipertrofia, etc).
 
 ---
 

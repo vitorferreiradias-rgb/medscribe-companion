@@ -189,11 +189,14 @@ export type Database = {
           created_at: string
           date: string
           encounter_id: string | null
+          height: number | null
           id: string
           image_path: string
           label: string
           notes: string | null
           patient_id: string
+          treatment_goal: string | null
+          waist_circumference: number | null
           weight: number | null
         }
         Insert: {
@@ -201,11 +204,14 @@ export type Database = {
           created_at?: string
           date?: string
           encounter_id?: string | null
+          height?: number | null
           id?: string
           image_path: string
           label?: string
           notes?: string | null
           patient_id: string
+          treatment_goal?: string | null
+          waist_circumference?: number | null
           weight?: number | null
         }
         Update: {
@@ -213,11 +219,14 @@ export type Database = {
           created_at?: string
           date?: string
           encounter_id?: string | null
+          height?: number | null
           id?: string
           image_path?: string
           label?: string
           notes?: string | null
           patient_id?: string
+          treatment_goal?: string | null
+          waist_circumference?: number | null
           weight?: number | null
         }
         Relationships: [

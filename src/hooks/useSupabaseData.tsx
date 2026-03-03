@@ -419,6 +419,9 @@ export function useAddEvolutionPhoto() {
       notes,
       weight,
       angle,
+      height,
+      waist_circumference,
+      treatment_goal,
     }: {
       patientId: string;
       file: File;
@@ -427,6 +430,9 @@ export function useAddEvolutionPhoto() {
       notes?: string;
       weight?: number;
       angle?: string;
+      height?: number;
+      waist_circumference?: number;
+      treatment_goal?: string;
     }) => {
       // Upload file to storage
       const ext = file.name.split(".").pop() || "jpg";
@@ -445,6 +451,9 @@ export function useAddEvolutionPhoto() {
         notes: notes || null,
         weight: weight || null,
         angle: angle || "frontal",
+        height: height || null,
+        waist_circumference: waist_circumference || null,
+        treatment_goal: treatment_goal || null,
       } as any).select().single();
       if (error) throw error;
       return data;
@@ -463,7 +472,7 @@ export function useUpdateEvolutionPhoto() {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: { label?: string; date?: string; weight?: number | null; angle?: string; notes?: string | null } }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: { label?: string; date?: string; weight?: number | null; angle?: string; notes?: string | null; height?: number | null; waist_circumference?: number | null; treatment_goal?: string | null } }) => {
       const { error } = await supabase.from("evolution_photos").update(updates as any).eq("id", id);
       if (error) throw error;
     },
