@@ -185,6 +185,7 @@ export type Database = {
       }
       evolution_photos: {
         Row: {
+          ai_analysis: string | null
           analysis_focus: string | null
           angle: string | null
           created_at: string
@@ -203,6 +204,7 @@ export type Database = {
           weight: number | null
         }
         Insert: {
+          ai_analysis?: string | null
           analysis_focus?: string | null
           angle?: string | null
           created_at?: string
@@ -221,6 +223,7 @@ export type Database = {
           weight?: number | null
         }
         Update: {
+          ai_analysis?: string | null
           analysis_focus?: string | null
           angle?: string | null
           created_at?: string
