@@ -252,6 +252,15 @@ Nota de 1 a 10 para a evolução da lesão/região específica.
 ### Recomendações
 Sugestões de acompanhamento específicas para a região analisada.
 
+### Diagnósticos Diferenciais Sugeridos
+
+Com base na análise visual da lesão/região e nas observações clínicas fornecidas (sintomas como ardor, queimação, febre, etc.), liste de 3 a 5 diagnósticos diferenciais possíveis, ordenados do mais provável ao menos provável. Para cada um, inclua:
+- **Nome do diagnóstico**
+- **Justificativa visual/clínica**: por que os achados visuais e sintomas são compatíveis
+- **Próximos passos sugeridos**: exames ou avaliações recomendadas para confirmar/descartar
+
+⚠️ **IMPORTANTE**: Estas são sugestões baseadas em análise visual e dados clínicos limitados. NÃO constituem diagnóstico definitivo. O médico deve correlacionar com anamnese completa, exame físico presencial e exames complementares.
+
 ⚠️ Este modo substitui completamente a análise corporal padrão. NÃO inclua tabela resumo de regiões corporais nem estimativas de composição corporal.`;
 
     const userContent: any[] = [

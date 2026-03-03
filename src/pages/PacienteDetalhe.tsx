@@ -210,6 +210,11 @@ export default function PacienteDetalhe() {
   const handleAddEvolutionPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !patient || !id) return;
+    if (photoAngle === "outro" && !photoFocus.trim()) {
+      toast({ title: "Campo obrigatório", description: "Descreva o que está sendo fotografado quando o ângulo é 'Outro'.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
     addEvolutionPhotoMutation.mutate({
       patientId: id,
       file,
@@ -307,7 +312,7 @@ export default function PacienteDetalhe() {
     setAiAnalysisLoading(true);
     setAiAnalysis(null);
     try {
-      const angleLabels: Record<string, string> = { frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lateral Direito", lateral_esquerdo: "Lateral Esquerdo" };
+      const angleLabels: Record<string, string> = { frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lateral Direito", lateral_esquerdo: "Lateral Esquerdo", outro: "Outro (focal)" };
 
       // Build enriched patient context
       const contextParts: string[] = [];
@@ -345,9 +350,15 @@ export default function PacienteDetalhe() {
       if (before.notes) contextParts.push(`Notas antes: ${before.notes}`);
       if (after.notes) contextParts.push(`Notas depois: ${after.notes}`);
 
-      // Focal analysis mode
+      // Focal analysis mode — triggered automatically when angle is "outro"
+      const isFocal = before.angle === "outro" || after.angle === "outro";
       const focusText = before.analysis_focus || after.analysis_focus;
-      if (focusText) {
+      if (isFocal && focusText) {
+        contextParts.push(`FOCO DA ANÁLISE: ${focusText}`);
+        // Include clinical observations for focal mode
+        if (before.notes) contextParts.push(`Observações clínicas (antes): ${before.notes}`);
+        if (after.notes) contextParts.push(`Observações clínicas (depois): ${after.notes}`);
+      } else if (focusText) {
         contextParts.push(`FOCO DA ANÁLISE: ${focusText}`);
       }
 
@@ -1018,21 +1029,24 @@ export default function PacienteDetalhe() {
                                    <GoalCheckboxGroup value={editGoal} onChange={setEditGoal} compact />
                                   <div>
                                     <Label className="text-xs text-muted-foreground mb-1 block">Ângulo</Label>
-                                    <Select value={editAngle} onValueChange={setEditAngle}>
+                                    <Select value={editAngle} onValueChange={(v) => { setEditAngle(v); if (v !== "outro") setEditFocus(""); }}>
                                       <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Ângulo" /></SelectTrigger>
                                       <SelectContent>
                                         <SelectItem value="frontal">Frontal</SelectItem>
                                         <SelectItem value="posterior">Posterior</SelectItem>
                                         <SelectItem value="lateral_direito">Lateral Dir.</SelectItem>
                                         <SelectItem value="lateral_esquerdo">Lateral Esq.</SelectItem>
+                                        <SelectItem value="outro">Outro</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </div>
+                                  {editAngle === "outro" && (
+                                    <div>
+                                      <Label className="text-xs text-muted-foreground mb-1 block">O que está sendo fotografado? *</Label>
+                                      <Input placeholder="Ex: mancha no braço direito, lesão no dorso" value={editFocus} onChange={(e) => setEditFocus(e.target.value)} className="h-8 text-sm" />
+                                    </div>
+                                  )}
                                   <Input placeholder="Observações" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="h-8 text-sm" />
-                                  <div>
-                                    <Label className="text-xs text-muted-foreground mb-1 block">Foco da análise (opcional)</Label>
-                                    <Input placeholder="Ex: mancha no antebraço esquerdo" value={editFocus} onChange={(e) => setEditFocus(e.target.value)} className="h-8 text-sm" />
-                                  </div>
                                   <div className="flex gap-1.5">
                                     <Button size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); saveEditPhoto(); }}>
                                       <Check className="mr-1 h-3 w-3" /> Salvar
@@ -1098,9 +1112,14 @@ export default function PacienteDetalhe() {
 
                                 {/* Metadata */}
                                 <div className="flex flex-wrap items-center gap-3 mt-2">
-                                  {(photo as any).angle && (
+                                  {(photo as any).angle && (photo as any).angle !== "outro" && (
                                     <Badge variant="outline" className="text-[10px]">
                                       {({ frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lat. Dir.", lateral_esquerdo: "Lat. Esq." } as Record<string,string>)[(photo as any).angle] || (photo as any).angle}
+                                    </Badge>
+                                  )}
+                                  {(photo as any).angle === "outro" && (photo as any).analysis_focus && (
+                                    <Badge variant="outline" className="text-[10px] gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
+                                      <ScanSearch className="h-3 w-3" /> {(photo as any).analysis_focus}
                                     </Badge>
                                   )}
                                   {photo.weight && (
@@ -1134,7 +1153,7 @@ export default function PacienteDetalhe() {
                                       <StickyNote className="h-3 w-3" /> {photo.notes}
                                     </div>
                                   )}
-                                  {(photo as any).analysis_focus && (
+                                  {(photo as any).angle !== "outro" && (photo as any).analysis_focus && (
                                     <Badge variant="outline" className="text-[10px] gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
                                       <ScanSearch className="h-3 w-3" /> {(photo as any).analysis_focus}
                                     </Badge>
@@ -1184,21 +1203,24 @@ export default function PacienteDetalhe() {
                   <GoalCheckboxGroup value={photoGoal} onChange={setPhotoGoal} />
                   <div>
                     <Label className="text-xs text-muted-foreground mb-1 block">Ângulo</Label>
-                    <Select value={photoAngle} onValueChange={setPhotoAngle}>
+                    <Select value={photoAngle} onValueChange={(v) => { setPhotoAngle(v); if (v !== "outro") setPhotoFocus(""); }}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione o ângulo" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="frontal">Frontal</SelectItem>
                         <SelectItem value="posterior">Posterior</SelectItem>
                         <SelectItem value="lateral_direito">Lateral Dir.</SelectItem>
                         <SelectItem value="lateral_esquerdo">Lateral Esq.</SelectItem>
+                        <SelectItem value="outro">Outro</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <Input placeholder="Observações — opcional" value={photoNotes} onChange={(e) => setPhotoNotes(e.target.value)} />
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-1 block">Foco da análise (opcional)</Label>
-                    <Input placeholder="Ex: mancha no antebraço esquerdo, lesão no dorso" value={photoFocus} onChange={(e) => setPhotoFocus(e.target.value)} />
-                  </div>
+                  {photoAngle === "outro" && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1 block">O que está sendo fotografado? *</Label>
+                      <Input placeholder="Ex: mancha no braço direito, lesão no dorso" value={photoFocus} onChange={(e) => setPhotoFocus(e.target.value)} />
+                    </div>
+                  )}
+                  <Input placeholder="Observações — opcional (ex: ardor, queimação e febre há 3 dias)" value={photoNotes} onChange={(e) => setPhotoNotes(e.target.value)} />
                   <div className="flex items-center gap-2">
                     <label className="cursor-pointer">
                       <Button variant="default" size="sm" asChild>

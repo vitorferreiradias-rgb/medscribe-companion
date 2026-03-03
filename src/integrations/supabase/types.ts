@@ -190,6 +190,8 @@ export type Database = {
           created_at: string
           date: string
           encounter_id: string | null
+          focus_x: number | null
+          focus_y: number | null
           height: number | null
           id: string
           image_path: string
@@ -206,6 +208,8 @@ export type Database = {
           created_at?: string
           date?: string
           encounter_id?: string | null
+          focus_x?: number | null
+          focus_y?: number | null
           height?: number | null
           id?: string
           image_path: string
@@ -222,6 +226,8 @@ export type Database = {
           created_at?: string
           date?: string
           encounter_id?: string | null
+          focus_x?: number | null
+          focus_y?: number | null
           height?: number | null
           id?: string
           image_path?: string
