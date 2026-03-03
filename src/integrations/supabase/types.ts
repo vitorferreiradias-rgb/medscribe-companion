@@ -308,6 +308,72 @@ export type Database = {
         }
         Relationships: []
       }
+      medicamentos: {
+        Row: {
+          apresentacao: string | null
+          contraindicacoes: string | null
+          created_at: string
+          dosagem_padrao: string
+          efeitos_colaterais: string | null
+          forma_administracao: string
+          id: number
+          id_categoria: number
+          id_tipo_receita: number
+          indicacoes: string | null
+          interacoes: string | null
+          nome_comercial: string
+          principio_ativo: string
+          updated_at: string
+        }
+        Insert: {
+          apresentacao?: string | null
+          contraindicacoes?: string | null
+          created_at?: string
+          dosagem_padrao: string
+          efeitos_colaterais?: string | null
+          forma_administracao: string
+          id?: never
+          id_categoria: number
+          id_tipo_receita: number
+          indicacoes?: string | null
+          interacoes?: string | null
+          nome_comercial: string
+          principio_ativo: string
+          updated_at?: string
+        }
+        Update: {
+          apresentacao?: string | null
+          contraindicacoes?: string | null
+          created_at?: string
+          dosagem_padrao?: string
+          efeitos_colaterais?: string | null
+          forma_administracao?: string
+          id?: never
+          id_categoria?: number
+          id_tipo_receita?: number
+          indicacoes?: string | null
+          interacoes?: string | null
+          nome_comercial?: string
+          principio_ativo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medicamentos_id_categoria_fkey"
+            columns: ["id_categoria"]
+            isOneToOne: false
+            referencedRelation: "categorias_medicamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "medicamentos_id_tipo_receita_fkey"
+            columns: ["id_tipo_receita"]
+            isOneToOne: false
+            referencedRelation: "tipos_receita"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medication_events: {
         Row: {
           clinician_id: string
