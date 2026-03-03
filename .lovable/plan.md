@@ -1,34 +1,38 @@
 
 
-# Adicionar edição de dados nas fotos de evolução
+# Remover ¾ e adicionar ícones nos seletores de ângulo
 
 ## O que muda
 
-Cada foto na timeline de evolução terá um botão de editar (icone de lápis) que abre um formulário inline para alterar descrição, data, peso, ângulo e observações — sem precisar excluir e recriar a foto.
+- Remove a opção "¾ (Três Quartos)" de todos os seletores de ângulo e do prompt da IA
+- Adiciona ícones Lucide ao lado de cada opção de ângulo para tornar visualmente descritivo
+- Troca os `<select>` nativos por botões visuais (toggle group) com ícone + texto
 
 ## Mudanças
 
-### 1. Hook de atualização (`src/hooks/useSupabaseData.tsx`)
+### 1. `src/pages/PacienteDetalhe.tsx`
 
-Criar `useUpdateEvolutionPhoto` — uma mutation que faz `UPDATE` na tabela `evolution_photos` pelos campos editáveis (`label`, `date`, `weight`, `angle`, `notes`) e invalida o cache.
+**3 locais** onde ângulos aparecem:
 
-### 2. UI de edição inline (`src/pages/PacienteDetalhe.tsx`)
+1. **Formulário de upload** (~linha 1051): trocar `<select>` por grupo de botões visuais com ícones:
+   - `User` → Frontal
+   - `UserCheck` (ou similar) → Posterior  
+   - `ArrowRight` → Lateral Dir.
+   - `ArrowLeft` → Lateral Esq.
 
-- Adicionar estado `editingPhotoId` para controlar qual foto está em modo de edição
-- Adicionar um botão de editar (icone `Pencil`) ao lado dos botões existentes (Comparar, Ampliar, Excluir)
-- Quando ativo, substituir o header e metadata da foto por inputs editáveis:
-  - Input para descrição (label)
-  - Input date para data
-  - Input number para peso
-  - Select para ângulo (mesmas opções do formulário de upload)
-  - Input para observações
-- Botões "Salvar" e "Cancelar" no rodapé do formulário de edição
-- Ao salvar, chamar `useUpdateEvolutionPhoto` e sair do modo de edição
+2. **Formulário de edição inline** (~linha 910): mesma troca
+
+3. **Badge de exibição** (~linha 990): remover referência a `tres_quartos`
+
+4. **Contexto da IA** (~linha 243): remover `tres_quartos` do `angleLabels`
+
+### 2. `supabase/functions/evolution-compare/index.ts`
+
+Remover menção a "¾ (três quartos)" do `systemPrompt` — manter apenas Frontal, Posterior, Lateral direito, Lateral esquerdo.
 
 ### Seção técnica
 
-- Nenhuma migração de banco necessária — os campos já existem na tabela
-- Nenhuma mudança em RLS — a policy `ALL` existente já cobre `UPDATE`
-- O hook segue o mesmo padrão dos outros `useUpdate*` já existentes no arquivo
-- Estados temporários de edição: `editingPhotoId`, `editLabel`, `editDate`, `editWeight`, `editAngle`, `editNotes`
+- Ícones Lucide disponíveis: `User`, `PersonStanding`, `ArrowLeft`, `ArrowRight` (ou similares que representem orientação corporal)
+- Os botões de ângulo usarão estilo toggle: borda destacada quando selecionado, visual compacto
+- Sem mudanças no banco — o campo `angle` continua sendo texto livre, apenas os valores possíveis mudam no frontend
 
