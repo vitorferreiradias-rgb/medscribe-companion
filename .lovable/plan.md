@@ -1,41 +1,44 @@
 
 
-# Modo de análise focal (lesão/região específica)
+# Ângulo "Outro" com análise focal integrada
 
 ## Ideia
 
-Adicionar um campo opcional **"Foco da análise"** no formulário de upload e edição de fotos. Quando preenchido, a IA adapta o relatório para focar naquela região/lesão específica em vez de fazer análise corpo inteiro.
+Adicionar a opção **"Outro"** no select de Ângulo. Ao selecionar "Outro", aparece um campo de texto para descrever o que está sendo fotografado (ex: "mancha no braço direito", "lesão no dorso"). Isso substitui o campo separado "Foco da análise" — fica tudo integrado no fluxo do ângulo, mais simples e intuitivo.
 
-## Como funciona para o usuário
+O campo **Observações** já existe e serve para o médico descrever sintomas (ex: "paciente sente ardor, queimação e febre há 3 dias"). Quando o ângulo for "Outro", a IA recebe tanto a descrição do foco quanto as observações e gera um relatório dermatológico/focal com sugestão diagnóstica.
 
-1. Ao subir uma foto, o médico vê um campo de texto opcional: **"Foco da análise (ex: mancha no braço direito, lesão no dorso)"**
-2. Se preenchido, ao comparar fotos, a IA gera um relatório **dermatológico focado** naquela região em vez do relatório corporal completo
-3. Se vazio, comportamento atual (análise corpo inteiro)
+## Como funciona
+
+1. Médico seleciona **Ângulo → Outro**
+2. Aparece campo: "O que está sendo fotografado? (ex: mancha no braço direito)"
+3. Médico preenche **Observações**: "ardor, queimação e febre há 3 dias"
+4. Sobe a foto
+5. Ao comparar com IA, o sistema detecta ângulo "outro" e ativa modo focal automaticamente — gera relatório dermatológico com sugestão diagnóstica
 
 ## Mudanças
 
-### 1. Banco de dados — migração
-Adicionar coluna `analysis_focus` (text, nullable) à tabela `evolution_photos`.
+### 1. `src/pages/PacienteDetalhe.tsx`
 
-### 2. `src/pages/PacienteDetalhe.tsx`
+- **Select de Ângulo** (upload e edição): adicionar `<SelectItem value="outro">Outro</SelectItem>`
+- **Campo condicional**: quando `photoAngle === "outro"`, mostrar `<Input>` com placeholder "O que está sendo fotografado? Ex: mancha no braço direito" — o valor vai para `analysis_focus`
+- **Remover** o campo separado "Foco da análise (opcional)" que existe hoje — fica redundante
+- **`handleAiCompare`**: quando ângulo for "outro", montar contexto focal automaticamente usando `analysis_focus` + `notes` (observações)
+- **Timeline badge**: quando ângulo for "outro" e `analysis_focus` preenchido, exibir badge com ícone `ScanSearch` e o texto do foco
 
-- **Formulário de upload**: adicionar `<Input>` com placeholder "Foco da análise — ex: mancha no antebraço esquerdo" (opcional)
-- **Formulário de edição inline**: mesmo campo
-- **Badge na timeline**: se `analysis_focus` preenchido, exibir badge com ícone `Focus` e o texto
-- **Contexto da IA** (`handleAiCompare`): se `analysis_focus` estiver preenchido em qualquer uma das fotos, incluir no `patientContext` e sinalizar modo focal
+### 2. Edge Function `evolution-compare/index.ts`
 
-### 3. `src/hooks/useSupabaseData.tsx`
-Incluir `analysis_focus` nas mutations de add e update.
+- O prompt já tem o modo focal implementado (detecta "FOCO DA ANÁLISE:")
+- Adicionar instrução para que, no modo focal, a IA também **sugira diagnósticos diferenciais** com base na imagem e nas observações clínicas fornecidas, deixando claro que são sugestões e não diagnósticos definitivos
 
-### 4. Edge Function `evolution-compare/index.ts`
-Adicionar ao `systemPrompt` uma instrução condicional:
-
-> Quando o contexto incluir "FOCO DA ANÁLISE: [região]", concentre o relatório exclusivamente nessa região. Substitua a análise corporal completa por uma análise dermatológica detalhada da área indicada, incluindo: morfologia da lesão, bordas, coloração, textura, simetria, evolução entre as fotos, e classificação ABCDE se aplicável a lesões pigmentadas.
+### 3. Sem mudança no banco
+- Coluna `analysis_focus` já existe
+- Coluna `angle` já aceita texto livre
 
 ### Seção técnica
 
-- Estado: `photoFocus` / `editFocus` (strings)
-- Coluna `analysis_focus` text nullable — sem breaking change
-- A IA decide automaticamente o modo (focal vs corpo inteiro) com base na presença do campo no contexto
-- Ícone Lucide: `ScanSearch` ou `Focus` para o badge
+- Estado `photoFocus` / `editFocus` já existem — reutilizados
+- Quando `photoAngle === "outro"`, campo `analysis_focus` fica obrigatório (validar antes do upload)
+- Quando `photoAngle !== "outro"`, `analysis_focus` é limpo automaticamente
+- O `angleLabels` no contexto da IA recebe `outro: "Outro (focal)"`
 
