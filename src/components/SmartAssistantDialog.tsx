@@ -84,6 +84,7 @@ export function SmartAssistantDialog({
 
   // Build prescription preview data directly from parsed intent
   const buildPrescriptionPreview = useCallback(async (intent: ParsedIntent) => {
+    try {
     const clinician = data.clinicians?.[0];
     if (!clinician) {
       showResult("Perfil de médico não encontrado. Configure seu perfil primeiro.", "error");
@@ -139,7 +140,9 @@ export function SmartAssistantDialog({
 
       if (!parsed.medicationName) continue;
 
+      console.log("[OneClick] Buscando medicação no banco:", parsed.medicationName);
       const med = await findMedicationAsync(parsed.medicationName);
+      console.log("[OneClick] Resultado da busca:", med?.name, med?.category, med ? "ENCONTRADO" : "NÃO ENCONTRADO");
       
       let finalDosage = parsed.dosage || "";
       let finalConcentration = parsed.concentration || "";
@@ -209,9 +212,13 @@ export function SmartAssistantDialog({
       action: overallAction,
     });
     setStep("prescription-preview");
+    } catch (err) {
+      console.error("[OneClick] Erro ao montar prescrição:", err);
+      showResult("Erro ao processar prescrição. Tente novamente.", "error");
+    }
   }, [data.clinicians]);
 
-  const executeIntent = useCallback((intent: ParsedIntent) => {
+  const executeIntent = useCallback(async (intent: ParsedIntent) => {
     setParsedResult(intent);
 
     switch (intent.intent) {
@@ -295,7 +302,7 @@ export function SmartAssistantDialog({
       }
 
       case "prescrever": {
-        buildPrescriptionPreview(intent);
+        await buildPrescriptionPreview(intent);
         break;
       }
 
@@ -329,13 +336,13 @@ export function SmartAssistantDialog({
     }
   }, [onSchedule, onReschedule, onNavigate, navigate, toast, buildPrescriptionPreview]);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     const fullText = isListening && interimText ? inputText + " " + interimText : inputText;
     if (!fullText.trim()) return;
     if (isListening) stopListening();
     setInputText(fullText);
     const intent = parseIntent(fullText, data.patients);
-    executeIntent(intent);
+    await executeIntent(intent);
   }, [inputText, isListening, interimText, stopListening, executeIntent, data.patients]);
 
   const handleStopAndProcess = useCallback(() => {
