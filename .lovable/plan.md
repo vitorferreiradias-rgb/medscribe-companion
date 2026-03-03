@@ -1,45 +1,41 @@
 
 
-# Marcação visual na foto para análise focal
+# Modo de análise focal (lesão/região específica)
 
 ## Ideia
 
-Quando o campo "Foco da análise" estiver preenchido, permitir que o médico clique na foto para colocar um marcador (pin/círculo) indicando a localização exata da lesão/região. As coordenadas (percentuais x,y) são salvas no banco e enviadas à IA como contexto adicional, além de serem exibidas visualmente na timeline.
+Adicionar um campo opcional **"Foco da análise"** no formulário de upload e edição de fotos. Quando preenchido, a IA adapta o relatório para focar naquela região/lesão específica em vez de fazer análise corpo inteiro.
 
-## Como funciona
+## Como funciona para o usuário
 
-1. Ao preencher "Foco da análise" no upload ou edição, aparece um botão "Marcar na foto"
-2. Ao clicar, a foto abre em modo de marcação — o médico clica no ponto desejado
-3. Um marcador vermelho pulsante aparece no local clicado (coordenadas relativas em %)
-4. O marcador é salvo e exibido na timeline sobre a foto
-5. Na comparação IA, as coordenadas são incluídas no contexto (ex: "Localização: 35% da esquerda, 60% do topo")
+1. Ao subir uma foto, o médico vê um campo de texto opcional: **"Foco da análise (ex: mancha no braço direito, lesão no dorso)"**
+2. Se preenchido, ao comparar fotos, a IA gera um relatório **dermatológico focado** naquela região em vez do relatório corporal completo
+3. Se vazio, comportamento atual (análise corpo inteiro)
 
 ## Mudanças
 
 ### 1. Banco de dados — migração
-Adicionar colunas `focus_x` (numeric, nullable) e `focus_y` (numeric, nullable) à tabela `evolution_photos` — coordenadas percentuais (0-100).
+Adicionar coluna `analysis_focus` (text, nullable) à tabela `evolution_photos`.
 
 ### 2. `src/pages/PacienteDetalhe.tsx`
-- Novos estados: `photoFocusX/Y`, `editFocusX/Y`
-- **Upload form**: quando `photoFocus` preenchido, mostrar preview da foto com overlay clicável para definir o ponto. Exibir marcador no ponto clicado.
-- **Edição inline**: mesmo comportamento
-- **Timeline**: renderizar marcador sobre a foto quando `focus_x/y` existirem
-- **handleAiCompare**: incluir coordenadas no contexto enviado à IA
+
+- **Formulário de upload**: adicionar `<Input>` com placeholder "Foco da análise — ex: mancha no antebraço esquerdo" (opcional)
+- **Formulário de edição inline**: mesmo campo
+- **Badge na timeline**: se `analysis_focus` preenchido, exibir badge com ícone `Focus` e o texto
+- **Contexto da IA** (`handleAiCompare`): se `analysis_focus` estiver preenchido em qualquer uma das fotos, incluir no `patientContext` e sinalizar modo focal
 
 ### 3. `src/hooks/useSupabaseData.tsx`
-Incluir `focus_x` e `focus_y` nas mutations de add e update.
+Incluir `analysis_focus` nas mutations de add e update.
 
-### 4. `src/components/EvolutionPhotoImage.tsx`
-Adicionar prop opcional `marker?: { x: number; y: number }` que renderiza um ponto vermelho pulsante na posição indicada (CSS absolute com left/top em %).
+### 4. Edge Function `evolution-compare/index.ts`
+Adicionar ao `systemPrompt` uma instrução condicional:
 
-### 5. Edge Function — sem mudança no código
-O contexto textual já é passado via `patientContext`. As coordenadas serão adicionadas como texto descritivo.
+> Quando o contexto incluir "FOCO DA ANÁLISE: [região]", concentre o relatório exclusivamente nessa região. Substitua a análise corporal completa por uma análise dermatológica detalhada da área indicada, incluindo: morfologia da lesão, bordas, coloração, textura, simetria, evolução entre as fotos, e classificação ABCDE se aplicável a lesões pigmentadas.
 
 ### Seção técnica
 
-- Coordenadas armazenadas como percentuais (0-100) para independência de resolução
-- Marcador: div absolute com `left: ${x}%`, `top: ${y}%`, transform translate -50% para centralizar
-- Animação: `animate-ping` do Tailwind para efeito pulsante
-- Click handler: `(e.nativeEvent.offsetX / e.target.width) * 100` para calcular posição relativa
-- Sem dependências externas — apenas CSS e eventos nativos
+- Estado: `photoFocus` / `editFocus` (strings)
+- Coluna `analysis_focus` text nullable — sem breaking change
+- A IA decide automaticamente o modo (focal vs corpo inteiro) com base na presença do campo no contexto
+- Ícone Lucide: `ScanSearch` ou `Focus` para o badge
 
