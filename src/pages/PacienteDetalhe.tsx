@@ -363,7 +363,6 @@ export default function PacienteDetalhe() {
     } else {
       if (before?.notes) contextParts.push(`Notas${after ? " antes" : ""}: ${before.notes}`);
       if (after?.notes) contextParts.push(`Notas depois: ${after.notes}`);
-      if (focusText) contextParts.push(`FOCO DA ANÁLISE: ${focusText}`);
     }
 
     return contextParts.join(". ");
