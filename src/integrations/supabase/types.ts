@@ -661,6 +661,42 @@ export type Database = {
           },
         ]
       }
+      tipos_receita: {
+        Row: {
+          cor: string
+          created_at: string
+          descricao: string
+          id: number
+          nome: string
+          updated_at: string
+          uso: string | null
+          validade_dias: number
+          vias: number
+        }
+        Insert: {
+          cor: string
+          created_at?: string
+          descricao: string
+          id?: never
+          nome: string
+          updated_at?: string
+          uso?: string | null
+          validade_dias: number
+          vias: number
+        }
+        Update: {
+          cor?: string
+          created_at?: string
+          descricao?: string
+          id?: never
+          nome?: string
+          updated_at?: string
+          uso?: string | null
+          validade_dias?: number
+          vias?: number
+        }
+        Relationships: []
+      }
       transcripts: {
         Row: {
           content: Json
