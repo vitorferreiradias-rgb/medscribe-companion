@@ -1,44 +1,37 @@
 
 
-# Ângulo "Outro" com análise focal integrada
+# Onde está a avaliação — problema identificado
 
-## Ideia
+## Situação atual
 
-Adicionar a opção **"Outro"** no select de Ângulo. Ao selecionar "Outro", aparece um campo de texto para descrever o que está sendo fotografado (ex: "mancha no braço direito", "lesão no dorso"). Isso substitui o campo separado "Foco da análise" — fica tudo integrado no fluxo do ângulo, mais simples e intuitivo.
+Hoje, para a IA analisar uma foto, é obrigatório **selecionar duas fotos** (ANTES e DEPOIS) e clicar em "Analisar evolução com IA". O botão de análise só aparece no painel de comparação, após selecionar 2 fotos.
 
-O campo **Observações** já existe e serve para o médico descrever sintomas (ex: "paciente sente ardor, queimação e febre há 3 dias"). Quando o ângulo for "Outro", a IA recebe tanto a descrição do foco quanto as observações e gera um relatório dermatológico/focal com sugestão diagnóstica.
+Isso faz sentido para evolução corporal, mas **não funciona bem para análise focal** (ângulo "Outro") — um dermatologista pode querer avaliar **uma única foto** de uma lesão sem precisar ter uma segunda foto para comparação.
 
-## Como funciona
+## Proposta: Análise de foto individual
 
-1. Médico seleciona **Ângulo → Outro**
-2. Aparece campo: "O que está sendo fotografado? (ex: mancha no braço direito)"
-3. Médico preenche **Observações**: "ardor, queimação e febre há 3 dias"
-4. Sobe a foto
-5. Ao comparar com IA, o sistema detecta ângulo "outro" e ativa modo focal automaticamente — gera relatório dermatológico com sugestão diagnóstica
+Adicionar um botão de **análise individual** diretamente em cada card da timeline quando o ângulo for "Outro". Assim o médico pode:
+
+1. Subir uma foto com ângulo "Outro" e descrever o que está sendo fotografado
+2. Clicar em **"Avaliar com IA"** direto no card da foto (sem precisar selecionar duas)
+3. Receber o relatório dermatológico focal com sugestão diagnóstica
+
+Para fotos com ângulos normais (frontal, posterior, etc.), o fluxo de comparação de duas fotos continua como está.
 
 ## Mudanças
 
 ### 1. `src/pages/PacienteDetalhe.tsx`
-
-- **Select de Ângulo** (upload e edição): adicionar `<SelectItem value="outro">Outro</SelectItem>`
-- **Campo condicional**: quando `photoAngle === "outro"`, mostrar `<Input>` com placeholder "O que está sendo fotografado? Ex: mancha no braço direito" — o valor vai para `analysis_focus`
-- **Remover** o campo separado "Foco da análise (opcional)" que existe hoje — fica redundante
-- **`handleAiCompare`**: quando ângulo for "outro", montar contexto focal automaticamente usando `analysis_focus` + `notes` (observações)
-- **Timeline badge**: quando ângulo for "outro" e `analysis_focus` preenchido, exibir badge com ícone `ScanSearch` e o texto do foco
+- Adicionar botão **"Avaliar com IA"** (ícone `ScanSearch`) nos cards da timeline quando `photo.angle === "outro"` e `photo.analysis_focus` estiver preenchido
+- Criar função `handleSinglePhotoAnalysis(photo)` que invoca a edge function com apenas uma foto
+- Exibir o resultado da análise inline no card ou em um dialog/sheet
 
 ### 2. Edge Function `evolution-compare/index.ts`
+- Tornar `afterImagePath` opcional — quando ausente, analisar foto única
+- Ajustar o prompt: se apenas uma imagem for enviada, gerar relatório descritivo/diagnóstico da lesão (sem comparação evolutiva)
+- Manter o modo de comparação (duas fotos) funcionando como hoje
 
-- O prompt já tem o modo focal implementado (detecta "FOCO DA ANÁLISE:")
-- Adicionar instrução para que, no modo focal, a IA também **sugira diagnósticos diferenciais** com base na imagem e nas observações clínicas fornecidas, deixando claro que são sugestões e não diagnósticos definitivos
-
-### 3. Sem mudança no banco
-- Coluna `analysis_focus` já existe
-- Coluna `angle` já aceita texto livre
-
-### Seção técnica
-
-- Estado `photoFocus` / `editFocus` já existem — reutilizados
-- Quando `photoAngle === "outro"`, campo `analysis_focus` fica obrigatório (validar antes do upload)
-- Quando `photoAngle !== "outro"`, `analysis_focus` é limpo automaticamente
-- O `angleLabels` no contexto da IA recebe `outro: "Outro (focal)"`
+### 3. Fluxo completo mantido
+- **1 foto + ângulo "Outro"**: botão "Avaliar com IA" no card → análise focal individual
+- **2 fotos selecionadas**: botão "Analisar evolução com IA" no painel de comparação → análise comparativa (como hoje)
+- **2 fotos + ângulo "Outro"**: comparação focal entre antes e depois da lesão (como hoje)
 
