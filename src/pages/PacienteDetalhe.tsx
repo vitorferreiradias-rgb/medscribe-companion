@@ -189,6 +189,9 @@ export default function PacienteDetalhe() {
   const [zoomPhotoId, setZoomPhotoId] = useState<string | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [aiAnalysisLoading, setAiAnalysisLoading] = useState(false);
+  const [singleAnalysisId, setSingleAnalysisId] = useState<string | null>(null);
+  const [singleAnalysisResult, setSingleAnalysisResult] = useState<Record<string, string>>({});
+  const [singleAnalysisLoading, setSingleAnalysisLoading] = useState<string | null>(null);
 
   // Inline photo editing
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
@@ -307,63 +310,55 @@ export default function PacienteDetalhe() {
     return a.date <= b.date ? [a, b] as const : [b, a] as const;
   }, [compareIds, evolutionPhotos]);
 
+  // Build patient context for AI analysis
+  const buildPatientContext = (photos: { before?: any; after?: any }) => {
+    const angleLabels: Record<string, string> = { frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lateral Direito", lateral_esquerdo: "Lateral Esquerdo", outro: "Outro (focal)" };
+    const contextParts: string[] = [];
+
+    if (patient?.birthDate) {
+      const age = differenceInYears(new Date(), parseISO(patient.birthDate));
+      contextParts.push(`Idade: ${age} anos`);
+    }
+    if (patient?.sex) {
+      const sexLabels: Record<string, string> = { M: "Masculino", F: "Feminino", NA: "Não informado" };
+      contextParts.push(`Sexo: ${sexLabels[patient.sex] || patient.sex}`);
+    }
+    if (patient?.diagnoses?.length) contextParts.push(`Diagnósticos: ${patient.diagnoses.join(", ")}`);
+    if (patient?.drugAllergies?.length) contextParts.push(`Alergias medicamentosas: ${patient.drugAllergies.join(", ")}`);
+
+    const { before, after } = photos;
+    if (before?.weight) contextParts.push(`Peso${after ? " antes" : ""}: ${before.weight}kg`);
+    if (after?.weight) contextParts.push(`Peso depois: ${after.weight}kg`);
+    if (before?.height) contextParts.push(`Altura${after ? " antes" : ""}: ${before.height}cm`);
+    if (after?.height) contextParts.push(`Altura depois: ${after.height}cm`);
+    if (before?.waist_circumference) contextParts.push(`Circunferência abdominal${after ? " antes" : ""}: ${before.waist_circumference}cm`);
+    if (after?.waist_circumference) contextParts.push(`Circunferência abdominal depois: ${after.waist_circumference}cm`);
+    if (before?.treatment_goal) contextParts.push(`Objetivo do tratamento${after ? " (antes)" : ""}: ${before.treatment_goal}`);
+    if (after?.treatment_goal) contextParts.push(`Objetivo do tratamento (depois): ${after.treatment_goal}`);
+    if (before?.angle) contextParts.push(`Ângulo foto${after ? " antes" : ""} (informado pelo médico): ${angleLabels[before.angle] || before.angle}`);
+    if (after?.angle) contextParts.push(`Ângulo foto depois (informado pelo médico): ${angleLabels[after.angle] || after.angle}`);
+
+    const isFocal = before?.angle === "outro" || after?.angle === "outro";
+    const focusText = before?.analysis_focus || after?.analysis_focus;
+    if (isFocal && focusText) {
+      contextParts.push(`FOCO DA ANÁLISE: ${focusText}`);
+      if (before?.notes) contextParts.push(`Observações clínicas${after ? " (antes)" : ""}: ${before.notes}`);
+      if (after?.notes) contextParts.push(`Observações clínicas (depois): ${after.notes}`);
+    } else {
+      if (before?.notes) contextParts.push(`Notas${after ? " antes" : ""}: ${before.notes}`);
+      if (after?.notes) contextParts.push(`Notas depois: ${after.notes}`);
+      if (focusText) contextParts.push(`FOCO DA ANÁLISE: ${focusText}`);
+    }
+
+    return contextParts.join(". ");
+  };
+
   const handleAiCompare = async () => {
     if (!comparePhotos) return;
     setAiAnalysisLoading(true);
     setAiAnalysis(null);
     try {
-      const angleLabels: Record<string, string> = { frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lateral Direito", lateral_esquerdo: "Lateral Esquerdo", outro: "Outro (focal)" };
-
-      // Build enriched patient context
-      const contextParts: string[] = [];
-
-      // Auto data from patient profile
-      if (patient?.birthDate) {
-        const age = differenceInYears(new Date(), parseISO(patient.birthDate));
-        contextParts.push(`Idade: ${age} anos`);
-      }
-      if (patient?.sex) {
-        const sexLabels: Record<string, string> = { M: "Masculino", F: "Feminino", NA: "Não informado" };
-        contextParts.push(`Sexo: ${sexLabels[patient.sex] || patient.sex}`);
-      }
-      if (patient?.diagnoses?.length) {
-        contextParts.push(`Diagnósticos: ${patient.diagnoses.join(", ")}`);
-      }
-      if (patient?.drugAllergies?.length) {
-        contextParts.push(`Alergias medicamentosas: ${patient.drugAllergies.join(", ")}`);
-      }
-
-      // Photo-specific data
-      const before = comparePhotos[0] as any;
-      const after = comparePhotos[1] as any;
-
-      if (before.weight) contextParts.push(`Peso antes: ${before.weight}kg`);
-      if (after.weight) contextParts.push(`Peso depois: ${after.weight}kg`);
-      if (before.height) contextParts.push(`Altura antes: ${before.height}cm`);
-      if (after.height) contextParts.push(`Altura depois: ${after.height}cm`);
-      if (before.waist_circumference) contextParts.push(`Circunferência abdominal antes: ${before.waist_circumference}cm`);
-      if (after.waist_circumference) contextParts.push(`Circunferência abdominal depois: ${after.waist_circumference}cm`);
-      if (before.treatment_goal) contextParts.push(`Objetivo do tratamento (antes): ${before.treatment_goal}`);
-      if (after.treatment_goal) contextParts.push(`Objetivo do tratamento (depois): ${after.treatment_goal}`);
-      if (before.angle) contextParts.push(`Ângulo foto antes (informado pelo médico): ${angleLabels[before.angle] || before.angle}`);
-      if (after.angle) contextParts.push(`Ângulo foto depois (informado pelo médico): ${angleLabels[after.angle] || after.angle}`);
-      if (before.notes) contextParts.push(`Notas antes: ${before.notes}`);
-      if (after.notes) contextParts.push(`Notas depois: ${after.notes}`);
-
-      // Focal analysis mode — triggered automatically when angle is "outro"
-      const isFocal = before.angle === "outro" || after.angle === "outro";
-      const focusText = before.analysis_focus || after.analysis_focus;
-      if (isFocal && focusText) {
-        contextParts.push(`FOCO DA ANÁLISE: ${focusText}`);
-        // Include clinical observations for focal mode
-        if (before.notes) contextParts.push(`Observações clínicas (antes): ${before.notes}`);
-        if (after.notes) contextParts.push(`Observações clínicas (depois): ${after.notes}`);
-      } else if (focusText) {
-        contextParts.push(`FOCO DA ANÁLISE: ${focusText}`);
-      }
-
-      const patientContext = contextParts.join(". ");
-
+      const patientContext = buildPatientContext({ before: comparePhotos[0], after: comparePhotos[1] });
       const { data, error } = await supabase.functions.invoke("evolution-compare", {
         body: {
           beforeImagePath: comparePhotos[0].image_path,
@@ -377,6 +372,27 @@ export default function PacienteDetalhe() {
       toast({ title: "Erro na análise com IA", description: err.message || "Tente novamente.", variant: "destructive" });
     } finally {
       setAiAnalysisLoading(false);
+    }
+  };
+
+
+  const handleSinglePhotoAnalysis = async (photo: any) => {
+    setSingleAnalysisLoading(photo.id);
+    setSingleAnalysisId(photo.id);
+    try {
+      const patientContext = buildPatientContext({ before: photo });
+      const { data, error } = await supabase.functions.invoke("evolution-compare", {
+        body: {
+          beforeImagePath: photo.image_path,
+          patientContext: patientContext || undefined,
+        },
+      });
+      if (error) throw error;
+      setSingleAnalysisResult(prev => ({ ...prev, [photo.id]: data?.analysis || "Não foi possível gerar a análise." }));
+    } catch (err: any) {
+      toast({ title: "Erro na análise com IA", description: err.message || "Tente novamente.", variant: "destructive" });
+    } finally {
+      setSingleAnalysisLoading(null);
     }
   };
 
@@ -1173,6 +1189,36 @@ export default function PacienteDetalhe() {
                                 onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
                               />
                             </div>
+
+                            {/* Single photo AI analysis button for focal photos */}
+                            {(photo as any).angle === "outro" && (photo as any).analysis_focus && editingPhotoId !== photo.id && (
+                              <div className="mt-2 space-y-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full gap-2 text-xs border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
+                                  onClick={(e) => { e.stopPropagation(); handleSinglePhotoAnalysis(photo); }}
+                                  disabled={singleAnalysisLoading === photo.id}
+                                >
+                                  {singleAnalysisLoading === photo.id ? (
+                                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analisando…</>
+                                  ) : (
+                                    <><ScanSearch className="h-3.5 w-3.5" /> Avaliar com IA</>
+                                  )}
+                                </Button>
+                                {singleAnalysisResult[photo.id] && (
+                                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                      <span className="text-xs font-semibold text-primary">Análise Focal com IA</span>
+                                    </div>
+                                    <div className="text-xs prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                                      {singleAnalysisResult[photo.id]}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
