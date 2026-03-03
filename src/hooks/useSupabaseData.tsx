@@ -423,6 +423,8 @@ export function useAddEvolutionPhoto() {
       waist_circumference,
       treatment_goal,
       analysis_focus,
+      focus_x,
+      focus_y,
     }: {
       patientId: string;
       file: File;
@@ -435,6 +437,8 @@ export function useAddEvolutionPhoto() {
       waist_circumference?: number;
       treatment_goal?: string;
       analysis_focus?: string;
+      focus_x?: number;
+      focus_y?: number;
     }) => {
       // Upload file to storage
       const ext = file.name.split(".").pop() || "jpg";
@@ -457,6 +461,8 @@ export function useAddEvolutionPhoto() {
         waist_circumference: waist_circumference || null,
         treatment_goal: treatment_goal || null,
         analysis_focus: analysis_focus || null,
+        focus_x: focus_x ?? null,
+        focus_y: focus_y ?? null,
       } as any).select().single();
       if (error) throw error;
       return data;
@@ -475,7 +481,7 @@ export function useUpdateEvolutionPhoto() {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: { label?: string; date?: string; weight?: number | null; angle?: string; notes?: string | null; height?: number | null; waist_circumference?: number | null; treatment_goal?: string | null; analysis_focus?: string | null } }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: { label?: string; date?: string; weight?: number | null; angle?: string; notes?: string | null; height?: number | null; waist_circumference?: number | null; treatment_goal?: string | null; analysis_focus?: string | null; focus_x?: number | null; focus_y?: number | null } }) => {
       const { error } = await supabase.from("evolution_photos").update(updates as any).eq("id", id);
       if (error) throw error;
     },
