@@ -62,7 +62,7 @@ export function SmartAssistantDialog({
   const speechSupported = isSpeechRecognitionSupported();
   const interimTextRef = useRef("");
   const inputTextRef = useRef("");
-  const { isListening, interimText, start: startListening, stop: stopListening, stopAndWait } = useSpeechRecognition({
+  const { isListening, interimText, start: startListening, stop: stopListening } = useSpeechRecognition({
     onUtterance: (u) => {
       setInputText((prev) => {
         const next = prev ? prev + " " + u.text : u.text;
@@ -395,14 +395,16 @@ export function SmartAssistantDialog({
     await executeIntent(intent);
   }, [inputText, isListening, interimText, stopListening, executeIntent, data.patients]);
 
-  const handleStopAndProcess = useCallback(async () => {
-    // Wait for browser to finalize pending audio and emit final results
-    await stopAndWait();
-    // After await, inputText (via onUtterance callback) has the accurate final text
-    // Use a microtask to let React flush the state update from onUtterance
-    await new Promise(r => setTimeout(r, 50));
-    handleSubmit();
-  }, [stopAndWait, handleSubmit]);
+  const handleStopAndProcess = useCallback(() => {
+    // Snapshot text BEFORE stopping — refs hold current values, immune to state clearing
+    const snapshotText = interimTextRef.current
+      ? (inputTextRef.current ? inputTextRef.current + " " + interimTextRef.current : interimTextRef.current)
+      : inputTextRef.current;
+    console.log("[OneClick] Snapshot antes de parar:", JSON.stringify(snapshotText));
+    if (isListening) stopListening();
+    // Pass snapshot directly — no dependency on stale state
+    setTimeout(() => handleSubmit(snapshotText), 100);
+  }, [isListening, stopListening, handleSubmit]);
 
   const confirmCancel = useCallback(() => {
     if (!cancelTarget) return;
