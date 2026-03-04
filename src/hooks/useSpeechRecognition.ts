@@ -163,6 +163,32 @@ export function useSpeechRecognition(opts: UseSpeechRecognitionOptions = {}) {
     }
   }, [start]);
 
+  const stopAndWait = useCallback((): Promise<void> => {
+    return new Promise((resolve) => {
+      shouldRestartRef.current = false;
+      const rec = recognitionRef.current;
+      if (!rec || !isListening) {
+        setIsListening(false);
+        setInterimText("");
+        resolve();
+        return;
+      }
+      const timeout = setTimeout(() => {
+        setIsListening(false);
+        setInterimText("");
+        resolve();
+      }, 1500);
+      rec.onend = () => {
+        clearTimeout(timeout);
+        setIsListening(false);
+        setInterimText("");
+        resolve();
+      };
+      // recognition.stop() triggers onresult with final results, then onend
+      rec.stop();
+    });
+  }, [isListening]);
+
   const reset = useCallback(() => {
     stop();
     setUtterances([]);
@@ -187,6 +213,7 @@ export function useSpeechRecognition(opts: UseSpeechRecognitionOptions = {}) {
     utterances,
     start,
     stop,
+    stopAndWait,
     pause,
     resume,
     reset,

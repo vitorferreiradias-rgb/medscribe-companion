@@ -1,41 +1,30 @@
 
 
+# Tornar a classificação de receita visualmente automática e clara
+
 ## Problema
-
-O botão "Parar e processar" captura o **texto interim** (provisório) do reconhecimento de voz — que é impreciso (ex: "prescrever" vira "escrever"). Quando `stop()` é chamado, ele **mata o recognition imediatamente** (`recognitionRef.current = null`, `setInterimText("")`), impedindo que o navegador finalize o áudio pendente e emita o resultado final correto.
-
-O "Processar comando" funciona porque nesse momento o texto já foi finalizado pelo navegador e está no `inputText`.
+O sistema já classifica automaticamente o tipo de receita (simples/antimicrobiano/controle especial) com base no medicamento. Porém, na UI do preview, isso aparece como um dropdown genérico sem destaque — o médico não percebe que a classificação foi automática. Além disso, quando o medicamento não está no banco local, a receita silenciosamente vira "simples".
 
 ## Solução
 
-Adicionar um método `stopAndWait()` ao hook `useSpeechRecognition` que:
-1. Para o reconhecimento chamando `recognition.stop()` (sem destruir o handler `onresult`)
-2. Aguarda o navegador emitir o resultado final via `onresult` + `onend`
-3. Só então resolve a Promise — nesse ponto o `inputText` já contém o texto correto
+### 1. Destacar a classificação automática no preview
+No `SmartPrescriptionPreview.tsx`:
+- Adicionar um badge/label ao lado do dropdown indicando "Classificado automaticamente" (verde) quando a medicação foi encontrada no banco
+- Quando a medicação NÃO foi encontrada, mostrar um alerta amarelo mais visível explicando que o tipo precisa ser confirmado manualmente
+- Manter o dropdown como override, mas visualmente secundário
 
-### Mudanças
+### 2. Adicionar mais antimicrobianos e controlados ao banco de conhecimento
+No `medication-knowledge.ts`, adicionar medicamentos comuns que faltam:
+- **Antimicrobianos**: Azitromicina, Ciprofloxacino, Cefalexina, Metronidazol, Levofloxacino, Sulfametoxazol+Trimetoprima
+- **Controlados**: Clonazepam, Alprazolam, Fluoxetina, Sertralina, Escitalopram, Ritalina (metilfenidato), Zolpidem
 
-**`src/hooks/useSpeechRecognition.ts`**
-- Adicionar método `stopAndWait(): Promise<void>` que:
-  - Seta `shouldRestartRef.current = false` (evita auto-restart)
-  - Chama `recognition.stop()` mantendo `onresult` ativo (para o resultado final chegar)
-  - Retorna uma Promise que resolve no `onend`
-  - Seta `isListening = false` e limpa interim após resolver
-  - Timeout de 1.5s como fallback caso `onend` não dispare
-- Exportar `stopAndWait` no retorno do hook
+### 3. Melhorar o `ComplianceResult` com flag de confiança
+No `compliance-router.ts`:
+- Adicionar campo `autoClassified: boolean` ao resultado — `true` quando todos os itens foram encontrados no banco, `false` quando algum é desconhecido
+- O preview usa esse campo para decidir se mostra "Classificado automaticamente" ou "Confirme o tipo"
 
-**`src/components/SmartAssistantDialog.tsx`**
-- Desestruturar `stopAndWait` do hook
-- Alterar `handleStopAndProcess` para:
-  ```
-  async () => {
-    await stopAndWait();
-    // Após await, inputText já tem o texto final correto
-    handleSubmit();
-  }
-  ```
-- Remover lógica de snapshot com refs (`interimTextRef`) — não é mais necessária
-
-**`src/components/smart-prescription/SmartPrescriptionDialog.tsx`**
-- Aplicar a mesma correção: usar `stopAndWait()` + `handleSubmit()` sem snapshot
+## Arquivos modificados
+- `src/lib/medication-knowledge.ts` — adicionar medicamentos
+- `src/lib/compliance-router.ts` — adicionar flag `autoClassified`
+- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — UI de classificação automática
 
