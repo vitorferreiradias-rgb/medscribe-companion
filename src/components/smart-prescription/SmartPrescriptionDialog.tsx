@@ -94,7 +94,7 @@ export function SmartPrescriptionDialog({
 
   // Speech
   const speechSupported = isSpeechRecognitionSupported();
-  const { isListening, interimText, start: startListening, stop: stopListening } = useSpeechRecognition({
+  const { isListening, interimText, start: startListening, stop: stopListening, stopAndWait } = useSpeechRecognition({
     onUtterance: (u) => {
       setInputText((prev) => (prev ? prev + " " + u.text : u.text));
     },
@@ -236,11 +236,11 @@ export function SmartPrescriptionDialog({
     );
   }, [inputText, isListening, interimText, stopListening, patient, prescriber, proceedToPreview]);
 
-  const handleStopAndProcess = useCallback(() => {
-    if (isListening) stopListening();
-    // Small delay to let final utterance land
-    setTimeout(() => handleSubmit(), 150);
-  }, [isListening, stopListening, handleSubmit]);
+  const handleStopAndProcess = useCallback(async () => {
+    await stopAndWait();
+    await new Promise(r => setTimeout(r, 50));
+    handleSubmit();
+  }, [stopAndWait, handleSubmit]);
 
   const handleVariantSelect = useCallback((variant: DoseVariant) => {
     proceedToPreview(
