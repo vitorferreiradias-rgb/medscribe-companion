@@ -424,6 +424,7 @@ export function useAddEvolutionPhoto() {
     treatment_goal,
     analysis_focus,
     sessao_id,
+    body_fat_percentage,
   }: {
     patientId: string;
     file: File;
@@ -437,6 +438,7 @@ export function useAddEvolutionPhoto() {
     treatment_goal?: string;
     analysis_focus?: string;
     sessao_id?: string;
+    body_fat_percentage?: number;
   }) => {
       // Upload file to storage
       const ext = file.name.split(".").pop() || "jpg";
