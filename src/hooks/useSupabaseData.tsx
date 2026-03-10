@@ -478,7 +478,7 @@ export function useUpdateEvolutionPhoto() {
   const qc = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: string; updates: { label?: string; date?: string; weight?: number | null; angle?: string; notes?: string | null; height?: number | null; waist_circumference?: number | null; treatment_goal?: string | null; analysis_focus?: string | null } }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: { label?: string; date?: string; weight?: number | null; angle?: string; notes?: string | null; height?: number | null; waist_circumference?: number | null; treatment_goal?: string | null; analysis_focus?: string | null; body_fat_percentage?: number | null } }) => {
       const { error } = await supabase.from("evolution_photos").update(updates as any).eq("id", id);
       if (error) throw error;
     },

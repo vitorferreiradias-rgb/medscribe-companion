@@ -81,7 +81,7 @@ export function AnalysisResultModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-base">
             {TYPE_LABELS[analysisType || ""] || "Resultado da Análise"}
@@ -100,11 +100,11 @@ export function AnalysisResultModal({
           )}
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0">
-          <div ref={printRef} className="pr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+          <div ref={printRef}>
             <MarkdownRenderer content={result} className="text-sm" />
           </div>
-        </ScrollArea>
+        </div>
 
         <div className="flex justify-end gap-2 pt-3 border-t flex-shrink-0">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
