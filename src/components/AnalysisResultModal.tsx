@@ -70,7 +70,7 @@ export function AnalysisResultModal({
           ${patientName ? `Paciente: ${patientName}` : ""}
           ${date ? ` • Data: ${date}` : ""}
         </div>
-        <div class="content">${result}</div>
+        <div class="content">${printRef.current?.innerHTML || result}</div>
       </body>
       </html>
     `);
