@@ -410,6 +410,20 @@ export default function PacienteDetalhe() {
     [dbEvolutionPhotos]
   );
 
+  // Group photos by sessao_id for timeline display
+  const sessionGroups = useMemo(() => {
+    const groups: Record<string, typeof evolutionPhotos> = {};
+    for (const photo of evolutionPhotos) {
+      const key = (photo as any).sessao_id || photo.id;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(photo);
+    }
+    // Sort groups by earliest date in each group
+    return Object.entries(groups)
+      .map(([sessaoId, photos]) => ({ sessaoId, photos }))
+      .sort((a, b) => a.photos[0].date.localeCompare(b.photos[0].date));
+  }, [evolutionPhotos]);
+
   // Initialize analysis results from saved DB data
   useMemo(() => {
     const saved: Record<string, string> = {};
