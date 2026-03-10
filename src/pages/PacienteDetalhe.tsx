@@ -1150,6 +1150,26 @@ export default function PacienteDetalhe() {
                   {/* Timeline line */}
                   <div className="absolute left-[18px] top-0 bottom-0 w-px bg-border/60" />
 
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={replaceFileInputRef}
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file && replacingPhotoId && replacingPhotoPath && id) {
+                        replaceEvolutionPhotoMutation.mutate({
+                          id: replacingPhotoId,
+                          patientId: id,
+                          oldImagePath: replacingPhotoPath,
+                          newFile: file,
+                        });
+                      }
+                      e.target.value = "";
+                      setReplacingPhotoId(null);
+                      setReplacingPhotoPath(null);
+                    }}
+                  />
                   <div className="space-y-6">
                     {sessionGroups.map((group, gIdx) => {
                       const firstPhoto = group.photos[0];
