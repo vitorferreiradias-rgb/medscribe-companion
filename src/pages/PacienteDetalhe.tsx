@@ -329,6 +329,7 @@ export default function PacienteDetalhe() {
           treatment_goal: data.treatmentGoal,
           analysis_focus: photo.focusLabel || undefined,
           sessao_id: data.sessaoId,
+          body_fat_percentage: data.bodyFatPercentage,
         });
       }
       toast({ title: `${data.photos.length} foto${data.photos.length > 1 ? "s" : ""} salva${data.photos.length > 1 ? "s" : ""} com sucesso.` });
