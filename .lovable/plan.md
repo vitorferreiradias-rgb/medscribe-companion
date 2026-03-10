@@ -1,33 +1,30 @@
 
 
-# Editar/Trocar Fotos de Sessões de Evolução
+# Tornar a classificação de receita visualmente automática e clara
 
-## Objetivo
-Permitir trocar a imagem de uma foto individual dentro de uma sessão existente, sem precisar excluir e recriar.
+## Problema
+O sistema já classifica automaticamente o tipo de receita (simples/antimicrobiano/controle especial) com base no medicamento. Porém, na UI do preview, isso aparece como um dropdown genérico sem destaque — o médico não percebe que a classificação foi automática. Além disso, quando o medicamento não está no banco local, a receita silenciosamente vira "simples".
 
-## O que será feito
+## Solução
 
-### 1. Hook `useReplaceEvolutionPhoto` (`src/hooks/useSupabaseData.tsx`)
-Nova mutation que:
-- Recebe `id` (do registro), `patientId`, `oldImagePath` e `newFile`
-- Deleta o arquivo antigo do storage
-- Faz upload do novo arquivo no storage
-- Atualiza o campo `image_path` no banco com o novo caminho
+### 1. Destacar a classificação automática no preview
+No `SmartPrescriptionPreview.tsx`:
+- Adicionar um badge/label ao lado do dropdown indicando "Classificado automaticamente" (verde) quando a medicação foi encontrada no banco
+- Quando a medicação NÃO foi encontrada, mostrar um alerta amarelo mais visível explicando que o tipo precisa ser confirmado manualmente
+- Manter o dropdown como override, mas visualmente secundário
 
-### 2. Botão "Trocar foto" na timeline (`src/pages/PacienteDetalhe.tsx`)
-- Em cada foto individual da sessão (na grid de fotos), adicionar um botão de câmera/troca no canto (ao lado do badge de ângulo ou como overlay no hover)
-- Ao clicar, abre um `<input type="file">` oculto para selecionar nova imagem
-- Ao selecionar, chama o hook `useReplaceEvolutionPhoto` para substituir a imagem no storage e atualizar o registro
-- Mostrar loading enquanto troca
+### 2. Adicionar mais antimicrobianos e controlados ao banco de conhecimento
+No `medication-knowledge.ts`, adicionar medicamentos comuns que faltam:
+- **Antimicrobianos**: Azitromicina, Ciprofloxacino, Cefalexina, Metronidazol, Levofloxacino, Sulfametoxazol+Trimetoprima
+- **Controlados**: Clonazepam, Alprazolam, Fluoxetina, Sertralina, Escitalopram, Ritalina (metilfenidato), Zolpidem
 
-### 3. Fluxo
-1. Usuário vê a sessão na timeline com as fotos
-2. Passa o mouse sobre uma foto → aparece ícone de "trocar" (câmera com setas)
-3. Clica → seleciona nova foto do dispositivo
-4. Sistema substitui no storage e atualiza o registro
-5. Toast de confirmação
+### 3. Melhorar o `ComplianceResult` com flag de confiança
+No `compliance-router.ts`:
+- Adicionar campo `autoClassified: boolean` ao resultado — `true` quando todos os itens foram encontrados no banco, `false` quando algum é desconhecido
+- O preview usa esse campo para decidir se mostra "Classificado automaticamente" ou "Confirme o tipo"
 
 ## Arquivos modificados
-- `src/hooks/useSupabaseData.tsx` — novo hook `useReplaceEvolutionPhoto`
-- `src/pages/PacienteDetalhe.tsx` — botão de troca em cada foto da sessão + input file oculto + handler
+- `src/lib/medication-knowledge.ts` — adicionar medicamentos
+- `src/lib/compliance-router.ts` — adicionar flag `autoClassified`
+- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — UI de classificação automática
 

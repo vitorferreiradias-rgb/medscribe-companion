@@ -12,7 +12,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppData } from "@/hooks/useAppData";
 import { updatePatient, deletePatient, duplicateEncounter, deleteEncounter } from "@/lib/store";
-import { useEvolutionPhotos, useAddEvolutionPhoto, useDeleteEvolutionPhoto, useUpdateEvolutionPhoto, useAvaliacoesCorporais } from "@/hooks/useSupabaseData";
+import { useEvolutionPhotos, useAddEvolutionPhoto, useDeleteEvolutionPhoto, useUpdateEvolutionPhoto, useReplaceEvolutionPhoto, useAvaliacoesCorporais } from "@/hooks/useSupabaseData";
+import { useRef } from "react";
 import { EvolutionPhotoImage } from "@/components/EvolutionPhotoImage";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -213,6 +214,10 @@ export default function PacienteDetalhe() {
   const addEvolutionPhotoMutation = useAddEvolutionPhoto();
   const deleteEvolutionPhotoMutation = useDeleteEvolutionPhoto();
   const updateEvolutionPhotoMutation = useUpdateEvolutionPhoto();
+  const replaceEvolutionPhotoMutation = useReplaceEvolutionPhoto();
+  const replaceFileInputRef = useRef<HTMLInputElement>(null);
+  const [replacingPhotoId, setReplacingPhotoId] = useState<string | null>(null);
+  const [replacingPhotoPath, setReplacingPhotoPath] = useState<string | null>(null);
   const { refetch: refetchAvaliacoes } = useAvaliacoesCorporais(id);
 
   const handleConsolidatedAnalysis = useCallback(async (photoPaths: string[], action: "composition" | "compare" | "evolution") => {
@@ -1145,6 +1150,26 @@ export default function PacienteDetalhe() {
                   {/* Timeline line */}
                   <div className="absolute left-[18px] top-0 bottom-0 w-px bg-border/60" />
 
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={replaceFileInputRef}
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file && replacingPhotoId && replacingPhotoPath && id) {
+                        replaceEvolutionPhotoMutation.mutate({
+                          id: replacingPhotoId,
+                          patientId: id,
+                          oldImagePath: replacingPhotoPath,
+                          newFile: file,
+                        });
+                      }
+                      e.target.value = "";
+                      setReplacingPhotoId(null);
+                      setReplacingPhotoPath(null);
+                    }}
+                  />
                   <div className="space-y-6">
                     {sessionGroups.map((group, gIdx) => {
                       const firstPhoto = group.photos[0];
@@ -1230,7 +1255,7 @@ export default function PacienteDetalhe() {
 
                                 <div className={cn("grid gap-2 mt-2", group.photos.length >= 3 ? "grid-cols-3" : group.photos.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
                                   {group.photos.map((photo) => (
-                                    <div key={photo.id} className="relative">
+                                    <div key={photo.id} className="relative group/photo">
                                       <div className={cn(
                                         "rounded-lg overflow-hidden bg-muted/30 border border-border/30",
                                         group.photos.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-[3/4]"
@@ -1240,6 +1265,11 @@ export default function PacienteDetalhe() {
                                           alt={photo.label}
                                           onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
                                         />
+                                        {replaceEvolutionPhotoMutation.isPending && replacingPhotoId === photo.id && (
+                                          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
+                                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                          </div>
+                                        )}
                                       </div>
                                       {(photo as any).angle && (photo as any).angle !== "outro" && (
                                         <Badge variant="outline" className="absolute top-1 left-1 text-[10px] bg-background/80 backdrop-blur-sm">
@@ -1251,6 +1281,20 @@ export default function PacienteDetalhe() {
                                           <ScanSearch className="h-2.5 w-2.5" /> {(photo as any).analysis_focus}
                                         </Badge>
                                       )}
+                                      <Button
+                                        variant="secondary"
+                                        size="icon"
+                                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/photo:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
+                                        title="Trocar foto"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setReplacingPhotoId(photo.id);
+                                          setReplacingPhotoPath(photo.image_path);
+                                          replaceFileInputRef.current?.click();
+                                        }}
+                                      >
+                                        <Camera className="h-3 w-3" />
+                                      </Button>
                                     </div>
                                   ))}
                                 </div>
