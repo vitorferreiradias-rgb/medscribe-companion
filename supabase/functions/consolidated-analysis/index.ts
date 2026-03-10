@@ -12,6 +12,7 @@ interface Anthropometrics {
   weight?: number;
   height?: number;
   waistCircumference?: number;
+  bodyFatPercentage?: number;
 }
 
 function getPromptForAction(action: Action): string {
