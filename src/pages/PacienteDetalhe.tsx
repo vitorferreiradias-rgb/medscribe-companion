@@ -1235,7 +1235,7 @@ export default function PacienteDetalhe() {
 
                                 <div className={cn("grid gap-2 mt-2", group.photos.length >= 3 ? "grid-cols-3" : group.photos.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
                                   {group.photos.map((photo) => (
-                                    <div key={photo.id} className="relative">
+                                    <div key={photo.id} className="relative group/photo">
                                       <div className={cn(
                                         "rounded-lg overflow-hidden bg-muted/30 border border-border/30",
                                         group.photos.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-[3/4]"
@@ -1245,6 +1245,11 @@ export default function PacienteDetalhe() {
                                           alt={photo.label}
                                           onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
                                         />
+                                        {replaceEvolutionPhotoMutation.isPending && replacingPhotoId === photo.id && (
+                                          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
+                                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                          </div>
+                                        )}
                                       </div>
                                       {(photo as any).angle && (photo as any).angle !== "outro" && (
                                         <Badge variant="outline" className="absolute top-1 left-1 text-[10px] bg-background/80 backdrop-blur-sm">
@@ -1256,6 +1261,20 @@ export default function PacienteDetalhe() {
                                           <ScanSearch className="h-2.5 w-2.5" /> {(photo as any).analysis_focus}
                                         </Badge>
                                       )}
+                                      <Button
+                                        variant="secondary"
+                                        size="icon"
+                                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/photo:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
+                                        title="Trocar foto"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setReplacingPhotoId(photo.id);
+                                          setReplacingPhotoPath(photo.image_path);
+                                          replaceFileInputRef.current?.click();
+                                        }}
+                                      >
+                                        <Camera className="h-3 w-3" />
+                                      </Button>
                                     </div>
                                   ))}
                                 </div>
