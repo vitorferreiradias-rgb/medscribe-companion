@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { format, parseISO, isValid, subDays, isAfter, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -12,7 +12,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppData } from "@/hooks/useAppData";
 import { updatePatient, deletePatient, duplicateEncounter, deleteEncounter } from "@/lib/store";
-import { useEvolutionPhotos, useAddEvolutionPhoto, useDeleteEvolutionPhoto, useUpdateEvolutionPhoto } from "@/hooks/useSupabaseData";
+import { useEvolutionPhotos, useAddEvolutionPhoto, useDeleteEvolutionPhoto, useUpdateEvolutionPhoto, useAvaliacoesCorporais } from "@/hooks/useSupabaseData";
 import { EvolutionPhotoImage } from "@/components/EvolutionPhotoImage";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -188,6 +188,7 @@ export default function PacienteDetalhe() {
   const [photoFocus, setPhotoFocus] = useState("");
   const [showPhotoForm, setShowPhotoForm] = useState(false);
   const [showMultiUpload, setShowMultiUpload] = useState(false);
+  const [multiUploadLoading, setMultiUploadLoading] = useState(false);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
   const [zoomPhotoId, setZoomPhotoId] = useState<string | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
@@ -214,6 +215,76 @@ export default function PacienteDetalhe() {
   const addEvolutionPhotoMutation = useAddEvolutionPhoto();
   const deleteEvolutionPhotoMutation = useDeleteEvolutionPhoto();
   const updateEvolutionPhotoMutation = useUpdateEvolutionPhoto();
+  const { refetch: refetchAvaliacoes } = useAvaliacoesCorporais(id);
+
+  const handleConsolidatedAnalysis = useCallback(async (files: File[]) => {
+    if (!id || !patient) return;
+    setMultiUploadLoading(true);
+    try {
+      // 1. Upload all photos to storage
+      const photoPaths: string[] = [];
+      for (const file of files) {
+        const ext = file.name.split(".").pop() || "jpg";
+        const path = `${id}/${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("evolution-photos")
+          .upload(path, file);
+        if (uploadError) throw new Error(`Falha no upload: ${uploadError.message}`);
+        photoPaths.push(path);
+      }
+
+      // 2. Create record in avaliacoes_corporais
+      const { data: avaliacao, error: insertError } = await supabase
+        .from("avaliacoes_corporais" as any)
+        .insert({
+          patient_id: id,
+          photo_paths: photoPaths,
+          status: "pending",
+          analysis_objective: "Avaliação corporal consolidada",
+        } as any)
+        .select()
+        .single();
+
+      if (insertError) throw new Error(`Falha ao criar avaliação: ${insertError.message}`);
+
+      const avaliacaoId = (avaliacao as any).id;
+
+      // Build patient context
+      const contextParts: string[] = [];
+      if (patient.sex) contextParts.push(`Sexo: ${patient.sex}`);
+      if (patient.birthDate) contextParts.push(`Data de nascimento: ${patient.birthDate}`);
+      if (patient.diagnoses?.length) contextParts.push(`Diagnósticos: ${patient.diagnoses.join(", ")}`);
+      if (patient.drugAllergies?.length) contextParts.push(`Alergias: ${patient.drugAllergies.join(", ")}`);
+
+      // 3. Call edge function
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("consolidated-analysis", {
+        body: {
+          avaliacaoId,
+          photoPaths,
+          patientContext: contextParts.length > 0 ? contextParts.join(". ") : undefined,
+        },
+      });
+
+      if (fnError) throw new Error(`Falha na análise: ${fnError.message}`);
+
+      refetchAvaliacoes();
+      setShowMultiUpload(false);
+      toast({
+        title: "Avaliação concluída",
+        description: "O relatório de composição corporal foi gerado com sucesso.",
+      });
+    } catch (err: any) {
+      console.error("Consolidated analysis error:", err);
+      toast({
+        title: "Erro na avaliação",
+        description: err.message || "Ocorreu um erro ao processar a avaliação.",
+        variant: "destructive",
+      });
+      refetchAvaliacoes();
+    } finally {
+      setMultiUploadLoading(false);
+    }
+  }, [id, patient, toast, refetchAvaliacoes]);
 
   const handleAddEvolutionPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1373,12 +1444,9 @@ export default function PacienteDetalhe() {
                 </div>
               ) : showMultiUpload ? (
                 <MultiPhotoUploader
-                  onSubmit={(files) => {
-                    // TODO: lógica de upload e análise IA
-                    toast({ title: `${files.length} fotos prontas para análise` });
-                    setShowMultiUpload(false);
-                  }}
+                  onSubmit={handleConsolidatedAnalysis}
                   onCancel={() => setShowMultiUpload(false)}
+                  isLoading={multiUploadLoading}
                 />
               ) : (
                 <div className="flex gap-2">
