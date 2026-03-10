@@ -26,6 +26,7 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
 export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardProps) {
   const { data: avaliacoes, isLoading } = useAvaliacoesCorporais(patientId);
   const updateMutation = useUpdateAvaliacaoCorporal();
+  const deleteMutation = useDeleteAvaliacaoCorporal();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
