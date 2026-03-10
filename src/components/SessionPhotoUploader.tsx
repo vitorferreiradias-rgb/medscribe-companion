@@ -55,6 +55,7 @@ export function SessionPhotoUploader({ onSubmit, onCancel, isLoading = false, se
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const [waist, setWaist] = useState("");
+  const [bodyFat, setBodyFat] = useState("");
   const [goal, setGoal] = useState("");
   const [notes, setNotes] = useState("");
 
