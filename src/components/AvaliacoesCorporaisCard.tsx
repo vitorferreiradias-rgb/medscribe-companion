@@ -28,6 +28,7 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [printModalData, setPrintModalData] = useState<{ result: string; date: string } | null>(null);
 
   const startEditing = (id: string, text: string) => {
     setEditingId(id);
