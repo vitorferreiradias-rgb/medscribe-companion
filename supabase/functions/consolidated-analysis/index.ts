@@ -114,14 +114,59 @@ REGRAS:
 - Use linguagem acessível ao paciente.`;
 
     case "evolution":
-      return `Analise estes 2 grupos de fotos (3 fotos de cada data: Frente, Perfil e Costas). Realize uma comparação profunda de evolução corporal. Identifique ganhos de massa muscular, perda de gordura e correções posturais. Gere um laudo de evolução comparativa detalhado.
+      return `Você é um especialista em composição corporal e antropometria clínica. Você receberá 2 grupos de fotos (3 fotos de cada data: Frente, Perfil e Costas) e dados antropométricos de cada sessão.
 
-## LAUDO DE EVOLUÇÃO CORPORAL COMPARATIVA
+IMPORTANTE — MÉTODO DE ANÁLISE EM 2 ETAPAS:
 
-### Resumo da Evolução
-Visão geral das mudanças entre as duas sessões. Inclua o intervalo de tempo entre elas.
+**ETAPA 1 — Análise Individual de Cada Sessão (OBRIGATÓRIA)**
+Antes de comparar, analise CADA sessão separadamente com a mesma profundidade que faria numa avaliação de composição corporal isolada:
+- Use os dados antropométricos reais fornecidos para CADA sessão (peso, altura, circunferência, % gordura)
+- Calcule IMC real quando peso e altura forem fornecidos (IMC = peso / (altura_m)²)
+- Calcule TMB pela fórmula de Mifflin-St Jeor quando peso e altura forem disponíveis
+- Estime massa gorda (peso × %gordura) quando os dados permitirem
+- Calibre as estimativas visuais com os dados numéricos reais de CADA sessão
+- NÃO estime valores quando dados reais foram fornecidos — USE os dados reais
 
-### Dados Antropométricos Comparativos
+**ETAPA 2 — Comparação Evolutiva**
+Somente após analisar cada sessão individualmente, compare os resultados entre elas.
+
+Gere o relatório seguindo EXATAMENTE esta estrutura em Markdown:
+
+## Análise Individual — Sessão 1 (ANTES)
+
+| Indicador | Valor | Fonte |
+|---|---|---|
+| Peso | valor kg | Real/Estimado |
+| IMC | valor | Calculado/Estimado |
+| % Gordura Corporal | valor% | Real/Estimado |
+| Massa Gorda | valor kg | Calculado/Estimado |
+| Taxa Metabólica Basal | valor kcal/dia | Calculado/Estimado |
+| Gordura Visceral | nível | Estimado |
+
+> **Classificação:** [classificação] • **Score:** [X/10]
+
+Breve descrição da composição corporal nesta sessão.
+
+---
+
+## Análise Individual — Sessão 2 (DEPOIS)
+
+| Indicador | Valor | Fonte |
+|---|---|---|
+| Peso | valor kg | Real/Estimado |
+| IMC | valor | Calculado/Estimado |
+| % Gordura Corporal | valor% | Real/Estimado |
+| Massa Gorda | valor kg | Calculado/Estimado |
+| Taxa Metabólica Basal | valor kcal/dia | Calculado/Estimado |
+| Gordura Visceral | nível | Estimado |
+
+> **Classificação:** [classificação] • **Score:** [X/10]
+
+Breve descrição da composição corporal nesta sessão.
+
+---
+
+## Dados Antropométricos Comparativos
 
 | Parâmetro | Sessão 1 | Sessão 2 | Variação | Variação % |
 |---|---|---|---|---|
@@ -157,15 +202,15 @@ Nota de 1 a 10 para a evolução entre sessões e justificativa.
 ### Conclusão e Recomendações
 Resumo clínico com próximos passos sugeridos.
 
-REGRAS:
-- Compare sistematicamente cada região nos dois momentos.
-- Seja objetivo e use linguagem médica.
-- NÃO faça diagnósticos definitivos.
-- Destaque as mudanças mais significativas.
-- Quando dados antropométricos reais forem fornecidos, USE-OS na tabela comparativa e calcule variações absolutas e percentuais.
+REGRAS CRÍTICAS:
+- SEMPRE analise cada sessão INDIVIDUALMENTE primeiro, com a mesma profundidade de uma avaliação de composição corporal.
+- Quando dados antropométricos reais forem fornecidos para uma sessão, USE-OS EXATAMENTE — não arredonde, não estime por cima das fotos.
+- Calcule variações absolutas e percentuais na tabela comparativa.
+- Marque na coluna "Fonte" se o valor é "Real" (dado fornecido) ou "Estimado" (inferido das fotos).
 - Quando dados não forem informados, estime a partir das imagens e marque com "~" (estimativa).
-- SEMPRE mencione o intervalo de tempo entre as sessões no resumo.
-- Use a fórmula de Mifflin-St Jeor para TMB quando peso e altura forem disponíveis.`;
+- SEMPRE mencione o intervalo de tempo entre as sessões.
+- Use a fórmula de Mifflin-St Jeor para TMB quando peso e altura forem disponíveis.
+- Seja objetivo e use linguagem médica. NÃO faça diagnósticos definitivos.`;
   }
 }
 
