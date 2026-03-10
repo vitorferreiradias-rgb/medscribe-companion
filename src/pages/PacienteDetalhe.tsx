@@ -1130,6 +1130,8 @@ export default function PacienteDetalhe() {
                   <div className="space-y-6">
                     {evolutionPhotos.map((photo, idx) => {
                       const isSelected = compareIds?.includes(photo.id);
+                      // Hide other photos in the session being edited (they appear in the edit form)
+                      if (editingSessionId && (photo.sessao_id || photo.id) === editingSessionId && editingPhotoId !== photo.id) return null;
                       return (
                         <div key={photo.id} className="relative pl-10">
                           {/* Timeline dot */}
