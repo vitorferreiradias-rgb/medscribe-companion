@@ -50,6 +50,21 @@ Gere o relatório seguindo EXATAMENTE esta estrutura em Markdown:
 | Quadril e Glúteos | descrição | 🟢/🟡/🔴 |
 | Pernas | descrição | 🟢/🟡/🔴 |
 
+## Distribuição Muscular Estimada
+
+| Região | Nível |
+|---|---|
+| Membros Superiores | baixo / moderado / alto |
+| Tronco | baixo / moderado / alto |
+| Membros Inferiores | baixo / moderado / alto |
+
+## Avaliação Abdominal
+
+| Parâmetro | Nível |
+|---|---|
+| Adiposidade Abdominal | baixa / moderada / alta |
+| Risco de Gordura Visceral | baixo / moderado / alto |
+
 ## Análise Postural
 
 Avalie alinhamento, cifose, lordose, escoliose aparente, projeção de ombros/cabeça. Marque regiões não visíveis como "Não avaliável".
@@ -57,6 +72,11 @@ Avalie alinhamento, cifose, lordose, escoliose aparente, projeção de ombros/ca
 ## Avaliação Visual Descritiva
 
 Descrição objetiva da distribuição de gordura e massa muscular observada nas imagens.
+
+## Confiabilidade da Estimativa
+
+- Nível de confiança: baixa / moderada / alta
+- Margem de erro estimada: ± X kg na massa muscular esquelética
 
 ## Observações Clínicas
 
