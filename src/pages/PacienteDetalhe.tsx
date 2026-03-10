@@ -1431,7 +1431,14 @@ export default function PacienteDetalhe() {
                   </div>
                 </div>
               ) : showMultiUpload ? (
-                <MultiPhotoUploader
+                <EvolutionPhotoSelector
+                  photos={(evolutionPhotos ?? []).map((p) => ({
+                    id: p.id,
+                    image_path: p.image_path,
+                    label: p.label,
+                    date: p.date,
+                    angle: (p as any).angle,
+                  }))}
                   onSubmit={handleConsolidatedAnalysis}
                   onCancel={() => setShowMultiUpload(false)}
                   isLoading={multiUploadLoading}
