@@ -204,7 +204,7 @@ export default function PacienteDetalhe() {
   const [editLabel, setEditLabel] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editWeight, setEditWeight] = useState("");
-  const [editAngle, setEditAngle] = useState("frontal");
+  const [editAngle, setEditAngle] = useState("frente");
   const [editNotes, setEditNotes] = useState("");
   const [editHeight, setEditHeight] = useState("");
   const [editWaist, setEditWaist] = useState("");
