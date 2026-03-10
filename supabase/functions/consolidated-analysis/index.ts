@@ -29,7 +29,6 @@ Gere o relatório seguindo EXATAMENTE esta estrutura em Markdown:
 | IMC | valor | — |
 | % Gordura Corporal | valor% | ± X% |
 | Massa Gorda | valor kg | ± X kg |
-| Massa Muscular Estimada | valor kg | ± X kg |
 | Taxa Metabólica Basal | valor kcal/dia | ± X kcal |
 | Gordura Visceral | nível | — |
 
