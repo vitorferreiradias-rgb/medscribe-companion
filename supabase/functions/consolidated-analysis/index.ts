@@ -157,7 +157,7 @@ REGRAS:
   }
 }
 
-function getUserPrompt(action: Action, numPhotos: number, patientContext?: string, anthropometrics?: Anthropometrics): string {
+function getUserPrompt(action: Action, numPhotos: number, patientContext?: string, anthropometrics?: Anthropometrics, sessionData?: SessionData): string {
   const ctx = patientContext ? `\n\nContexto do paciente: ${patientContext}` : "";
 
   let anthroText = "";
