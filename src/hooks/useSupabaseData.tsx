@@ -515,6 +515,39 @@ export function useDeleteEvolutionPhoto() {
 }
 
 // =============================================
+// REPLACE EVOLUTION PHOTO IMAGE
+// =============================================
+export function useReplaceEvolutionPhoto() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, patientId, oldImagePath, newFile }: { id: string; patientId: string; oldImagePath: string; newFile: File }) => {
+      // Delete old file from storage
+      await supabase.storage.from("evolution-photos").remove([oldImagePath]);
+      // Upload new file
+      const ext = newFile.name.split(".").pop() || "jpg";
+      const filePath = `${patientId}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("evolution-photos")
+        .upload(filePath, newFile, { upsert: false });
+      if (uploadError) throw uploadError;
+      // Update record
+      const { error } = await supabase.from("evolution_photos").update({ image_path: filePath } as any).eq("id", id);
+      if (error) throw error;
+      return { patientId };
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["evolution_photos", variables.patientId] });
+      qc.invalidateQueries({ queryKey: ["evolution_photo_url"] });
+      toast({ title: "Foto substituída com sucesso." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro ao trocar foto", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
+// =============================================
 // PRESCRIPTIONS
 // =============================================
 export function usePrescriptions(patientId?: string) {

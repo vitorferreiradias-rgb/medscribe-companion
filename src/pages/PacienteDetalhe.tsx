@@ -12,7 +12,8 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppData } from "@/hooks/useAppData";
 import { updatePatient, deletePatient, duplicateEncounter, deleteEncounter } from "@/lib/store";
-import { useEvolutionPhotos, useAddEvolutionPhoto, useDeleteEvolutionPhoto, useUpdateEvolutionPhoto, useAvaliacoesCorporais } from "@/hooks/useSupabaseData";
+import { useEvolutionPhotos, useAddEvolutionPhoto, useDeleteEvolutionPhoto, useUpdateEvolutionPhoto, useReplaceEvolutionPhoto, useAvaliacoesCorporais } from "@/hooks/useSupabaseData";
+import { useRef } from "react";
 import { EvolutionPhotoImage } from "@/components/EvolutionPhotoImage";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
