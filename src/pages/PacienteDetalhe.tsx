@@ -204,7 +204,7 @@ export default function PacienteDetalhe() {
   const [editFocus, setEditFocus] = useState("");
 
   const { data: dbEvolutionPhotos = [] } = useEvolutionPhotos(id);
-  const addEvolutionPhotoMutation = useAddEvolutionPhoto();
+  
   const deleteEvolutionPhotoMutation = useDeleteEvolutionPhoto();
   const updateEvolutionPhotoMutation = useUpdateEvolutionPhoto();
   const { refetch: refetchAvaliacoes } = useAvaliacoesCorporais(id);
