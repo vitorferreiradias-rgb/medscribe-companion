@@ -188,6 +188,7 @@ export default function PacienteDetalhe() {
   const [photoGoal, setPhotoGoal] = useState("");
   const [photoFocus, setPhotoFocus] = useState("");
   const [showPhotoForm, setShowPhotoForm] = useState(false);
+  const [currentSessaoId, setCurrentSessaoId] = useState(() => crypto.randomUUID());
   const [showMultiUpload, setShowMultiUpload] = useState(false);
   const [multiUploadLoading, setMultiUploadLoading] = useState(false);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
