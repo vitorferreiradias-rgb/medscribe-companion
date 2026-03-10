@@ -359,38 +359,47 @@ export default function PacienteDetalhe() {
   };
 
   const startEditPhoto = (photo: any) => {
+    const sessaoId = photo.sessao_id || photo.id;
+    setEditingSessionId(sessaoId);
     setEditingPhotoId(photo.id);
     setEditLabel(photo.label || "");
     setEditDate(photo.date || "");
     setEditWeight(photo.weight?.toString() || "");
-    setEditAngle(photo.angle || "frente");
     setEditNotes(photo.notes || "");
     setEditHeight((photo as any).height?.toString() || "");
     setEditWaist((photo as any).waist_circumference?.toString() || "");
     setEditGoal((photo as any).treatment_goal || "");
-    setEditFocus((photo as any).analysis_focus || "");
+    setEditBodyFat((photo as any).body_fat_percentage?.toString() || "");
+  };
+
+  const getSessionPhotos = (sessaoId: string) => {
+    return evolutionPhotos.filter((p: any) => (p.sessao_id || p.id) === sessaoId);
   };
 
   const saveEditPhoto = () => {
-    if (!editingPhotoId) return;
-    updateEvolutionPhotoMutation.mutate({
-      id: editingPhotoId,
-      updates: {
-        label: editLabel || "Registro",
-        date: editDate || undefined,
-        weight: editWeight ? parseFloat(editWeight) : null,
-        angle: editAngle,
-        notes: editNotes || null,
-        height: editHeight ? parseFloat(editHeight) : null,
-        waist_circumference: editWaist ? parseFloat(editWaist) : null,
-        treatment_goal: editGoal || null,
-        analysis_focus: editFocus || null,
-      },
-    });
+    if (!editingSessionId) return;
+    const sessionPhotos = getSessionPhotos(editingSessionId);
+    const sharedUpdates = {
+      label: editLabel || "Registro",
+      date: editDate || undefined,
+      weight: editWeight ? parseFloat(editWeight) : null,
+      notes: editNotes || null,
+      height: editHeight ? parseFloat(editHeight) : null,
+      waist_circumference: editWaist ? parseFloat(editWaist) : null,
+      treatment_goal: editGoal || null,
+      body_fat_percentage: editBodyFat ? parseFloat(editBodyFat) : null,
+    };
+    for (const photo of sessionPhotos) {
+      updateEvolutionPhotoMutation.mutate({
+        id: photo.id,
+        updates: sharedUpdates as any,
+      });
+    }
+    setEditingSessionId(null);
     setEditingPhotoId(null);
   };
 
-  const cancelEditPhoto = () => setEditingPhotoId(null);
+  const cancelEditPhoto = () => { setEditingSessionId(null); setEditingPhotoId(null); };
 
   const evolutionPhotos = useMemo(() =>
     [...dbEvolutionPhotos].sort((a, b) => a.date.localeCompare(b.date)),
