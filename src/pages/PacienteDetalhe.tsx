@@ -177,8 +177,8 @@ export default function PacienteDetalhe() {
   const [docType, setDocType] = useState<PatientDocument["type"]>("exame");
 
   // Tab Evolução (Evolution Timeline) - Supabase
-  const [photoLabel, setPhotoLabel] = useState("");
-  const [photoDate, setPhotoDate] = useState("");
+  const [showMultiUpload, setShowMultiUpload] = useState(false);
+  const [multiUploadLoading, setMultiUploadLoading] = useState(false);
   const [showMultiUpload, setShowMultiUpload] = useState(false);
   const [multiUploadLoading, setMultiUploadLoading] = useState(false);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
