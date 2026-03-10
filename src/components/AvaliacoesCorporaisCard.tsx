@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAvaliacoesCorporais, useUpdateAvaliacaoCorporal } from "@/hooks/useSupabaseData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AnalysisResultModal } from "@/components/AnalysisResultModal";
 
 interface AvaliacoesCorporaisCardProps {
   patientId: string;
