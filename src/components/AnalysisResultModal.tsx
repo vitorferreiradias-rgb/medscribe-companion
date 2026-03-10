@@ -101,8 +101,8 @@ export function AnalysisResultModal({
         </DialogHeader>
 
         <ScrollArea className="flex-1 min-h-0">
-          <div ref={printRef} className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm pr-4">
-            {result}
+          <div ref={printRef} className="pr-4">
+            <MarkdownRenderer content={result} className="text-sm" />
           </div>
         </ScrollArea>
 

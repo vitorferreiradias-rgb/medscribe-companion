@@ -205,9 +205,7 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
                         />
                       ) : (
                         <ScrollArea className="max-h-[400px]">
-                          <div className="prose prose-sm dark:prose-invert max-w-none text-sm whitespace-pre-wrap">
-                            {av.resultado_analise_ia}
-                          </div>
+                          <MarkdownRenderer content={av.resultado_analise_ia!} className="text-sm" />
                         </ScrollArea>
                       )}
                     </div>
