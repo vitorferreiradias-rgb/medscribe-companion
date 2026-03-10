@@ -194,6 +194,26 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
                               <Printer className="h-3.5 w-3.5 mr-1" />
                               Imprimir
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10"
+                              disabled={deleteMutation.isPending}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm("Tem certeza que deseja excluir esta avaliação?")) {
+                                  deleteMutation.mutate(av.id);
+                                  setExpandedId(null);
+                                }
+                              }}
+                            >
+                              {deleteMutation.isPending ? (
+                                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                              )}
+                              Excluir
+                            </Button>
                           </div>
                         )}
                       </div>
