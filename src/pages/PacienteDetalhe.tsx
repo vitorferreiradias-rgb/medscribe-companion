@@ -1369,9 +1369,14 @@ export default function PacienteDetalhe() {
                   </div>
                 </div>
               ) : (
-                <Button variant="outline" size="sm" onClick={() => setShowPhotoForm(true)} className="w-full">
-                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar registro de evolução
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setShowPhotoForm(true)} className="flex-1">
+                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar registro de evolução
+                  </Button>
+                  <Button variant="default" size="sm" className="gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" /> Nova Avaliação
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
