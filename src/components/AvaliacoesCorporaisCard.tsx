@@ -54,6 +54,20 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
       },
     });
   };
+  const generateSummary = async (fullAnalysis: string, date: string) => {
+    setSummarizingId(date);
+    try {
+      const { data, error } = await supabase.functions.invoke("summarize-analysis", {
+        body: { fullAnalysis },
+      });
+      if (error) throw error;
+      setPrintModalData({ result: data.summary, date });
+    } catch (err: any) {
+      toast({ title: "Erro ao gerar resumo", description: err.message, variant: "destructive" });
+    } finally {
+      setSummarizingId(null);
+    }
+  };
 
   return (
     <>
