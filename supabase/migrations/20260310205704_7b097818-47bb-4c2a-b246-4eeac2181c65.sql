@@ -1,0 +1,1 @@
+ALTER TABLE public.avaliacoes_corporais ADD COLUMN analysis_objective text DEFAULT 'Avaliação corporal consolidada';

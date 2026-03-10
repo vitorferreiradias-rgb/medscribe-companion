@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       avaliacoes_corporais: {
         Row: {
+          analysis_objective: string | null
           angles: string[] | null
           created_at: string
           date: string
@@ -28,6 +29,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          analysis_objective?: string | null
           angles?: string[] | null
           created_at?: string
           date?: string
@@ -40,6 +42,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          analysis_objective?: string | null
           angles?: string[] | null
           created_at?: string
           date?: string
