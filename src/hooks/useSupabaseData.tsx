@@ -601,3 +601,24 @@ export function useUpdateAvaliacaoCorporal() {
     },
   });
 }
+
+export function useDeleteAvaliacaoCorporal() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("avaliacoes_corporais" as any)
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["avaliacoes_corporais"] });
+      toast({ title: "Avaliação excluída com sucesso." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro ao excluir", description: err.message, variant: "destructive" });
+    },
+  });
+}

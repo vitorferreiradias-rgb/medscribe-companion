@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Sparkles, ImageIcon, Clock, FileText, Loader2, ChevronDown, ChevronUp, Pencil, Check, X, Printer } from "lucide-react";
+import { Sparkles, ImageIcon, Clock, FileText, Loader2, ChevronDown, ChevronUp, Pencil, Check, X, Printer, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useAvaliacoesCorporais, useUpdateAvaliacaoCorporal } from "@/hooks/useSupabaseData";
+import { useAvaliacoesCorporais, useUpdateAvaliacaoCorporal, useDeleteAvaliacaoCorporal } from "@/hooks/useSupabaseData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AnalysisResultModal } from "@/components/AnalysisResultModal";
@@ -26,6 +26,7 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
 export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardProps) {
   const { data: avaliacoes, isLoading } = useAvaliacoesCorporais(patientId);
   const updateMutation = useUpdateAvaliacaoCorporal();
+  const deleteMutation = useDeleteAvaliacaoCorporal();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
@@ -192,6 +193,26 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
                             >
                               <Printer className="h-3.5 w-3.5 mr-1" />
                               Imprimir
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10"
+                              disabled={deleteMutation.isPending}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm("Tem certeza que deseja excluir esta avaliação?")) {
+                                  deleteMutation.mutate(av.id);
+                                  setExpandedId(null);
+                                }
+                              }}
+                            >
+                              {deleteMutation.isPending ? (
+                                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                              )}
+                              Excluir
                             </Button>
                           </div>
                         )}
