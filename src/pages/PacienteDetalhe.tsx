@@ -316,6 +316,7 @@ export default function PacienteDetalhe() {
       waist_circumference: photoWaist ? parseFloat(photoWaist) : undefined,
       treatment_goal: photoGoal || undefined,
       analysis_focus: photoFocus || undefined,
+      sessao_id: currentSessaoId,
     });
     setPhotoLabel("");
     setPhotoDate("");
