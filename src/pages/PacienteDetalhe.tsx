@@ -264,8 +264,10 @@ export default function PacienteDetalhe() {
       const photoWithBodyFat = selectedPhotos.find((p: any) => p.body_fat_percentage);
       if (photoWithBodyFat?.body_fat_percentage) anthropometrics.bodyFatPercentage = Number(photoWithBodyFat.body_fat_percentage);
 
-      // For evolution: build per-session anthropometric data + time interval
+      // For evolution: build per-session anthropometric data + time interval + reuse previous analysis
       let sessionData: any = undefined;
+      let previousAnalysis: string | undefined = undefined;
+      let session2PhotoPaths: string[] | undefined = undefined;
       if (action === "evolution" && selectedPhotos.length >= 2) {
         const bySession: Record<string, any[]> = {};
         selectedPhotos.forEach((p: any) => {
@@ -310,17 +312,45 @@ export default function PacienteDetalhe() {
             },
             intervalDays: diffDays,
           };
+
+          // Try to find existing completed analysis for session 1 photos
+          const session1Paths = bySession[sortedKeys[0]].map((p: any) => p.image_path);
+          session2PhotoPaths = bySession[sortedKeys[1]].map((p: any) => p.image_path);
+          try {
+            const { data: existingAnalyses } = await supabase
+              .from("avaliacoes_corporais" as any)
+              .select("resultado_analise_ia, photo_paths")
+              .eq("patient_id", id)
+              .eq("status", "completed")
+              .not("resultado_analise_ia", "is", null);
+            
+            if (existingAnalyses) {
+              // Find an analysis whose photo_paths match session 1's photos
+              const match = (existingAnalyses as any[]).find((a: any) => {
+                const aPaths = a.photo_paths || [];
+                return session1Paths.length > 0 && 
+                  session1Paths.every((p: string) => aPaths.includes(p)) &&
+                  aPaths.every((p: string) => session1Paths.includes(p));
+              });
+              if (match?.resultado_analise_ia) {
+                previousAnalysis = match.resultado_analise_ia;
+              }
+            }
+          } catch (e) {
+            console.warn("Could not fetch previous analysis, will analyze both sessions:", e);
+          }
         }
       }
 
       const { data: fnData, error: fnError } = await supabase.functions.invoke("consolidated-analysis", {
         body: {
           avaliacaoId,
-          photoPaths,
+          photoPaths: previousAnalysis && session2PhotoPaths ? session2PhotoPaths : photoPaths,
           action,
           patientContext: contextParts.length > 0 ? contextParts.join(". ") : undefined,
           anthropometrics: Object.keys(anthropometrics).length > 0 ? anthropometrics : undefined,
           sessionData,
+          previousAnalysis,
         },
       });
 
