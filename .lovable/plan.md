@@ -1,30 +1,28 @@
 
 
-# Tornar a classificação de receita visualmente automática e clara
+## Plano: Corrigir fluxo de avaliação corporal
 
-## Problema
-O sistema já classifica automaticamente o tipo de receita (simples/antimicrobiano/controle especial) com base no medicamento. Porém, na UI do preview, isso aparece como um dropdown genérico sem destaque — o médico não percebe que a classificação foi automática. Além disso, quando o medicamento não está no banco local, a receita silenciosamente vira "simples".
+### Problema identificado
 
-## Solução
+A tabela `avaliacoes_corporais` não possui a coluna `analysis_objective`. O insert no `PacienteDetalhe.tsx` (linha 241) tenta inserir esse campo, causando erro no Postgres. A edge function nunca é chamada porque o fluxo para no insert.
 
-### 1. Destacar a classificação automática no preview
-No `SmartPrescriptionPreview.tsx`:
-- Adicionar um badge/label ao lado do dropdown indicando "Classificado automaticamente" (verde) quando a medicação foi encontrada no banco
-- Quando a medicação NÃO foi encontrada, mostrar um alerta amarelo mais visível explicando que o tipo precisa ser confirmado manualmente
-- Manter o dropdown como override, mas visualmente secundário
+### Correção
 
-### 2. Adicionar mais antimicrobianos e controlados ao banco de conhecimento
-No `medication-knowledge.ts`, adicionar medicamentos comuns que faltam:
-- **Antimicrobianos**: Azitromicina, Ciprofloxacino, Cefalexina, Metronidazol, Levofloxacino, Sulfametoxazol+Trimetoprima
-- **Controlados**: Clonazepam, Alprazolam, Fluoxetina, Sertralina, Escitalopram, Ritalina (metilfenidato), Zolpidem
+**Opção 1 (mais limpa):** Adicionar a coluna `analysis_objective` à tabela via migration:
+```sql
+ALTER TABLE avaliacoes_corporais ADD COLUMN analysis_objective text DEFAULT 'Avaliação corporal consolidada';
+```
 
-### 3. Melhorar o `ComplianceResult` com flag de confiança
-No `compliance-router.ts`:
-- Adicionar campo `autoClassified: boolean` ao resultado — `true` quando todos os itens foram encontrados no banco, `false` quando algum é desconhecido
-- O preview usa esse campo para decidir se mostra "Classificado automaticamente" ou "Confirme o tipo"
+**Opção 2 (rápida):** Remover `analysis_objective` do insert e guardar no campo `metadata` (jsonb) que já existe.
 
-## Arquivos modificados
-- `src/lib/medication-knowledge.ts` — adicionar medicamentos
-- `src/lib/compliance-router.ts` — adicionar flag `autoClassified`
-- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — UI de classificação automática
+Recomendo a **Opção 1** — adicionar a coluna — pois o campo é semanticamente útil para filtrar e exibir o tipo de análise.
+
+### Alterações
+
+1. **Migration SQL**: Adicionar coluna `analysis_objective` (text, nullable, default) à tabela `avaliacoes_corporais`
+2. **Nenhuma alteração de código** necessária — o insert já passa o valor correto, só falta a coluna no banco
+
+### Arquivos
+- Migration SQL (nova)
+- Nenhum arquivo `.tsx` precisa mudar
 
