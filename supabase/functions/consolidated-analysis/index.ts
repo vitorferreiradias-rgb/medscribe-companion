@@ -175,9 +175,30 @@ function getUserPrompt(action: Action, numPhotos: number, patientContext?: strin
       return `Analise estas fotos (Frente, Perfil, Costas) da mesma pessoa e gere um relatório completo de composição corporal com estimativas quantitativas e margem de erro.${ctx}${anthroText}`;
     case "compare":
       return `Compare estas 2 fotos do mesmo paciente em datas diferentes e destaque a evolução.${ctx}${anthroText}`;
-    case "evolution":
-      return `Analise estes 2 grupos de fotos (${numPhotos} fotos total) de diferentes datas e gere um laudo de evolução comparativa.${ctx}${anthroText}`;
-  }
+    case "evolution": {
+      let evolutionDetails = "";
+      if (sessionData) {
+        const fmtAnthro = (a?: Anthropometrics) => {
+          if (!a) return "Não informados";
+          const parts: string[] = [];
+          if (a.weight) parts.push(`Peso: ${a.weight}kg`);
+          if (a.height) parts.push(`Altura: ${a.height}cm`);
+          if (a.waistCircumference) parts.push(`Circunferência abdominal: ${a.waistCircumference}cm`);
+          if (a.bodyFatPercentage) parts.push(`% Gordura: ${a.bodyFatPercentage}%`);
+          return parts.length > 0 ? parts.join(", ") : "Não informados";
+        };
+        const s1Date = sessionData.session1?.date || "desconhecida";
+        const s2Date = sessionData.session2?.date || "desconhecida";
+        evolutionDetails += `\n\n--- DADOS DAS SESSÕES ---`;
+        evolutionDetails += `\nSessão 1 (${s1Date}): ${fmtAnthro(sessionData.session1?.anthropometrics)}`;
+        evolutionDetails += `\nSessão 2 (${s2Date}): ${fmtAnthro(sessionData.session2?.anthropometrics)}`;
+        if (sessionData.intervalDays !== undefined) {
+          evolutionDetails += `\nIntervalo entre sessões: ${sessionData.intervalDays} dias`;
+        }
+        evolutionDetails += `\n\nINCLUA estes dados numéricos reais no laudo: monte uma tabela comparativa com os valores da Sessão 1 e Sessão 2 (peso, % gordura, circunferência, IMC calculado). Destaque as variações absolutas e percentuais. Mencione o intervalo de tempo entre as sessões no resumo.`;
+      }
+      return `Analise estes 2 grupos de fotos (${numPhotos} fotos total) de diferentes datas e gere um laudo de evolução comparativa.${ctx}${anthroText}${evolutionDetails}`;
+    }
 }
 
 Deno.serve(async (req) => {
