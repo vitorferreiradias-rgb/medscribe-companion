@@ -1370,12 +1370,21 @@ export default function PacienteDetalhe() {
                     <Button size="sm" variant="ghost" onClick={() => setShowPhotoForm(false)}>Cancelar</Button>
                   </div>
                 </div>
+              ) : showMultiUpload ? (
+                <MultiPhotoUploader
+                  onSubmit={(files) => {
+                    // TODO: lógica de upload e análise IA
+                    toast({ title: `${files.length} fotos prontas para análise` });
+                    setShowMultiUpload(false);
+                  }}
+                  onCancel={() => setShowMultiUpload(false)}
+                />
               ) : (
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => setShowPhotoForm(true)} className="flex-1">
                     <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar registro de evolução
                   </Button>
-                  <Button variant="default" size="sm" className="gap-1.5">
+                  <Button variant="default" size="sm" className="gap-1.5" onClick={() => setShowMultiUpload(true)}>
                     <Sparkles className="h-3.5 w-3.5" /> Nova Avaliação
                   </Button>
                 </div>
