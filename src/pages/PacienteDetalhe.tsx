@@ -1615,6 +1615,15 @@ export default function PacienteDetalhe() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Analysis Result Modal */}
+      <AnalysisResultModal
+        open={analysisModalOpen}
+        onOpenChange={setAnalysisModalOpen}
+        result={analysisModalResult}
+        patientName={patient?.name}
+        analysisType={analysisModalType}
+      />
+
     </div>
   );
 }
