@@ -345,11 +345,12 @@ export default function PacienteDetalhe() {
       const { data: fnData, error: fnError } = await supabase.functions.invoke("consolidated-analysis", {
         body: {
           avaliacaoId,
-          photoPaths,
+          photoPaths: previousAnalysis && session2PhotoPaths ? session2PhotoPaths : photoPaths,
           action,
           patientContext: contextParts.length > 0 ? contextParts.join(". ") : undefined,
           anthropometrics: Object.keys(anthropometrics).length > 0 ? anthropometrics : undefined,
           sessionData,
+          previousAnalysis,
         },
       });
 
