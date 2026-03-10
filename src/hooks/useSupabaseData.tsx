@@ -558,7 +558,7 @@ export function useAvaliacoesCorporais(patientId: string | undefined) {
         .eq("patient_id", patientId!)
         .order("date", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as Array<{
+      return (data ?? []) as unknown as Array<{
         id: string;
         patient_id: string;
         date: string;
