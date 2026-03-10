@@ -100,11 +100,8 @@ const premiumComponents: Components = {
       </li>
     );
   },
-  blockquote: ({ children, ...props }) => (
-    <div
-      className="my-4 rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-amber-400/5 to-transparent px-5 py-4 shadow-sm backdrop-blur-sm"
-      {...props}
-    >
+  blockquote: ({ children }) => (
+    <div className="my-4 rounded-xl border border-amber-500/30 bg-gradient-to-br from-amber-500/5 via-amber-400/5 to-transparent px-5 py-4 shadow-sm backdrop-blur-sm">
       <div className="text-foreground/90 [&>p]:my-0.5">{children}</div>
     </div>
   ),
