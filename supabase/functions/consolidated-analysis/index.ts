@@ -119,7 +119,22 @@ REGRAS:
 ## LAUDO DE EVOLUÇÃO CORPORAL COMPARATIVA
 
 ### Resumo da Evolução
-Visão geral das mudanças entre as duas sessões.
+Visão geral das mudanças entre as duas sessões. Inclua o intervalo de tempo entre elas.
+
+### Dados Antropométricos Comparativos
+
+| Parâmetro | Sessão 1 | Sessão 2 | Variação | Variação % |
+|---|---|---|---|---|
+| Peso (kg) | ... | ... | ... | ... |
+| IMC | ... | ... | ... | ... |
+| % Gordura Corporal | ... | ... | ... | ... |
+| Circunferência Abdominal (cm) | ... | ... | ... | ... |
+| Massa Gorda Estimada (kg) | ... | ... | ... | ... |
+| Taxa Metabólica Basal (kcal/dia) | ... | ... | ... | ... |
+
+> **Intervalo entre sessões:** [X dias] • **Classificação da Evolução:** [Regressão/Estável/Progresso Leve/Progresso Moderado/Progresso Significativo]
+
+---
 
 ### Comparação por Região
 
@@ -136,13 +151,6 @@ Visão geral das mudanças entre as duas sessões.
 ### Evolução Postural
 Compare a postura entre as duas sessões.
 
-### Composição Corporal Estimada
-
-| Parâmetro | Sessão 1 | Sessão 2 | Variação |
-|---|---|---|---|
-| % gordura estimado | ... | ... | ... |
-| Massa muscular aparente | ... | ... | ... |
-
 ### Score de Evolução
 Nota de 1 a 10 para a evolução entre sessões e justificativa.
 
@@ -153,7 +161,11 @@ REGRAS:
 - Compare sistematicamente cada região nos dois momentos.
 - Seja objetivo e use linguagem médica.
 - NÃO faça diagnósticos definitivos.
-- Destaque as mudanças mais significativas.`;
+- Destaque as mudanças mais significativas.
+- Quando dados antropométricos reais forem fornecidos, USE-OS na tabela comparativa e calcule variações absolutas e percentuais.
+- Quando dados não forem informados, estime a partir das imagens e marque com "~" (estimativa).
+- SEMPRE mencione o intervalo de tempo entre as sessões no resumo.
+- Use a fórmula de Mifflin-St Jeor para TMB quando peso e altura forem disponíveis.`;
   }
 }
 
