@@ -289,39 +289,43 @@ export default function PacienteDetalhe() {
     }
   }, [id, patient, toast, refetchAvaliacoes]);
 
-  const handleAddEvolutionPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !patient || !id) return;
-    if (photoAngle === "outro" && !photoFocus.trim()) {
-      toast({ title: "Campo obrigatório", description: "Descreva o que está sendo fotografado quando o ângulo é 'Outro'.", variant: "destructive" });
-      e.target.value = "";
-      return;
+  const handleSessionSubmit = async (data: {
+    photos: { file: File; angle: string; focusLabel?: string }[];
+    label: string;
+    date: string;
+    weight?: number;
+    height?: number;
+    waistCircumference?: number;
+    treatmentGoal?: string;
+    notes?: string;
+    sessaoId: string;
+  }) => {
+    if (!id || !patient) return;
+    setSessionSaving(true);
+    try {
+      for (const photo of data.photos) {
+        await addEvolutionPhotoMutation.mutateAsync({
+          patientId: id,
+          file: photo.file,
+          label: data.label,
+          date: data.date,
+          notes: data.notes,
+          weight: data.weight,
+          angle: photo.angle,
+          height: data.height,
+          waist_circumference: data.waistCircumference,
+          treatment_goal: data.treatmentGoal,
+          analysis_focus: photo.focusLabel || undefined,
+          sessao_id: data.sessaoId,
+        });
+      }
+      toast({ title: `${data.photos.length} foto${data.photos.length > 1 ? "s" : ""} salva${data.photos.length > 1 ? "s" : ""} com sucesso.` });
+      setShowPhotoForm(false);
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar fotos", description: err.message, variant: "destructive" });
+    } finally {
+      setSessionSaving(false);
     }
-    addEvolutionPhotoMutation.mutate({
-      patientId: id,
-      file,
-      label: photoLabel || "Registro",
-      date: photoDate || format(new Date(), "yyyy-MM-dd"),
-      notes: photoNotes || undefined,
-      weight: photoWeight ? parseFloat(photoWeight) : undefined,
-      angle: photoAngle,
-      height: photoHeight ? parseFloat(photoHeight) : undefined,
-      waist_circumference: photoWaist ? parseFloat(photoWaist) : undefined,
-      treatment_goal: photoGoal || undefined,
-      analysis_focus: photoFocus || undefined,
-      sessao_id: currentSessaoId,
-    });
-    setPhotoLabel("");
-    setPhotoDate("");
-    setPhotoNotes("");
-    setPhotoWeight("");
-    setPhotoAngle("frente");
-    setPhotoHeight("");
-    setPhotoWaist("");
-    setPhotoGoal("");
-    setPhotoFocus("");
-    setShowPhotoForm(false);
-    e.target.value = "";
   };
 
   const handleRemoveEvolutionPhoto = (photoId: string, imagePath: string) => {
