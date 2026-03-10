@@ -326,7 +326,7 @@ Deno.serve(async (req) => {
     }
 
     const systemPrompt = getPromptForAction(action as Action);
-    const userText = getUserPrompt(action as Action, signedUrls.length, patientContext, anthropometrics as Anthropometrics | undefined, sessionData as SessionData | undefined);
+    const userText = getUserPrompt(action as Action, signedUrls.length, patientContext, anthropometrics as Anthropometrics | undefined, sessionData as SessionData | undefined, previousAnalysis as string | undefined);
 
     const imageContent = signedUrls.map((url: string) => ({
       type: "image_url",
