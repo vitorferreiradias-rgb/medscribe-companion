@@ -1392,6 +1392,9 @@ export default function PacienteDetalhe() {
               )}
             </CardContent>
           </Card>
+
+          {/* Histórico de Avaliações Corporais */}
+          <AvaliacoesCorporaisCard patientId={patient.id} />
         </TabsContent>
 
         {/* ===== TAB DIAGNÓSTICOS ===== */}
