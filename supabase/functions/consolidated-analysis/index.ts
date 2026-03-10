@@ -29,7 +29,7 @@ Gere o relatório seguindo EXATAMENTE esta estrutura em Markdown:
 | IMC | valor | — |
 | % Gordura Corporal | valor% | ± X% |
 | Massa Gorda | valor kg | ± X kg |
-| Massa Muscular Esquelética Estimada | valor kg | ± X kg |
+| Massa Muscular Estimada | valor kg | ± X kg |
 | Taxa Metabólica Basal | valor kcal/dia | ± X kcal |
 | Gordura Visceral | nível | — |
 
@@ -50,21 +50,6 @@ Gere o relatório seguindo EXATAMENTE esta estrutura em Markdown:
 | Quadril e Glúteos | descrição | 🟢/🟡/🔴 |
 | Pernas | descrição | 🟢/🟡/🔴 |
 
-## Distribuição Muscular Estimada
-
-| Região | Nível |
-|---|---|
-| Membros Superiores | baixo / moderado / alto |
-| Tronco | baixo / moderado / alto |
-| Membros Inferiores | baixo / moderado / alto |
-
-## Avaliação Abdominal
-
-| Parâmetro | Nível |
-|---|---|
-| Adiposidade Abdominal | baixa / moderada / alta |
-| Risco de Gordura Visceral | baixo / moderado / alto |
-
 ## Análise Postural
 
 Avalie alinhamento, cifose, lordose, escoliose aparente, projeção de ombros/cabeça. Marque regiões não visíveis como "Não avaliável".
@@ -72,11 +57,6 @@ Avalie alinhamento, cifose, lordose, escoliose aparente, projeção de ombros/ca
 ## Avaliação Visual Descritiva
 
 Descrição objetiva da distribuição de gordura e massa muscular observada nas imagens.
-
-## Confiabilidade da Estimativa
-
-- Nível de confiança: baixa / moderada / alta
-- Margem de erro estimada: ± X kg na massa muscular esquelética
 
 ## Observações Clínicas
 
@@ -96,9 +76,6 @@ REGRAS:
 - Quando dados antropométricos reais forem fornecidos (peso, altura, circunferência), USE-OS para calibrar as estimativas.
 - Calcule IMC e relação cintura/altura quando os dados permitirem.
 - Use a fórmula de Mifflin-St Jeor para estimar TMB quando peso e altura forem fornecidos.
-- Quando circunferência abdominal estiver disponível, use-a como fator de correção para % gordura e gordura visceral.
-- Derive a massa muscular esquelética a partir da massa livre de gordura ajustada (não reinicie cálculos do zero — ajuste a estimativa existente).
-- NUNCA apresente valores como medição exata — sempre indique que são estimativas com margem de erro.
 - Use EXATAMENTE os emojis 🟢 (bom), 🟡 (atenção), 🔴 (crítico) na coluna Status da análise regional.
 - Use ⚠️ para observações e 🎯 para recomendações.
 - A tabela de indicadores DEVE ser a primeira seção do relatório.
