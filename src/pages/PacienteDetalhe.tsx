@@ -217,23 +217,11 @@ export default function PacienteDetalhe() {
   const updateEvolutionPhotoMutation = useUpdateEvolutionPhoto();
   const { refetch: refetchAvaliacoes } = useAvaliacoesCorporais(id);
 
-  const handleConsolidatedAnalysis = useCallback(async (files: File[]) => {
+  const handleConsolidatedAnalysis = useCallback(async (photoPaths: string[]) => {
     if (!id || !patient) return;
     setMultiUploadLoading(true);
     try {
-      // 1. Upload all photos to storage
-      const photoPaths: string[] = [];
-      for (const file of files) {
-        const ext = file.name.split(".").pop() || "jpg";
-        const path = `${id}/${Date.now()}_${Math.random().toString(36).slice(2, 6)}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from("evolution-photos")
-          .upload(path, file);
-        if (uploadError) throw new Error(`Falha no upload: ${uploadError.message}`);
-        photoPaths.push(path);
-      }
-
-      // 2. Create record in avaliacoes_corporais
+      // 1. Create record in avaliacoes_corporais with existing photo paths
       const { data: avaliacao, error: insertError } = await supabase
         .from("avaliacoes_corporais" as any)
         .insert({
@@ -256,7 +244,7 @@ export default function PacienteDetalhe() {
       if (patient.diagnoses?.length) contextParts.push(`Diagnósticos: ${patient.diagnoses.join(", ")}`);
       if (patient.drugAllergies?.length) contextParts.push(`Alergias: ${patient.drugAllergies.join(", ")}`);
 
-      // 3. Call edge function
+      // 2. Call edge function
       const { data: fnData, error: fnError } = await supabase.functions.invoke("consolidated-analysis", {
         body: {
           avaliacaoId,
