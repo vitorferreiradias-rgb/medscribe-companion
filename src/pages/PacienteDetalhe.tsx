@@ -1436,6 +1436,7 @@ export default function PacienteDetalhe() {
                     label: p.label,
                     date: p.date,
                     angle: (p as any).angle,
+                    sessao_id: (p as any).sessao_id,
                   }))}
                   onSubmit={handleConsolidatedAnalysis}
                   onCancel={() => setShowMultiUpload(false)}
