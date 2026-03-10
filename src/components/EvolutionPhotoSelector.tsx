@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Check, Sparkles, Loader2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Check, Sparkles, Loader2, GitCompareArrows, FileBarChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EvolutionPhotoImage } from "@/components/EvolutionPhotoImage";
@@ -14,19 +14,51 @@ interface PhotoItem {
   sessao_id?: string | null;
 }
 
+export type SelectorAction =
+  | { type: "composicao"; photoPaths: string[] }
+  | { type: "comparar"; photoPaths: string[] }
+  | { type: "evolucao_completa"; photoPaths: string[] };
+
 interface EvolutionPhotoSelectorProps {
   photos: PhotoItem[];
-  onSubmit: (selectedPhotoPaths: string[]) => void;
+  onSubmit: (action: SelectorAction) => void;
   onCancel: () => void;
-  minPhotos?: number;
   isLoading?: boolean;
+}
+
+const ANGLE_MAP: Record<string, string> = {
+  frente: "Frente",
+  perfil: "Perfil",
+  costas: "Costas",
+  frontal: "Frontal",
+  posterior: "Posterior",
+  lateral_direito: "Lat. Dir.",
+  lateral_esquerdo: "Lat. Esq.",
+  outro: "Outro",
+};
+
+const REQUIRED_ANGLES = new Set(["frente", "perfil", "costas"]);
+
+function hasAllAngles(items: PhotoItem[]): boolean {
+  const angles = new Set(items.map((p) => p.angle).filter(Boolean));
+  return [...REQUIRED_ANGLES].every((a) => angles.has(a));
+}
+
+function getDistinctGroups(photos: PhotoItem[], selectedIds: Set<string>) {
+  const selected = photos.filter((p) => selectedIds.has(p.id));
+  const groupMap = new Map<string, PhotoItem[]>();
+  for (const p of selected) {
+    const key = p.sessao_id || `date-${p.date}`;
+    if (!groupMap.has(key)) groupMap.set(key, []);
+    groupMap.get(key)!.push(p);
+  }
+  return groupMap;
 }
 
 export function EvolutionPhotoSelector({
   photos,
   onSubmit,
   onCancel,
-  minPhotos = 3,
   isLoading = false,
 }: EvolutionPhotoSelectorProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -48,32 +80,90 @@ export function EvolutionPhotoSelector({
     }
   };
 
-  const canSubmit = selectedIds.size >= minPhotos && !isLoading;
+  // Group photos by sessao_id or date for display
+  const displayGroups = useMemo(() => {
+    const groups: Record<string, PhotoItem[]> = {};
+    for (const photo of photos) {
+      const key = photo.sessao_id || `date-${photo.date}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(photo);
+    }
+    return Object.entries(groups).sort(
+      ([, a], [, b]) => b[0].date.localeCompare(a[0].date)
+    );
+  }, [photos]);
 
-  const ANGLE_MAP: Record<string, string> = {
-    frente: "Frente",
-    perfil: "Perfil",
-    costas: "Costas",
-    frontal: "Frontal",
-    posterior: "Posterior",
-    lateral_direito: "Lat. Dir.",
-    lateral_esquerdo: "Lat. Esq.",
-    outro: "Outro",
+  // Determine available action based on selection
+  const actionInfo = useMemo(() => {
+    const selected = photos.filter((p) => selectedIds.has(p.id));
+    if (selected.length === 0) return null;
+
+    const distinctGroups = getDistinctGroups(photos, selectedIds);
+    const groupCount = distinctGroups.size;
+    const groupEntries = [...distinctGroups.values()];
+
+    // Single group with exactly 3 required angles → Composição
+    if (groupCount === 1 && selected.length === 3 && hasAllAngles(selected)) {
+      return { type: "composicao" as const, label: "Gerar Relatório de Composição", icon: Sparkles };
+    }
+
+    // Two groups, each with all 3 angles → Evolução completa
+    if (
+      groupCount === 2 &&
+      groupEntries.every((g) => g.length === 3 && hasAllAngles(g))
+    ) {
+      return { type: "evolucao_completa" as const, label: "Relatório de Evolução Completa", icon: FileBarChart };
+    }
+
+    // Exactly 2 photos from different groups → Comparar
+    if (selected.length === 2 && groupCount === 2) {
+      return { type: "comparar" as const, label: "Comparar Fotos", icon: GitCompareArrows };
+    }
+
+    return null;
+  }, [photos, selectedIds]);
+
+  // Hint text
+  const hintText = useMemo(() => {
+    const selected = photos.filter((p) => selectedIds.has(p.id));
+    if (selected.length === 0) return "Selecione fotos para habilitar uma ação.";
+
+    const distinctGroups = getDistinctGroups(photos, selectedIds);
+    const groupCount = distinctGroups.size;
+
+    if (groupCount === 1) {
+      if (!hasAllAngles(selected)) {
+        const angles = new Set(selected.map((p) => p.angle).filter(Boolean));
+        const missing = [...REQUIRED_ANGLES].filter((a) => !angles.has(a));
+        return `Para relatório de composição, selecione: ${missing.map((a) => ANGLE_MAP[a] || a).join(", ")}.`;
+      }
+      if (selected.length > 3) {
+        return "Para composição, selecione exatamente 3 fotos (Frente, Perfil, Costas) de uma sessão.";
+      }
+    }
+
+    if (groupCount === 2) {
+      const groupEntries = [...distinctGroups.values()];
+      const bothComplete = groupEntries.every((g) => g.length === 3 && hasAllAngles(g));
+      if (!bothComplete && selected.length !== 2) {
+        return "Para evolução completa, selecione 3 fotos (Frente, Perfil, Costas) em cada sessão. Ou selecione 2 fotos para comparar.";
+      }
+    }
+
+    if (groupCount > 2) {
+      return "Selecione fotos de no máximo 2 sessões diferentes.";
+    }
+
+    return null;
+  }, [photos, selectedIds]);
+
+  const handleSubmit = () => {
+    if (!actionInfo) return;
+    const paths = photos.filter((p) => selectedIds.has(p.id)).map((p) => p.image_path);
+    onSubmit({ type: actionInfo.type, photoPaths: paths });
   };
 
-  // Group photos by sessao_id or date
-  const groups = photos.reduce<Record<string, PhotoItem[]>>((acc, photo) => {
-    const key = photo.sessao_id || photo.date;
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(photo);
-    return acc;
-  }, {});
-
-  const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
-    const dateA = groups[a][0].date;
-    const dateB = groups[b][0].date;
-    return dateB.localeCompare(dateA);
-  });
+  const ActionIcon = actionInfo?.icon || Sparkles;
 
   return (
     <div className="space-y-4">
@@ -84,9 +174,10 @@ export function EvolutionPhotoSelector({
         </Button>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Escolha no mínimo {minPhotos} fotos de diferentes ângulos para a avaliação corporal.
-      </p>
+      {/* Hint */}
+      {hintText && !isLoading && (
+        <p className="text-xs text-muted-foreground">{hintText}</p>
+      )}
 
       {photos.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
@@ -95,8 +186,7 @@ export function EvolutionPhotoSelector({
         </div>
       ) : (
         <div className="space-y-4">
-          {sortedGroupKeys.map((groupKey) => {
-            const groupPhotos = groups[groupKey];
+          {displayGroups.map(([groupKey, groupPhotos]) => {
             const groupDate = groupPhotos[0].date;
             const allSelected = groupPhotos.every((p) => selectedIds.has(p.id));
             const toggleGroup = () => {
@@ -124,6 +214,7 @@ export function EvolutionPhotoSelector({
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {groupPhotos.map((photo) => {
                     const isSelected = selectedIds.has(photo.id);
+                    const angleLabel = photo.angle ? ANGLE_MAP[photo.angle] || photo.angle : null;
                     return (
                       <button
                         key={photo.id}
@@ -141,16 +232,24 @@ export function EvolutionPhotoSelector({
                           alt={photo.label}
                           className="w-full h-full object-cover"
                         />
+                        {/* Selection check */}
                         {isSelected && (
                           <div className="absolute top-1 right-1 bg-primary rounded-full p-0.5">
                             <Check className="h-3 w-3 text-primary-foreground" />
                           </div>
                         )}
+                        {/* Angle badge */}
+                        {angleLabel && (
+                          <Badge
+                            variant="secondary"
+                            className="absolute top-1 left-1 text-[8px] px-1 py-0 h-4 bg-background/80 backdrop-blur-sm"
+                          >
+                            {angleLabel}
+                          </Badge>
+                        )}
+                        {/* Label overlay */}
                         <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-1.5">
                           <p className="text-[9px] text-white truncate">{photo.label}</p>
-                          {photo.angle && ANGLE_MAP[photo.angle] && (
-                            <p className="text-[8px] text-white/70">{ANGLE_MAP[photo.angle]}</p>
-                          )}
                         </div>
                       </button>
                     );
@@ -167,11 +266,6 @@ export function EvolutionPhotoSelector({
         <span className="text-xs text-muted-foreground">
           {selectedIds.size} de {photos.length} selecionada{selectedIds.size !== 1 ? "s" : ""}
         </span>
-        {selectedIds.size > 0 && selectedIds.size < minPhotos && !isLoading && (
-          <Badge variant="outline" className="text-xs">
-            Faltam {minPhotos - selectedIds.size}
-          </Badge>
-        )}
       </div>
 
       {/* Loading state */}
@@ -189,21 +283,16 @@ export function EvolutionPhotoSelector({
         </Button>
         <Button
           size="sm"
-          disabled={!canSubmit}
-          onClick={() => {
-            const paths = photos
-              .filter((p) => selectedIds.has(p.id))
-              .map((p) => p.image_path);
-            onSubmit(paths);
-          }}
+          disabled={!actionInfo || isLoading}
+          onClick={handleSubmit}
           className="gap-1.5"
         >
           {isLoading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
-            <Sparkles className="h-3.5 w-3.5" />
+            <ActionIcon className="h-3.5 w-3.5" />
           )}
-          {isLoading ? "Analisando…" : "Enviar para Análise"}
+          {isLoading ? "Analisando…" : actionInfo?.label || "Selecione fotos"}
         </Button>
       </div>
     </div>

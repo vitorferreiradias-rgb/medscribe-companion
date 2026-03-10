@@ -38,7 +38,7 @@ import { differenceInYears, differenceInMonths } from "date-fns";
 import { StatusBadge } from "@/components/StatusBadge";
 
 import { AvaliacoesCorporaisCard } from "@/components/AvaliacoesCorporaisCard";
-import { EvolutionPhotoSelector } from "@/components/EvolutionPhotoSelector";
+import { EvolutionPhotoSelector, type SelectorAction } from "@/components/EvolutionPhotoSelector";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Patient, PatientDocument, BeforeAfterPhoto, EvolutionPhoto } from "@/types";
@@ -221,7 +221,6 @@ export default function PacienteDetalhe() {
     if (!id || !patient) return;
     setMultiUploadLoading(true);
     try {
-      // 1. Create record in avaliacoes_corporais with existing photo paths
       const { data: avaliacao, error: insertError } = await supabase
         .from("avaliacoes_corporais" as any)
         .insert({
@@ -237,14 +236,12 @@ export default function PacienteDetalhe() {
 
       const avaliacaoId = (avaliacao as any).id;
 
-      // Build patient context
       const contextParts: string[] = [];
       if (patient.sex) contextParts.push(`Sexo: ${patient.sex}`);
       if (patient.birthDate) contextParts.push(`Data de nascimento: ${patient.birthDate}`);
       if (patient.diagnoses?.length) contextParts.push(`Diagnósticos: ${patient.diagnoses.join(", ")}`);
       if (patient.drugAllergies?.length) contextParts.push(`Alergias: ${patient.drugAllergies.join(", ")}`);
 
-      // 2. Call edge function
       const { data: fnData, error: fnError } = await supabase.functions.invoke("consolidated-analysis", {
         body: {
           avaliacaoId,
@@ -273,6 +270,64 @@ export default function PacienteDetalhe() {
       setMultiUploadLoading(false);
     }
   }, [id, patient, toast, refetchAvaliacoes]);
+
+  const handleSelectorAction = useCallback(async (action: SelectorAction) => {
+    if (action.type === "composicao") {
+      await handleConsolidatedAnalysis(action.photoPaths);
+    } else if (action.type === "comparar") {
+      // Call evolution-compare edge function for 2-photo comparison
+      if (!id || !patient) return;
+      setMultiUploadLoading(true);
+      try {
+        const contextParts: string[] = [];
+        if (patient.sex) contextParts.push(`Sexo: ${patient.sex}`);
+        if (patient.birthDate) contextParts.push(`Data de nascimento: ${patient.birthDate}`);
+
+        const { error: fnError } = await supabase.functions.invoke("evolution-compare", {
+          body: {
+            photoPaths: action.photoPaths,
+            patientId: id,
+            patientContext: contextParts.length > 0 ? contextParts.join(". ") : undefined,
+          },
+        });
+        if (fnError) throw new Error(`Falha na comparação: ${fnError.message}`);
+        refetchAvaliacoes();
+        setShowMultiUpload(false);
+        toast({ title: "Comparação concluída", description: "O relatório comparativo foi gerado." });
+      } catch (err: any) {
+        toast({ title: "Erro na comparação", description: err.message, variant: "destructive" });
+      } finally {
+        setMultiUploadLoading(false);
+      }
+    } else if (action.type === "evolucao_completa") {
+      // Full evolution: 2 groups of 3 photos each
+      if (!id || !patient) return;
+      setMultiUploadLoading(true);
+      try {
+        const contextParts: string[] = [];
+        if (patient.sex) contextParts.push(`Sexo: ${patient.sex}`);
+        if (patient.birthDate) contextParts.push(`Data de nascimento: ${patient.birthDate}`);
+        if (patient.diagnoses?.length) contextParts.push(`Diagnósticos: ${patient.diagnoses.join(", ")}`);
+
+        const { error: fnError } = await supabase.functions.invoke("evolution-compare", {
+          body: {
+            photoPaths: action.photoPaths,
+            patientId: id,
+            patientContext: contextParts.length > 0 ? contextParts.join(". ") : undefined,
+            fullEvolution: true,
+          },
+        });
+        if (fnError) throw new Error(`Falha na análise de evolução: ${fnError.message}`);
+        refetchAvaliacoes();
+        setShowMultiUpload(false);
+        toast({ title: "Evolução concluída", description: "O relatório de evolução completa foi gerado." });
+      } catch (err: any) {
+        toast({ title: "Erro na evolução", description: err.message, variant: "destructive" });
+      } finally {
+        setMultiUploadLoading(false);
+      }
+    }
+  }, [id, patient, handleConsolidatedAnalysis, toast, refetchAvaliacoes]);
 
   const handleAddEvolutionPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1438,7 +1493,7 @@ export default function PacienteDetalhe() {
                     angle: (p as any).angle,
                     sessao_id: (p as any).sessao_id,
                   }))}
-                  onSubmit={handleConsolidatedAnalysis}
+                  onSubmit={handleSelectorAction}
                   onCancel={() => setShowMultiUpload(false)}
                   isLoading={multiUploadLoading}
                 />
