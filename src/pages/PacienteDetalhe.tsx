@@ -1493,7 +1493,7 @@ export default function PacienteDetalhe() {
                     angle: (p as any).angle,
                     sessao_id: (p as any).sessao_id,
                   }))}
-                  onSubmit={handleConsolidatedAnalysis}
+                  onSubmit={handleSelectorAction}
                   onCancel={() => setShowMultiUpload(false)}
                   isLoading={multiUploadLoading}
                 />
