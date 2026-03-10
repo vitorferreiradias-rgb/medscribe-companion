@@ -224,5 +224,13 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
         )}
       </CardContent>
     </Card>
+
+    <AnalysisResultModal
+      open={!!printModalData}
+      onOpenChange={(open) => { if (!open) setPrintModalData(null); }}
+      result={printModalData?.result || ""}
+      date={printModalData?.date}
+    />
+    </>
   );
 }
