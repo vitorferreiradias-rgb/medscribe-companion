@@ -37,7 +37,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { differenceInYears, differenceInMonths } from "date-fns";
 import { StatusBadge } from "@/components/StatusBadge";
 
-import { MultiPhotoUploader } from "@/components/MultiPhotoUploader";
+import { AvaliacoesCorporaisCard } from "@/components/AvaliacoesCorporaisCard";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Patient, PatientDocument, BeforeAfterPhoto, EvolutionPhoto } from "@/types";
