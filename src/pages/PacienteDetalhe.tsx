@@ -179,17 +179,9 @@ export default function PacienteDetalhe() {
   const [docType, setDocType] = useState<PatientDocument["type"]>("exame");
 
   // Tab Evolução (Evolution Timeline) - Supabase
-  const [photoLabel, setPhotoLabel] = useState("");
-  const [photoDate, setPhotoDate] = useState("");
-  const [photoNotes, setPhotoNotes] = useState("");
-  const [photoWeight, setPhotoWeight] = useState("");
-  const [photoAngle, setPhotoAngle] = useState("frente");
-  const [photoHeight, setPhotoHeight] = useState("");
-  const [photoWaist, setPhotoWaist] = useState("");
-  const [photoGoal, setPhotoGoal] = useState("");
-  const [photoFocus, setPhotoFocus] = useState("");
   const [showPhotoForm, setShowPhotoForm] = useState(false);
   const [currentSessaoId, setCurrentSessaoId] = useState(() => crypto.randomUUID());
+  const [sessionSaving, setSessionSaving] = useState(false);
   const [showMultiUpload, setShowMultiUpload] = useState(false);
   const [multiUploadLoading, setMultiUploadLoading] = useState(false);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
