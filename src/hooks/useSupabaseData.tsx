@@ -620,3 +620,24 @@ export function useUpdateAvaliacaoCorporal() {
     enabled: !!patientId,
   });
 }
+
+export function useUpdateAvaliacaoCorporal() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, resultado_analise_ia }: { id: string; resultado_analise_ia: string }) => {
+      const { error } = await supabase
+        .from("avaliacoes_corporais" as any)
+        .update({ resultado_analise_ia } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["avaliacoes_corporais"] });
+      toast({ title: "Análise atualizada com sucesso." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+    },
+  });
+}
