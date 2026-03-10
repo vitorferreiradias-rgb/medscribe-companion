@@ -256,6 +256,8 @@ export default function PacienteDetalhe() {
       if (photoWithWeight?.weight) anthropometrics.weight = Number(photoWithWeight.weight);
       if (photoWithHeight?.height) anthropometrics.height = Number(photoWithHeight.height);
       if (photoWithWaist?.waist_circumference) anthropometrics.waistCircumference = Number(photoWithWaist.waist_circumference);
+      const photoWithBodyFat = selectedPhotos.find((p: any) => p.body_fat_percentage);
+      if (photoWithBodyFat?.body_fat_percentage) anthropometrics.bodyFatPercentage = Number(photoWithBodyFat.body_fat_percentage);
 
       const { data: fnData, error: fnError } = await supabase.functions.invoke("consolidated-analysis", {
         body: {
