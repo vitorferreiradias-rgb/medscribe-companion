@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Sparkles, ImageIcon, Clock, FileText, Loader2, ChevronDown, ChevronUp, Pencil, Check, X } from "lucide-react";
+import { Sparkles, ImageIcon, Clock, FileText, Loader2, ChevronDown, ChevronUp, Pencil, Check, X, Printer } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAvaliacoesCorporais, useUpdateAvaliacaoCorporal } from "@/hooks/useSupabaseData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AnalysisResultModal } from "@/components/AnalysisResultModal";
 
 interface AvaliacoesCorporaisCardProps {
   patientId: string;
@@ -27,6 +28,7 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [printModalData, setPrintModalData] = useState<{ result: string; date: string } | null>(null);
 
   const startEditing = (id: string, text: string) => {
     setEditingId(id);
@@ -48,6 +50,7 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
   };
 
   return (
+    <>
     <Card className="glass-card">
       <CardHeader className="pb-3 pt-4 px-4">
         <CardTitle className="text-sm flex items-center gap-2">
@@ -161,18 +164,35 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
                             </Button>
                           </>
                         ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2 text-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startEditing(av.id, av.resultado_analise_ia!);
-                            }}
-                          >
-                            <Pencil className="h-3.5 w-3.5 mr-1" />
-                            Editar
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditing(av.id, av.resultado_analise_ia!);
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5 mr-1" />
+                              Editar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPrintModalData({
+                                  result: av.resultado_analise_ia!,
+                                  date: format(parseISO(av.date), "dd/MM/yyyy"),
+                                });
+                              }}
+                            >
+                              <Printer className="h-3.5 w-3.5 mr-1" />
+                              Imprimir
+                            </Button>
+                          </div>
                         )}
                       </div>
                       {isEditing ? (
@@ -205,5 +225,13 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
         )}
       </CardContent>
     </Card>
+
+    <AnalysisResultModal
+      open={!!printModalData}
+      onOpenChange={(open) => { if (!open) setPrintModalData(null); }}
+      result={printModalData?.result || ""}
+      date={printModalData?.date}
+    />
+    </>
   );
 }

@@ -1,44 +1,30 @@
 
 
-## Plano: Edge Function com 3 modos + Modal de resultado com PDF
+# Tornar a classificação de receita visualmente automática e clara
 
-### 1. Edge Function `consolidated-analysis/index.ts`
+## Problema
+O sistema já classifica automaticamente o tipo de receita (simples/antimicrobiano/controle especial) com base no medicamento. Porém, na UI do preview, isso aparece como um dropdown genérico sem destaque — o médico não percebe que a classificação foi automática. Além disso, quando o medicamento não está no banco local, a receita silenciosamente vira "simples".
 
-Atualizar para:
-- Receber o campo `action` do body (`composition` | `compare` | `evolution`)
-- Selecionar o prompt correto com base na action
-- Usar modelo `google/gemini-3-pro-image-preview` (Nano Banana Pro) em vez de `gemini-2.5-pro`
-- Salvar resultado no campo `resultado_analise_ia` (já existente na tabela `avaliacoes_corporais`)
+## Solução
 
-Prompts por ação:
+### 1. Destacar a classificação automática no preview
+No `SmartPrescriptionPreview.tsx`:
+- Adicionar um badge/label ao lado do dropdown indicando "Classificado automaticamente" (verde) quando a medicação foi encontrada no banco
+- Quando a medicação NÃO foi encontrada, mostrar um alerta amarelo mais visível explicando que o tipo precisa ser confirmado manualmente
+- Manter o dropdown como override, mas visualmente secundário
 
-| Action | Prompt |
-|--------|--------|
-| `composition` | Especialista em composição corporal. 3 fotos (F+P+C), relatório técnico estruturado |
-| `compare` | Comparação de 2 fotos de datas diferentes, comentário breve e motivador |
-| `evolution` | 2 grupos de 3 fotos, laudo de evolução comparativa detalhado |
+### 2. Adicionar mais antimicrobianos e controlados ao banco de conhecimento
+No `medication-knowledge.ts`, adicionar medicamentos comuns que faltam:
+- **Antimicrobianos**: Azitromicina, Ciprofloxacino, Cefalexina, Metronidazol, Levofloxacino, Sulfametoxazol+Trimetoprima
+- **Controlados**: Clonazepam, Alprazolam, Fluoxetina, Sertralina, Escitalopram, Ritalina (metilfenidato), Zolpidem
 
-### 2. Modal de resultado com impressão
+### 3. Melhorar o `ComplianceResult` com flag de confiança
+No `compliance-router.ts`:
+- Adicionar campo `autoClassified: boolean` ao resultado — `true` quando todos os itens foram encontrados no banco, `false` quando algum é desconhecido
+- O preview usa esse campo para decidir se mostra "Classificado automaticamente" ou "Confirme o tipo"
 
-Criar `src/components/AnalysisResultModal.tsx`:
-- Dialog elegante que recebe o texto do resultado e metadata (data, tipo de análise, nome do paciente)
-- Exibe o relatório formatado com `whitespace-pre-wrap`
-- Botão "Imprimir Relatório" que usa `window.print()` com CSS `@media print` para gerar PDF limpo
-- Botões: Editar, Imprimir, Fechar
-
-### 3. Integração no `PacienteDetalhe.tsx`
-
-- Após a análise concluir com sucesso, abrir o modal automaticamente com o resultado
-- Também permitir abrir o modal a partir do `AvaliacoesCorporaisCard` ao clicar em uma avaliação concluída
-
-### 4. Integração no `AvaliacoesCorporaisCard.tsx`
-
-- Ao expandir uma avaliação concluída, adicionar botão "Imprimir Relatório" ao lado do botão "Editar"
-- Alternativamente, abrir o modal ao clicar (para ter a experiência de impressão)
-
-### Arquivos editados
-- `supabase/functions/consolidated-analysis/index.ts` — prompts por action + modelo Nano Banana Pro
-- `src/components/AnalysisResultModal.tsx` — novo componente modal com impressão
-- `src/pages/PacienteDetalhe.tsx` — abrir modal após análise
-- `src/components/AvaliacoesCorporaisCard.tsx` — botão imprimir no card
+## Arquivos modificados
+- `src/lib/medication-knowledge.ts` — adicionar medicamentos
+- `src/lib/compliance-router.ts` — adicionar flag `autoClassified`
+- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — UI de classificação automática
 

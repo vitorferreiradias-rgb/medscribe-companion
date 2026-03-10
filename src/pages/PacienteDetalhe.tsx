@@ -38,6 +38,7 @@ import { differenceInYears, differenceInMonths } from "date-fns";
 import { StatusBadge } from "@/components/StatusBadge";
 
 import { AvaliacoesCorporaisCard } from "@/components/AvaliacoesCorporaisCard";
+import { AnalysisResultModal } from "@/components/AnalysisResultModal";
 import { EvolutionPhotoSelector } from "@/components/EvolutionPhotoSelector";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -198,6 +199,9 @@ export default function PacienteDetalhe() {
   const [singleAnalysisLoading, setSingleAnalysisLoading] = useState<string | null>(null);
   const [editingAnalysisId, setEditingAnalysisId] = useState<string | null>(null);
   const [editingAnalysisText, setEditingAnalysisText] = useState("");
+  const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
+  const [analysisModalResult, setAnalysisModalResult] = useState("");
+  const [analysisModalType, setAnalysisModalType] = useState<string>("");
 
   // Inline photo editing
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
@@ -262,6 +266,14 @@ export default function PacienteDetalhe() {
 
       refetchAvaliacoes();
       setShowMultiUpload(false);
+
+      // Open result modal
+      if (fnData?.analysis) {
+        setAnalysisModalResult(fnData.analysis);
+        setAnalysisModalType(action);
+        setAnalysisModalOpen(true);
+      }
+
       toast({
         title: "Avaliação concluída",
         description: action === "compare"
@@ -1602,6 +1614,15 @@ export default function PacienteDetalhe() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Analysis Result Modal */}
+      <AnalysisResultModal
+        open={analysisModalOpen}
+        onOpenChange={setAnalysisModalOpen}
+        result={analysisModalResult}
+        patientName={patient?.name}
+        analysisType={analysisModalType}
+      />
 
     </div>
   );

@@ -6,13 +6,142 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+type Action = "composition" | "compare" | "evolution";
+
+function getPromptForAction(action: Action): string {
+  switch (action) {
+    case "composition":
+      return `Você é um especialista em composição corporal. Analise estas 3 fotos (Frente, Perfil, Costas) como um conjunto único. Identifique padrões de gordura localizada, postura e biotipo. Gere um relatório técnico estruturado com observações clínicas.
+
+## RELATÓRIO TÉCNICO DE COMPOSIÇÃO CORPORAL
+
+### Análise por Região
+
+| Região | Observações |
+|---|---|
+| Rosto e Pescoço | ... |
+| Braços | ... |
+| Tronco e Peito | ... |
+| Costas e Coluna | ... |
+| Abdômen | ... |
+| Cintura/Flancos | ... |
+| Quadril e Glúteos | ... |
+| Pernas | ... |
+
+### Padrões de Gordura Localizada
+Identifique regiões com acúmulo, distribuição e padrão (androide/ginoide).
+
+### Análise Postural
+Avalie alinhamento, cifose, lordose, escoliose aparente, projeção de ombros/cabeça.
+
+### Composição Corporal Estimada
+
+| Parâmetro | Estimativa |
+|---|---|
+| Faixa de peso aparente | ex: 75-85kg |
+| % gordura corporal estimado | ex: 20-25% |
+| Biótipo predominante | ex: Mesomorfo |
+
+### Score de Avaliação
+Nota de 1 a 10 para condição física geral e justificativa.
+
+### Observações Clínicas
+Pontos de atenção para o médico.
+
+### Recomendações
+Sugestões baseadas nos achados visuais.
+
+REGRAS:
+- Seja objetivo, preciso e use linguagem médica adequada.
+- NÃO faça diagnósticos definitivos — descreva achados visuais.
+- Sempre forneça estimativas visuais de composição corporal.
+- Marque regiões não visíveis como "Não avaliável".`;
+
+    case "compare":
+      return `Compare estas 2 fotos do mesmo paciente em datas diferentes. Foque exclusivamente na mudança visual entre as duas imagens (ex: redução de volume abdominal, melhora na silhueta). Gere um comentário breve e motivador destacando a evolução.
+
+## COMPARAÇÃO DE EVOLUÇÃO
+
+### Mudanças Observadas
+Liste as diferenças visuais identificadas entre as duas fotos.
+
+### Destaques Positivos
+Destaque as melhorias mais evidentes de forma motivadora.
+
+### Áreas para Atenção
+Regiões que ainda precisam de foco no tratamento.
+
+### Comentário Final
+Um parágrafo motivador resumindo a evolução do paciente.
+
+REGRAS:
+- Seja motivador e positivo, mas honesto.
+- Foque nas diferenças visuais concretas.
+- Use linguagem acessível ao paciente.`;
+
+    case "evolution":
+      return `Analise estes 2 grupos de fotos (3 fotos de cada data: Frente, Perfil e Costas). Realize uma comparação profunda de evolução corporal. Identifique ganhos de massa muscular, perda de gordura e correções posturais. Gere um laudo de evolução comparativa detalhado.
+
+## LAUDO DE EVOLUÇÃO CORPORAL COMPARATIVA
+
+### Resumo da Evolução
+Visão geral das mudanças entre as duas sessões.
+
+### Comparação por Região
+
+| Região | Sessão 1 | Sessão 2 | Evolução |
+|---|---|---|---|
+| Braços | ... | ... | ↑/↓/= |
+| Tronco/Peito | ... | ... | ↑/↓/= |
+| Abdômen | ... | ... | ↑/↓/= |
+| Costas | ... | ... | ↑/↓/= |
+| Cintura/Flancos | ... | ... | ↑/↓/= |
+| Quadril/Glúteos | ... | ... | ↑/↓/= |
+| Pernas | ... | ... | ↑/↓/= |
+
+### Evolução Postural
+Compare a postura entre as duas sessões.
+
+### Composição Corporal Estimada
+
+| Parâmetro | Sessão 1 | Sessão 2 | Variação |
+|---|---|---|---|
+| % gordura estimado | ... | ... | ... |
+| Massa muscular aparente | ... | ... | ... |
+
+### Score de Evolução
+Nota de 1 a 10 para a evolução entre sessões e justificativa.
+
+### Conclusão e Recomendações
+Resumo clínico com próximos passos sugeridos.
+
+REGRAS:
+- Compare sistematicamente cada região nos dois momentos.
+- Seja objetivo e use linguagem médica.
+- NÃO faça diagnósticos definitivos.
+- Destaque as mudanças mais significativas.`;
+  }
+}
+
+function getUserPrompt(action: Action, numPhotos: number, patientContext?: string): string {
+  const ctx = patientContext ? `\n\nContexto do paciente: ${patientContext}` : "";
+  switch (action) {
+    case "composition":
+      return `Analise estas 3 fotos (Frente, Perfil, Costas) da mesma pessoa e gere um relatório de composição corporal.${ctx}`;
+    case "compare":
+      return `Compare estas 2 fotos do mesmo paciente em datas diferentes e destaque a evolução.${ctx}`;
+    case "evolution":
+      return `Analise estes 2 grupos de fotos (${numPhotos} fotos total) de diferentes datas e gere um laudo de evolução comparativa.${ctx}`;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { avaliacaoId, photoPaths, patientContext } = await req.json();
+    const { avaliacaoId, photoPaths, action = "composition", patientContext } = await req.json();
 
     if (!avaliacaoId || !photoPaths || photoPaths.length === 0) {
       return new Response(
@@ -25,7 +154,6 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Update status to analyzing
     await supabase
       .from("avaliacoes_corporais")
       .update({ status: "analyzing" })
@@ -66,67 +194,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const systemPrompt = `Você é um especialista em composição corporal. Analise estas fotos de diferentes ângulos da mesma pessoa como um conjunto único. Identifique padrões de gordura localizada, postura e evolução. Gere um relatório técnico consolidado.
-
-Você receberá múltiplas fotos de DIFERENTES ÂNGULOS da MESMA pessoa, tiradas na MESMA data.
-
-## INSTRUÇÕES
-
-1. Identifique o ângulo de CADA foto (Frontal, Posterior, Lateral Direito, Lateral Esquerdo).
-2. Combine as informações de TODOS os ângulos para gerar uma avaliação mais precisa.
-3. Estruture o relatório conforme abaixo.
-
-## RELATÓRIO TÉCNICO CONSOLIDADO
-
-### Ângulos Identificados
-Liste cada foto e seu ângulo.
-
-### Análise por Região (consolidando todos os ângulos)
-
-| Região | Observações |
-|---|---|
-| Rosto e Pescoço | ... |
-| Braços | ... |
-| Tronco e Peito | ... |
-| Costas e Coluna | ... |
-| Abdômen | ... |
-| Cintura/Flancos | ... |
-| Quadril e Glúteos | ... |
-| Pernas | ... |
-| Postura Geral | ... |
-| Pele | ... |
-
-### Padrões de Gordura Localizada
-Identifique regiões com acúmulo de gordura, distribuição e padrão (androide/ginoide).
-
-### Análise Postural
-Avalie alinhamento, cifose, lordose, escoliose aparente, projeção de ombros/cabeça.
-
-### Composição Corporal Estimada
-
-| Parâmetro | Estimativa |
-|---|---|
-| Faixa de peso aparente | ex: 75-85kg |
-| % gordura corporal estimado | ex: 20-25% |
-| Biótipo predominante | ex: Mesomorfo |
-
-### Score de Avaliação
-Nota de 1 a 10 para a condição física geral e justificativa.
-
-### Observações Clínicas
-Pontos de atenção para o médico acompanhar.
-
-### Recomendações
-Sugestões baseadas nos achados visuais.
-
----
-
-REGRAS:
-- Seja objetivo, preciso e use linguagem médica adequada.
-- NÃO faça diagnósticos definitivos — descreva achados visuais.
-- Sempre forneça estimativas visuais de composição corporal.
-- Combine dados de TODOS os ângulos disponíveis para maior precisão.
-- Marque regiões não visíveis em nenhum ângulo como "Não avaliável".`;
+    const systemPrompt = getPromptForAction(action as Action);
+    const userText = getUserPrompt(action as Action, signedUrls.length, patientContext);
 
     const imageContent = signedUrls.map((url: string) => ({
       type: "image_url",
@@ -134,10 +203,7 @@ REGRAS:
     }));
 
     const userContent = [
-      {
-        type: "text",
-        text: `Analise estas ${signedUrls.length} fotos de diferentes ângulos da mesma pessoa e gere um relatório de composição corporal consolidado.${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}`,
-      },
+      { type: "text", text: userText },
       ...imageContent,
     ];
 
@@ -148,7 +214,7 @@ REGRAS:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-3-pro-image-preview",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userContent },
@@ -179,7 +245,6 @@ REGRAS:
     const aiData = await aiRes.json();
     const analysis = aiData?.choices?.[0]?.message?.content || "Não foi possível gerar a análise.";
 
-    // Save result
     await supabase
       .from("avaliacoes_corporais")
       .update({
