@@ -147,6 +147,50 @@ export type Database = {
         }
         Relationships: []
       }
+      consolidated_analyses: {
+        Row: {
+          ai_result: string | null
+          analysis_objective: string
+          angles: string[] | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          patient_id: string
+          photo_paths: string[]
+          updated_at: string
+        }
+        Insert: {
+          ai_result?: string | null
+          analysis_objective: string
+          angles?: string[] | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          patient_id: string
+          photo_paths: string[]
+          updated_at?: string
+        }
+        Update: {
+          ai_result?: string | null
+          analysis_objective?: string
+          angles?: string[] | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          patient_id?: string
+          photo_paths?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consolidated_analyses_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       encounters: {
         Row: {
           chief_complaint: string | null
