@@ -1357,65 +1357,17 @@ export default function PacienteDetalhe() {
                 </div>
               )}
 
-              {/* Add new photo form */}
-              {showPhotoForm ? (
-                <div className="rounded-xl border border-border/50 p-4 space-y-3 bg-muted/10">
-                  <p className="text-sm font-medium">Nova foto de evolução</p>
-                  <Input placeholder="Descrição (ex: 3ª sessão, pós-procedimento)" value={photoLabel} onChange={(e) => setPhotoLabel(e.target.value)} />
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input type="date" value={photoDate} onChange={(e) => setPhotoDate(e.target.value)} placeholder="Data" />
-                    <Input type="number" step="0.1" placeholder="Peso (kg) — opcional" value={photoWeight} onChange={(e) => setPhotoWeight(e.target.value)} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input type="number" step="0.1" placeholder="Altura (cm)" value={photoHeight} onChange={(e) => setPhotoHeight(e.target.value)} />
-                    <Input type="number" step="0.1" placeholder="Circ. abd. (cm)" value={photoWaist} onChange={(e) => setPhotoWaist(e.target.value)} />
-                  </div>
-                  <GoalCheckboxGroup value={photoGoal} onChange={setPhotoGoal} />
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-1 block">Ângulo</Label>
-                    <Select value={photoAngle} onValueChange={(v) => { setPhotoAngle(v); if (v !== "outro") setPhotoFocus(""); }}>
-                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione o ângulo" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="frontal">Frontal</SelectItem>
-                        <SelectItem value="posterior">Posterior</SelectItem>
-                        <SelectItem value="lateral_direito">Lateral Dir.</SelectItem>
-                        <SelectItem value="lateral_esquerdo">Lateral Esq.</SelectItem>
-                        <SelectItem value="outro">Outro</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {photoAngle === "outro" && (
-                    <div>
-                      <Label className="text-xs text-muted-foreground mb-1 block">O que está sendo fotografado? *</Label>
-                      <Input placeholder="Ex: mancha no braço direito, lesão no dorso" value={photoFocus} onChange={(e) => setPhotoFocus(e.target.value)} />
-                    </div>
-                  )}
-                  <Input placeholder="Observações — opcional (ex: ardor, queimação e febre há 3 dias)" value={photoNotes} onChange={(e) => setPhotoNotes(e.target.value)} />
-                  <div className="flex items-center gap-2">
-                    <label className="cursor-pointer">
-                      <Button variant="default" size="sm" asChild>
-                        <span><Camera className="mr-1.5 h-3.5 w-3.5" /> Selecionar foto</span>
-                      </Button>
-                      <input type="file" accept="image/*" className="hidden" onChange={handleAddEvolutionPhoto} />
-                    </label>
-                    <Button size="sm" variant="ghost" onClick={() => setShowPhotoForm(false)}>Cancelar</Button>
-                  </div>
-                </div>
-              ) : showMultiUpload ? (
+              {/* Upload / Nova Avaliação */}
+              {showMultiUpload ? (
                 <MultiPhotoUploader
                   onSubmit={handleConsolidatedAnalysis}
                   onCancel={() => setShowMultiUpload(false)}
                   isLoading={multiUploadLoading}
                 />
               ) : (
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setShowPhotoForm(true)} className="flex-1">
-                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar registro de evolução
-                  </Button>
-                  <Button variant="default" size="sm" className="gap-1.5" onClick={() => setShowMultiUpload(true)}>
-                    <Sparkles className="h-3.5 w-3.5" /> Nova Avaliação
-                  </Button>
-                </div>
+                <Button variant="default" size="sm" className="gap-1.5 w-full" onClick={() => setShowMultiUpload(true)}>
+                  <Sparkles className="h-3.5 w-3.5" /> Nova Avaliação
+                </Button>
               )}
             </CardContent>
           </Card>
