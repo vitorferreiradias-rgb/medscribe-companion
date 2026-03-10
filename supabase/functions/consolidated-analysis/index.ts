@@ -15,6 +15,17 @@ interface Anthropometrics {
   bodyFatPercentage?: number;
 }
 
+interface SessionAnthro {
+  date?: string;
+  anthropometrics?: Anthropometrics;
+}
+
+interface SessionData {
+  session1?: SessionAnthro;
+  session2?: SessionAnthro;
+  intervalDays?: number;
+}
+
 function getPromptForAction(action: Action): string {
   switch (action) {
     case "composition":

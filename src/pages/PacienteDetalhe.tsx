@@ -264,6 +264,55 @@ export default function PacienteDetalhe() {
       const photoWithBodyFat = selectedPhotos.find((p: any) => p.body_fat_percentage);
       if (photoWithBodyFat?.body_fat_percentage) anthropometrics.bodyFatPercentage = Number(photoWithBodyFat.body_fat_percentage);
 
+      // For evolution: build per-session anthropometric data + time interval
+      let sessionData: any = undefined;
+      if (action === "evolution" && selectedPhotos.length >= 2) {
+        const bySession: Record<string, any[]> = {};
+        selectedPhotos.forEach((p: any) => {
+          const key = p.sessao_id || p.date;
+          if (!bySession[key]) bySession[key] = [];
+          bySession[key].push(p);
+        });
+        const sessionKeys = Object.keys(bySession);
+        if (sessionKeys.length === 2) {
+          const extractSessionAnthro = (photos: any[]) => {
+            const w = photos.find((p: any) => p.weight);
+            const h = photos.find((p: any) => p.height);
+            const wc = photos.find((p: any) => p.waist_circumference);
+            const bf = photos.find((p: any) => p.body_fat_percentage);
+            return {
+              weight: w?.weight ? Number(w.weight) : undefined,
+              height: h?.height ? Number(h.height) : undefined,
+              waistCircumference: wc?.waist_circumference ? Number(wc.waist_circumference) : undefined,
+              bodyFatPercentage: bf?.body_fat_percentage ? Number(bf.body_fat_percentage) : undefined,
+            };
+          };
+          const dates = sessionKeys.map(k => bySession[k][0]?.date).sort();
+          const date1 = new Date(dates[0]);
+          const date2 = new Date(dates[1]);
+          const diffDays = Math.round((date2.getTime() - date1.getTime()) / (1000 * 60 * 60 * 24));
+
+          // Sort sessions chronologically
+          const sortedKeys = sessionKeys.sort((a, b) => {
+            const dA = bySession[a][0]?.date || "";
+            const dB = bySession[b][0]?.date || "";
+            return dA.localeCompare(dB);
+          });
+
+          sessionData = {
+            session1: {
+              date: bySession[sortedKeys[0]][0]?.date,
+              anthropometrics: extractSessionAnthro(bySession[sortedKeys[0]]),
+            },
+            session2: {
+              date: bySession[sortedKeys[1]][0]?.date,
+              anthropometrics: extractSessionAnthro(bySession[sortedKeys[1]]),
+            },
+            intervalDays: diffDays,
+          };
+        }
+      }
+
       const { data: fnData, error: fnError } = await supabase.functions.invoke("consolidated-analysis", {
         body: {
           avaliacaoId,
@@ -271,6 +320,7 @@ export default function PacienteDetalhe() {
           action,
           patientContext: contextParts.length > 0 ? contextParts.join(". ") : undefined,
           anthropometrics: Object.keys(anthropometrics).length > 0 ? anthropometrics : undefined,
+          sessionData,
         },
       });
 
