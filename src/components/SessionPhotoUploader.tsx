@@ -38,6 +38,7 @@ interface SessionPhotoUploaderProps {
     weight?: number;
     height?: number;
     waistCircumference?: number;
+    bodyFatPercentage?: number;
     treatmentGoal?: string;
     notes?: string;
     sessaoId: string;
@@ -55,6 +56,7 @@ export function SessionPhotoUploader({ onSubmit, onCancel, isLoading = false, se
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const [waist, setWaist] = useState("");
+  const [bodyFat, setBodyFat] = useState("");
   const [goal, setGoal] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -117,6 +119,7 @@ export function SessionPhotoUploader({ onSubmit, onCancel, isLoading = false, se
       weight: weight ? parseFloat(weight) : undefined,
       height: height ? parseFloat(height) : undefined,
       waistCircumference: waist ? parseFloat(waist) : undefined,
+      bodyFatPercentage: bodyFat ? parseFloat(bodyFat) : undefined,
       treatmentGoal: goal || undefined,
       notes: notes || undefined,
       sessaoId,
@@ -139,6 +142,9 @@ export function SessionPhotoUploader({ onSubmit, onCancel, isLoading = false, se
         <div className="grid grid-cols-2 gap-3">
           <Input type="number" step="0.1" placeholder="Altura (cm)" value={height} onChange={(e) => setHeight(e.target.value)} />
           <Input type="number" step="0.1" placeholder="Circ. abd. (cm)" value={waist} onChange={(e) => setWaist(e.target.value)} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input type="number" step="0.1" placeholder="% Gordura corporal" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} />
         </div>
 
         {/* Goals */}

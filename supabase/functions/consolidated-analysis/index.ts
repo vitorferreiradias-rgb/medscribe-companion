@@ -12,6 +12,7 @@ interface Anthropometrics {
   weight?: number;
   height?: number;
   waistCircumference?: number;
+  bodyFatPercentage?: number;
 }
 
 function getPromptForAction(action: Action): string {
@@ -164,11 +165,12 @@ function getUserPrompt(action: Action, numPhotos: number, patientContext?: strin
   const ctx = patientContext ? `\n\nContexto do paciente: ${patientContext}` : "";
 
   let anthroText = "";
-  if (anthropometrics && (anthropometrics.weight || anthropometrics.height || anthropometrics.waistCircumference)) {
+  if (anthropometrics && (anthropometrics.weight || anthropometrics.height || anthropometrics.waistCircumference || anthropometrics.bodyFatPercentage)) {
     const parts: string[] = [];
     if (anthropometrics.weight) parts.push(`Peso: ${anthropometrics.weight}kg`);
     if (anthropometrics.height) parts.push(`Altura: ${anthropometrics.height}cm`);
     if (anthropometrics.waistCircumference) parts.push(`Circunferência abdominal: ${anthropometrics.waistCircumference}cm`);
+    if (anthropometrics.bodyFatPercentage) parts.push(`Percentual de gordura corporal informado: ${anthropometrics.bodyFatPercentage}%`);
     anthroText = `\n\nDados antropométricos reais: ${parts.join(", ")}`;
   }
 

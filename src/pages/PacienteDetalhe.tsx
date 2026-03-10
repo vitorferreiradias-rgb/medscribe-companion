@@ -197,17 +197,17 @@ export default function PacienteDetalhe() {
   const [analysisModalResult, setAnalysisModalResult] = useState("");
   const [analysisModalType, setAnalysisModalType] = useState<string>("");
 
-  // Inline photo editing
+  // Inline photo editing (session-based)
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editWeight, setEditWeight] = useState("");
-  const [editAngle, setEditAngle] = useState("frente");
   const [editNotes, setEditNotes] = useState("");
   const [editHeight, setEditHeight] = useState("");
   const [editWaist, setEditWaist] = useState("");
   const [editGoal, setEditGoal] = useState("");
-  const [editFocus, setEditFocus] = useState("");
+  const [editBodyFat, setEditBodyFat] = useState("");
 
   const { data: dbEvolutionPhotos = [] } = useEvolutionPhotos(id);
   const addEvolutionPhotoMutation = useAddEvolutionPhoto();
@@ -256,6 +256,8 @@ export default function PacienteDetalhe() {
       if (photoWithWeight?.weight) anthropometrics.weight = Number(photoWithWeight.weight);
       if (photoWithHeight?.height) anthropometrics.height = Number(photoWithHeight.height);
       if (photoWithWaist?.waist_circumference) anthropometrics.waistCircumference = Number(photoWithWaist.waist_circumference);
+      const photoWithBodyFat = selectedPhotos.find((p: any) => p.body_fat_percentage);
+      if (photoWithBodyFat?.body_fat_percentage) anthropometrics.bodyFatPercentage = Number(photoWithBodyFat.body_fat_percentage);
 
       const { data: fnData, error: fnError } = await supabase.functions.invoke("consolidated-analysis", {
         body: {
@@ -307,6 +309,7 @@ export default function PacienteDetalhe() {
     weight?: number;
     height?: number;
     waistCircumference?: number;
+    bodyFatPercentage?: number;
     treatmentGoal?: string;
     notes?: string;
     sessaoId: string;
@@ -328,6 +331,7 @@ export default function PacienteDetalhe() {
           treatment_goal: data.treatmentGoal,
           analysis_focus: photo.focusLabel || undefined,
           sessao_id: data.sessaoId,
+          body_fat_percentage: data.bodyFatPercentage,
         });
       }
       toast({ title: `${data.photos.length} foto${data.photos.length > 1 ? "s" : ""} salva${data.photos.length > 1 ? "s" : ""} com sucesso.` });
@@ -359,38 +363,47 @@ export default function PacienteDetalhe() {
   };
 
   const startEditPhoto = (photo: any) => {
+    const sessaoId = photo.sessao_id || photo.id;
+    setEditingSessionId(sessaoId);
     setEditingPhotoId(photo.id);
     setEditLabel(photo.label || "");
     setEditDate(photo.date || "");
     setEditWeight(photo.weight?.toString() || "");
-    setEditAngle(photo.angle || "frente");
     setEditNotes(photo.notes || "");
     setEditHeight((photo as any).height?.toString() || "");
     setEditWaist((photo as any).waist_circumference?.toString() || "");
     setEditGoal((photo as any).treatment_goal || "");
-    setEditFocus((photo as any).analysis_focus || "");
+    setEditBodyFat((photo as any).body_fat_percentage?.toString() || "");
+  };
+
+  const getSessionPhotos = (sessaoId: string) => {
+    return evolutionPhotos.filter((p: any) => (p.sessao_id || p.id) === sessaoId);
   };
 
   const saveEditPhoto = () => {
-    if (!editingPhotoId) return;
-    updateEvolutionPhotoMutation.mutate({
-      id: editingPhotoId,
-      updates: {
-        label: editLabel || "Registro",
-        date: editDate || undefined,
-        weight: editWeight ? parseFloat(editWeight) : null,
-        angle: editAngle,
-        notes: editNotes || null,
-        height: editHeight ? parseFloat(editHeight) : null,
-        waist_circumference: editWaist ? parseFloat(editWaist) : null,
-        treatment_goal: editGoal || null,
-        analysis_focus: editFocus || null,
-      },
-    });
+    if (!editingSessionId) return;
+    const sessionPhotos = getSessionPhotos(editingSessionId);
+    const sharedUpdates = {
+      label: editLabel || "Registro",
+      date: editDate || undefined,
+      weight: editWeight ? parseFloat(editWeight) : null,
+      notes: editNotes || null,
+      height: editHeight ? parseFloat(editHeight) : null,
+      waist_circumference: editWaist ? parseFloat(editWaist) : null,
+      treatment_goal: editGoal || null,
+      body_fat_percentage: editBodyFat ? parseFloat(editBodyFat) : null,
+    };
+    for (const photo of sessionPhotos) {
+      updateEvolutionPhotoMutation.mutate({
+        id: photo.id,
+        updates: sharedUpdates as any,
+      });
+    }
+    setEditingSessionId(null);
     setEditingPhotoId(null);
   };
 
-  const cancelEditPhoto = () => setEditingPhotoId(null);
+  const cancelEditPhoto = () => { setEditingSessionId(null); setEditingPhotoId(null); };
 
   const evolutionPhotos = useMemo(() =>
     [...dbEvolutionPhotos].sort((a, b) => a.date.localeCompare(b.date)),
@@ -1121,6 +1134,8 @@ export default function PacienteDetalhe() {
                   <div className="space-y-6">
                     {evolutionPhotos.map((photo, idx) => {
                       const isSelected = compareIds?.includes(photo.id);
+                      // Hide other photos in the session being edited (they appear in the edit form)
+                      if (editingSessionId && (photo.sessao_id || photo.id) === editingSessionId && editingPhotoId !== photo.id) return null;
                       return (
                         <div key={photo.id} className="relative pl-10">
                           {/* Timeline dot */}
@@ -1138,9 +1153,23 @@ export default function PacienteDetalhe() {
                               : "border-border/40 hover:border-primary/30 hover:bg-muted/20"
                           )}>
                             {/* Header & Metadata — edit mode or view mode */}
-                            {editingPhotoId === photo.id ? (
+                            {editingSessionId && (photo.sessao_id || photo.id) === editingSessionId && editingPhotoId === photo.id ? (
                               <>
                                 <div className="space-y-2 mb-2">
+                                  <p className="text-xs font-semibold text-primary">Editando sessão ({getSessionPhotos(editingSessionId).length} foto{getSessionPhotos(editingSessionId).length !== 1 ? "s" : ""})</p>
+                                  
+                                  {/* Show all photos in session */}
+                                  <div className="grid grid-cols-3 gap-2">
+                                    {getSessionPhotos(editingSessionId).map((sp: any) => (
+                                      <div key={sp.id} className="relative aspect-[3/4] rounded-lg overflow-hidden border border-primary/30 bg-muted/20">
+                                        <EvolutionPhotoImage imagePath={sp.image_path} alt={sp.angle || "foto"} />
+                                        <Badge className="absolute top-1 left-1 text-[10px] h-5">
+                                          {({ frente: "F", perfil: "P", costas: "C" } as Record<string,string>)[sp.angle] || sp.angle?.charAt(0)?.toUpperCase() || "?"}
+                                        </Badge>
+                                      </div>
+                                    ))}
+                                  </div>
+
                                   <Input placeholder="Descrição" value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="h-8 text-sm" />
                                   <div className="grid grid-cols-2 gap-2">
                                     <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-8 text-sm" />
@@ -1150,29 +1179,14 @@ export default function PacienteDetalhe() {
                                     <Input type="number" step="0.1" placeholder="Altura (cm)" value={editHeight} onChange={(e) => setEditHeight(e.target.value)} className="h-8 text-sm" />
                                     <Input type="number" step="0.1" placeholder="Circ. abd. (cm)" value={editWaist} onChange={(e) => setEditWaist(e.target.value)} className="h-8 text-sm" />
                                    </div>
+                                   <div className="grid grid-cols-2 gap-2">
+                                    <Input type="number" step="0.1" placeholder="% Gordura corporal" value={editBodyFat} onChange={(e) => setEditBodyFat(e.target.value)} className="h-8 text-sm" />
+                                   </div>
                                    <GoalCheckboxGroup value={editGoal} onChange={setEditGoal} compact />
-                                  <div>
-                                    <Label className="text-xs text-muted-foreground mb-1 block">Ângulo</Label>
-                                    <Select value={editAngle} onValueChange={(v) => { setEditAngle(v); if (v !== "outro") setEditFocus(""); }}>
-                                      <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Ângulo" /></SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="frente">Frente</SelectItem>
-                                        <SelectItem value="perfil">Perfil</SelectItem>
-                                        <SelectItem value="costas">Costas</SelectItem>
-                                        <SelectItem value="outro">Outro</SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                  {editAngle === "outro" && (
-                                    <div>
-                                      <Label className="text-xs text-muted-foreground mb-1 block">O que está sendo fotografado? *</Label>
-                                      <Input placeholder="Ex: mancha no braço direito, lesão no dorso" value={editFocus} onChange={(e) => setEditFocus(e.target.value)} className="h-8 text-sm" />
-                                    </div>
-                                  )}
                                   <Input placeholder="Observações" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="h-8 text-sm" />
                                   <div className="flex gap-1.5">
                                     <Button size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); saveEditPhoto(); }}>
-                                      <Check className="mr-1 h-3 w-3" /> Salvar
+                                      <Check className="mr-1 h-3 w-3" /> Salvar sessão
                                     </Button>
                                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); cancelEditPhoto(); }}>
                                       Cancelar
@@ -1259,6 +1273,11 @@ export default function PacienteDetalhe() {
                                           {(photo.weight - evolutionPhotos[idx - 1].weight!).toFixed(1)})
                                         </span>
                                       )}
+                                    </div>
+                                  )}
+                                  {(photo as any).body_fat_percentage && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Activity className="h-3 w-3" /> {(photo as any).body_fat_percentage}% gordura
                                     </div>
                                   )}
                                   {(photo as any).treatment_goal && (
