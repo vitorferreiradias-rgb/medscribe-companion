@@ -1141,15 +1141,15 @@ export default function PacienteDetalhe() {
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-4">
               {evolutionPhotos.length > 0 ? (
-                <div className="relative">
+                  <div className="relative">
                   {/* Timeline line */}
                   <div className="absolute left-[18px] top-0 bottom-0 w-px bg-border/60" />
 
                   <div className="space-y-6">
-                    {evolutionPhotos.map((photo, idx) => {
-                      const isSelected = compareIds?.includes(photo.id);
-                      // Hide other photos in the session being edited (they appear in the edit form)
-                      if (editingSessionId && (photo.sessao_id || photo.id) === editingSessionId && editingPhotoId !== photo.id) return null;
+                    {sessionGroups.map((group, idx) => {
+                      const firstPhoto = group.photos[0];
+                      const sessaoId = group.sessaoId;
+                      const isEditing = editingSessionId === sessaoId;
                       return (
                         <div key={photo.id} className="relative pl-10">
                           {/* Timeline dot */}
