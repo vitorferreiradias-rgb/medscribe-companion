@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      avaliacoes_corporais: {
+        Row: {
+          angles: string[] | null
+          created_at: string
+          date: string
+          id: string
+          metadata: Json | null
+          patient_id: string
+          photo_paths: string[]
+          resultado_analise_ia: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          angles?: string[] | null
+          created_at?: string
+          date?: string
+          id?: string
+          metadata?: Json | null
+          patient_id: string
+          photo_paths?: string[]
+          resultado_analise_ia?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          angles?: string[] | null
+          created_at?: string
+          date?: string
+          id?: string
+          metadata?: Json | null
+          patient_id?: string
+          photo_paths?: string[]
+          resultado_analise_ia?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_corporais_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorias_medicamentos: {
         Row: {
           created_at: string
