@@ -410,6 +410,20 @@ export default function PacienteDetalhe() {
     [dbEvolutionPhotos]
   );
 
+  // Group photos by sessao_id for timeline display
+  const sessionGroups = useMemo(() => {
+    const groups: Record<string, typeof evolutionPhotos> = {};
+    for (const photo of evolutionPhotos) {
+      const key = (photo as any).sessao_id || photo.id;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(photo);
+    }
+    // Sort groups by earliest date in each group
+    return Object.entries(groups)
+      .map(([sessaoId, photos]) => ({ sessaoId, photos }))
+      .sort((a, b) => a.photos[0].date.localeCompare(b.photos[0].date));
+  }, [evolutionPhotos]);
+
   // Initialize analysis results from saved DB data
   useMemo(() => {
     const saved: Record<string, string> = {};
@@ -1120,306 +1134,262 @@ export default function PacienteDetalhe() {
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Camera className="h-4 w-4 text-primary" /> Timeline de Evolução
                   {evolutionPhotos.length > 0 && (
-                    <Badge variant="outline" className="text-[10px] ml-1">{evolutionPhotos.length} registros</Badge>
+                    <Badge variant="outline" className="text-[10px] ml-1">{sessionGroups.length} sessão{sessionGroups.length !== 1 ? "ões" : ""} • {evolutionPhotos.length} fotos</Badge>
                   )}
                 </CardTitle>
               </div>
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-4">
               {evolutionPhotos.length > 0 ? (
-                <div className="relative">
+                  <div className="relative">
                   {/* Timeline line */}
                   <div className="absolute left-[18px] top-0 bottom-0 w-px bg-border/60" />
 
                   <div className="space-y-6">
-                    {evolutionPhotos.map((photo, idx) => {
-                      const isSelected = compareIds?.includes(photo.id);
-                      // Hide other photos in the session being edited (they appear in the edit form)
-                      if (editingSessionId && (photo.sessao_id || photo.id) === editingSessionId && editingPhotoId !== photo.id) return null;
+                    {sessionGroups.map((group, gIdx) => {
+                      const firstPhoto = group.photos[0];
+                      const sessaoId = group.sessaoId;
+                      const isEditing = editingSessionId === sessaoId;
+                      const angleLabelsMap: Record<string,string> = { frente: "Frente", perfil: "Perfil", costas: "Costas", frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lat. Dir.", lateral_esquerdo: "Lat. Esq." };
+                      const angleBadgeMap: Record<string,string> = { frente: "F", perfil: "P", costas: "C" };
+                      const prevGroup = gIdx > 0 ? sessionGroups[gIdx - 1] : null;
+                      const prevFirstPhoto = prevGroup?.photos[0];
+
                       return (
-                        <div key={photo.id} className="relative pl-10">
-                          {/* Timeline dot */}
+                        <div key={sessaoId} className="relative pl-10">
                           <div className={cn(
                             "absolute left-2.5 top-1 w-3 h-3 rounded-full border-2 transition-colors",
-                            isSelected
-                              ? "bg-primary border-primary scale-125"
-                              : "bg-background border-muted-foreground/40"
+                            "bg-background border-muted-foreground/40"
                           )} />
 
-                          <div className={cn(
-                            "rounded-xl border p-3 transition-all cursor-pointer group",
-                            isSelected
-                              ? "border-primary/50 bg-primary/5 shadow-sm"
-                              : "border-border/40 hover:border-primary/30 hover:bg-muted/20"
-                          )}>
-                            {/* Header & Metadata — edit mode or view mode */}
-                            {editingSessionId && (photo.sessao_id || photo.id) === editingSessionId && editingPhotoId === photo.id ? (
-                              <>
-                                <div className="space-y-2 mb-2">
-                                  <p className="text-xs font-semibold text-primary">Editando sessão ({getSessionPhotos(editingSessionId).length} foto{getSessionPhotos(editingSessionId).length !== 1 ? "s" : ""})</p>
-                                  
-                                  {/* Show all photos in session */}
-                                  <div className="grid grid-cols-3 gap-2">
-                                    {getSessionPhotos(editingSessionId).map((sp: any) => (
-                                      <div key={sp.id} className="relative aspect-[3/4] rounded-lg overflow-hidden border border-primary/30 bg-muted/20">
-                                        <EvolutionPhotoImage imagePath={sp.image_path} alt={sp.angle || "foto"} />
-                                        <Badge className="absolute top-1 left-1 text-[10px] h-5">
-                                          {({ frente: "F", perfil: "P", costas: "C" } as Record<string,string>)[sp.angle] || sp.angle?.charAt(0)?.toUpperCase() || "?"}
-                                        </Badge>
-                                      </div>
-                                    ))}
-                                  </div>
-
-                                  <Input placeholder="Descrição" value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="h-8 text-sm" />
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-8 text-sm" />
-                                    <Input type="number" step="0.1" placeholder="Peso (kg)" value={editWeight} onChange={(e) => setEditWeight(e.target.value)} className="h-8 text-sm" />
-                                  </div>
-                                   <div className="grid grid-cols-2 gap-2">
-                                    <Input type="number" step="0.1" placeholder="Altura (cm)" value={editHeight} onChange={(e) => setEditHeight(e.target.value)} className="h-8 text-sm" />
-                                    <Input type="number" step="0.1" placeholder="Circ. abd. (cm)" value={editWaist} onChange={(e) => setEditWaist(e.target.value)} className="h-8 text-sm" />
-                                   </div>
-                                   <div className="grid grid-cols-2 gap-2">
-                                    <Input type="number" step="0.1" placeholder="% Gordura corporal" value={editBodyFat} onChange={(e) => setEditBodyFat(e.target.value)} className="h-8 text-sm" />
-                                   </div>
-                                   <GoalCheckboxGroup value={editGoal} onChange={setEditGoal} compact />
-                                  <Input placeholder="Observações" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="h-8 text-sm" />
-                                  <div className="flex gap-1.5">
-                                    <Button size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); saveEditPhoto(); }}>
-                                      <Check className="mr-1 h-3 w-3" /> Salvar sessão
-                                    </Button>
-                                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); cancelEditPhoto(); }}>
-                                      Cancelar
-                                    </Button>
-                                  </div>
+                          <div className="rounded-xl border p-3 transition-all border-border/40 hover:border-primary/30 hover:bg-muted/20">
+                            {isEditing ? (
+                              <div className="space-y-2 mb-2">
+                                <p className="text-xs font-semibold text-primary">Editando sessão ({group.photos.length} foto{group.photos.length !== 1 ? "s" : ""})</p>
+                                <div className="grid grid-cols-3 gap-2">
+                                  {group.photos.map((sp: any) => (
+                                    <div key={sp.id} className="relative aspect-[3/4] rounded-lg overflow-hidden border border-primary/30 bg-muted/20">
+                                      <EvolutionPhotoImage imagePath={sp.image_path} alt={sp.angle || "foto"} />
+                                      <Badge className="absolute top-1 left-1 text-[10px] h-5">
+                                        {angleBadgeMap[sp.angle] || sp.angle?.charAt(0)?.toUpperCase() || "?"}
+                                      </Badge>
+                                    </div>
+                                  ))}
                                 </div>
-                              </>
+                                <Input placeholder="Descrição" value={editLabel} onChange={(e) => setEditLabel(e.target.value)} className="h-8 text-sm" />
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-8 text-sm" />
+                                  <Input type="number" step="0.1" placeholder="Peso (kg)" value={editWeight} onChange={(e) => setEditWeight(e.target.value)} className="h-8 text-sm" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Input type="number" step="0.1" placeholder="Altura (cm)" value={editHeight} onChange={(e) => setEditHeight(e.target.value)} className="h-8 text-sm" />
+                                  <Input type="number" step="0.1" placeholder="Circ. abd. (cm)" value={editWaist} onChange={(e) => setEditWaist(e.target.value)} className="h-8 text-sm" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <Input type="number" step="0.1" placeholder="% Gordura corporal" value={editBodyFat} onChange={(e) => setEditBodyFat(e.target.value)} className="h-8 text-sm" />
+                                </div>
+                                <GoalCheckboxGroup value={editGoal} onChange={setEditGoal} compact />
+                                <Input placeholder="Observações" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} className="h-8 text-sm" />
+                                <div className="flex gap-1.5">
+                                  <Button size="sm" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); saveEditPhoto(); }}>
+                                    <Check className="mr-1 h-3 w-3" /> Salvar sessão
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); cancelEditPhoto(); }}>
+                                    Cancelar
+                                  </Button>
+                                </div>
+                              </div>
                             ) : (
                               <>
                                 <div className="flex items-start justify-between mb-2">
                                   <div>
-                                    <p className="text-sm font-semibold">{photo.label}</p>
+                                    <p className="text-sm font-semibold">{firstPhoto.label}</p>
                                     <p className="text-xs text-muted-foreground">
-                                      {format(parseISO(photo.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                                      {idx > 0 && (() => {
-                                        const prev = evolutionPhotos[idx - 1];
-                                        const days = Math.round((parseISO(photo.date).getTime() - parseISO(prev.date).getTime()) / 86400000);
-                                        return <span className="ml-1.5 text-primary/70">({days}d desde anterior)</span>;
+                                      {format(parseISO(firstPhoto.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                                      {prevFirstPhoto && (() => {
+                                        const days = Math.round((parseISO(firstPhoto.date).getTime() - parseISO(prevFirstPhoto.date).getTime()) / 86400000);
+                                        return days > 0 ? <span className="ml-1.5 text-primary/70">({days}d desde anterior)</span> : null;
                                       })()}
+                                      {group.photos.length > 1 && (
+                                        <span className="ml-1.5">• {group.photos.length} fotos</span>
+                                      )}
                                     </p>
                                   </div>
                                   <div className="flex items-center gap-1">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={(e) => { e.stopPropagation(); startEditPhoto(photo); }}
-                                      title="Editar"
-                                    >
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); startEditPhoto(firstPhoto); }} title="Editar sessão">
                                       <Pencil className="h-3.5 w-3.5" />
                                     </Button>
-                                    <Button
-                                      variant={isSelected ? "default" : "ghost"}
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={(e) => { e.stopPropagation(); toggleCompare(photo.id); }}
-                                      title="Comparar"
-                                    >
-                                      <Eye className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={(e) => { e.stopPropagation(); setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id); }}
-                                      title="Ampliar"
-                                    >
-                                      <ZoomIn className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-7 w-7"
-                                      onClick={(e) => { e.stopPropagation(); handleRemoveEvolutionPhoto(photo.id, photo.image_path); }}
-                                    >
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
+                                      e.stopPropagation();
+                                      group.photos.forEach(p => handleRemoveEvolutionPhoto(p.id, p.image_path));
+                                    }} title="Excluir sessão">
                                       <Trash2 className="h-3.5 w-3.5 text-destructive" />
                                     </Button>
                                   </div>
                                 </div>
 
-                                {/* Metadata */}
+                                <div className={cn("grid gap-2 mt-2", group.photos.length >= 3 ? "grid-cols-3" : group.photos.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
+                                  {group.photos.map((photo) => (
+                                    <div key={photo.id} className="relative">
+                                      <div className={cn(
+                                        "rounded-lg overflow-hidden bg-muted/30 border border-border/30",
+                                        group.photos.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-[3/4]"
+                                      )}>
+                                        <EvolutionPhotoImage
+                                          imagePath={photo.image_path}
+                                          alt={photo.label}
+                                          onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
+                                        />
+                                      </div>
+                                      {(photo as any).angle && (photo as any).angle !== "outro" && (
+                                        <Badge variant="outline" className="absolute top-1 left-1 text-[10px] bg-background/80 backdrop-blur-sm">
+                                          {angleBadgeMap[(photo as any).angle] || (photo as any).angle}
+                                        </Badge>
+                                      )}
+                                      {(photo as any).angle === "outro" && (photo as any).analysis_focus && (
+                                        <Badge variant="outline" className="absolute top-1 left-1 text-[10px] bg-background/80 backdrop-blur-sm gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
+                                          <ScanSearch className="h-2.5 w-2.5" /> {(photo as any).analysis_focus}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {group.photos.some(p => zoomPhotoId === p.id) && (
+                                  <div className="mt-2 rounded-lg overflow-hidden bg-muted/30 border border-border/30">
+                                    <EvolutionPhotoImage
+                                      imagePath={group.photos.find(p => p.id === zoomPhotoId)!.image_path}
+                                      alt="Zoom"
+                                      onClick={() => setZoomPhotoId(null)}
+                                    />
+                                  </div>
+                                )}
+
                                 <div className="flex flex-wrap items-center gap-3 mt-2">
-                                  {(photo as any).angle && (photo as any).angle !== "outro" && (
-                                    <Badge variant="outline" className="text-[10px]">
-                                      {({ frente: "Frente", perfil: "Perfil", costas: "Costas", frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lat. Dir.", lateral_esquerdo: "Lat. Esq." } as Record<string,string>)[(photo as any).angle] || (photo as any).angle}
-                                    </Badge>
-                                  )}
-                                  {(photo as any).angle === "outro" && (photo as any).analysis_focus && (
-                                    <Badge variant="outline" className="text-[10px] gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
-                                      <ScanSearch className="h-3 w-3" /> {(photo as any).analysis_focus}
-                                    </Badge>
-                                  )}
-                                  {photo.weight && (
+                                  {firstPhoto.weight && (
                                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                      <Weight className="h-3 w-3" /> {photo.weight} kg
-                                      {idx > 0 && evolutionPhotos[idx - 1].weight && (
+                                      <Weight className="h-3 w-3" /> {firstPhoto.weight} kg
+                                      {prevFirstPhoto?.weight && (
                                         <span className={cn(
                                           "ml-1 font-medium",
-                                          photo.weight - evolutionPhotos[idx - 1].weight! > 0
+                                          firstPhoto.weight - prevFirstPhoto.weight! > 0
                                             ? "text-destructive"
                                             : "text-emerald-600 dark:text-emerald-400"
                                         )}>
-                                          ({photo.weight - evolutionPhotos[idx - 1].weight! > 0 ? "+" : ""}
-                                          {(photo.weight - evolutionPhotos[idx - 1].weight!).toFixed(1)})
+                                          ({firstPhoto.weight - prevFirstPhoto.weight! > 0 ? "+" : ""}
+                                          {(firstPhoto.weight - prevFirstPhoto.weight!).toFixed(1)})
                                         </span>
                                       )}
                                     </div>
                                   )}
-                                  {(photo as any).body_fat_percentage && (
+                                  {(firstPhoto as any).body_fat_percentage && (
                                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                      <Activity className="h-3 w-3" /> {(photo as any).body_fat_percentage}% gordura
+                                      <Activity className="h-3 w-3" /> {(firstPhoto as any).body_fat_percentage}% gordura
                                     </div>
                                   )}
-                                  {(photo as any).treatment_goal && (
+                                  {(firstPhoto as any).height && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      {(firstPhoto as any).height} cm
+                                    </div>
+                                  )}
+                                  {(firstPhoto as any).waist_circumference && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      Circ. {(firstPhoto as any).waist_circumference} cm
+                                    </div>
+                                  )}
+                                  {(firstPhoto as any).treatment_goal && (
                                     <div className="flex items-center gap-1 flex-wrap">
                                       <Target className="h-3 w-3 text-muted-foreground" />
-                                      {(photo as any).treatment_goal.split(",").filter(Boolean).map((g: string) => (
+                                      {(firstPhoto as any).treatment_goal.split(",").filter(Boolean).map((g: string) => (
                                         <Badge key={g} variant="secondary" className="text-[10px] py-0">
                                           {GOAL_OPTIONS.find(o => o.value === g)?.label || g}
                                         </Badge>
                                       ))}
                                     </div>
                                   )}
-                                  {photo.notes && (
+                                  {firstPhoto.notes && (
                                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                      <StickyNote className="h-3 w-3" /> {photo.notes}
+                                      <StickyNote className="h-3 w-3" /> {firstPhoto.notes}
                                     </div>
                                   )}
-                                  {(photo as any).angle !== "outro" && (photo as any).analysis_focus && (
-                                    <Badge variant="outline" className="text-[10px] gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
-                                      <ScanSearch className="h-3 w-3" /> {(photo as any).analysis_focus}
-                                    </Badge>
-                                  )}
                                 </div>
-                              </>
-                            )}
 
-                            {/* Photo */}
-                            <div className={cn(
-                              "rounded-lg overflow-hidden bg-muted/30 border border-border/30 transition-all",
-                              zoomPhotoId === photo.id ? "aspect-auto" : "aspect-auto max-h-[300px]"
-                            )}>
-                              <EvolutionPhotoImage
-                                imagePath={photo.image_path}
-                                alt={photo.label}
-                                onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
-                              />
-                            </div>
-
-                            {/* Single photo AI analysis button for focal photos */}
-                            {(photo as any).angle === "outro" && (photo as any).analysis_focus && editingPhotoId !== photo.id && (
-                              <div className="mt-2 space-y-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="w-full gap-2 text-xs border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
-                                  onClick={(e) => { e.stopPropagation(); handleSinglePhotoAnalysis(photo); }}
-                                  disabled={singleAnalysisLoading === photo.id}
-                                >
-                                  {singleAnalysisLoading === photo.id ? (
-                                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analisando…</>
-                                  ) : (
-                                    <><ScanSearch className="h-3.5 w-3.5" /> Avaliar com IA</>
-                                  )}
-                                </Button>
-                                {singleAnalysisResult[photo.id] && (
-                                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                      <div className="flex items-center gap-1.5">
-                                        <Sparkles className="h-3.5 w-3.5 text-primary" />
-                                        <span className="text-xs font-semibold text-primary">Análise Focal com IA</span>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        {editingAnalysisId === photo.id ? (
-                                          <>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-6 text-[10px] gap-1"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setSingleAnalysisResult(prev => ({ ...prev, [photo.id]: editingAnalysisText }));
-                                                setEditingAnalysisId(null);
-                                              }}
-                                            >
-                                              <Check className="h-3 w-3" /> OK
-                                            </Button>
-                                            <Button
-                                              variant="ghost"
-                                              size="sm"
-                                              className="h-6 text-[10px]"
-                                              onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(null); }}
-                                            >
-                                              <X className="h-3 w-3" />
-                                            </Button>
-                                          </>
+                                {group.photos.filter((p: any) => p.angle === "outro" && p.analysis_focus).map((focalPhoto: any) => (
+                                  <div key={focalPhoto.id} className="mt-2 space-y-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="w-full gap-2 text-xs border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
+                                      onClick={(e) => { e.stopPropagation(); handleSinglePhotoAnalysis(focalPhoto); }}
+                                      disabled={singleAnalysisLoading === focalPhoto.id}
+                                    >
+                                      {singleAnalysisLoading === focalPhoto.id ? (
+                                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analisando…</>
+                                      ) : (
+                                        <><ScanSearch className="h-3.5 w-3.5" /> Avaliar "{focalPhoto.analysis_focus}" com IA</>
+                                      )}
+                                    </Button>
+                                    {singleAnalysisResult[focalPhoto.id] && (
+                                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-1.5">
+                                            <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                            <span className="text-xs font-semibold text-primary">Análise Focal com IA</span>
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            {editingAnalysisId === focalPhoto.id ? (
+                                              <>
+                                                <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
+                                                  onClick={(e) => { e.stopPropagation(); setSingleAnalysisResult(prev => ({ ...prev, [focalPhoto.id]: editingAnalysisText })); setEditingAnalysisId(null); }}>
+                                                  <Check className="h-3 w-3" /> OK
+                                                </Button>
+                                                <Button variant="ghost" size="sm" className="h-6 text-[10px]"
+                                                  onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(null); }}>
+                                                  <X className="h-3 w-3" />
+                                                </Button>
+                                              </>
+                                            ) : (
+                                              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
+                                                onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(focalPhoto.id); setEditingAnalysisText(singleAnalysisResult[focalPhoto.id]); }}>
+                                                <Pencil className="h-3 w-3" /> Editar
+                                              </Button>
+                                            )}
+                                          </div>
+                                        </div>
+                                        {editingAnalysisId === focalPhoto.id ? (
+                                          <textarea
+                                            className="w-full min-h-[120px] text-xs rounded-md border border-input bg-background p-2 resize-y focus:outline-none focus:ring-1 focus:ring-ring"
+                                            value={editingAnalysisText}
+                                            onChange={(e) => setEditingAnalysisText(e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
+                                          />
                                         ) : (
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-6 text-[10px] gap-1"
+                                          <div className="text-xs prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                                            {singleAnalysisResult[focalPhoto.id]}
+                                          </div>
+                                        )}
+                                        {editingAnalysisId !== focalPhoto.id && (
+                                          <Button variant="outline" size="sm" className="w-full gap-2 text-xs"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setEditingAnalysisId(photo.id);
-                                              setEditingAnalysisText(singleAnalysisResult[photo.id]);
+                                              updateEvolutionPhotoMutation.mutate({ id: focalPhoto.id, updates: { ai_analysis: singleAnalysisResult[focalPhoto.id] } as any }, {
+                                                onSuccess: () => { toast({ title: "Análise salva no prontuário." }); }
+                                              });
                                             }}
+                                            disabled={updateEvolutionPhotoMutation.isPending}
                                           >
-                                            <Pencil className="h-3 w-3" /> Editar
+                                            {(focalPhoto as any).ai_analysis === singleAnalysisResult[focalPhoto.id] ? (
+                                              <><Check className="h-3.5 w-3.5 text-emerald-600" /> Salvo no prontuário</>
+                                            ) : (
+                                              <><Save className="h-3.5 w-3.5" /> Salvar no prontuário</>
+                                            )}
                                           </Button>
                                         )}
                                       </div>
-                                    </div>
-                                    {editingAnalysisId === photo.id ? (
-                                      <textarea
-                                        className="w-full min-h-[120px] text-xs rounded-md border border-input bg-background p-2 resize-y focus:outline-none focus:ring-1 focus:ring-ring"
-                                        value={editingAnalysisText}
-                                        onChange={(e) => setEditingAnalysisText(e.target.value)}
-                                        onClick={(e) => e.stopPropagation()}
-                                      />
-                                    ) : (
-                                      <div className="text-xs prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                                        {singleAnalysisResult[photo.id]}
-                                      </div>
-                                    )}
-                                    {/* Save to DB button */}
-                                    {editingAnalysisId !== photo.id && (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-full gap-2 text-xs"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          updateEvolutionPhotoMutation.mutate({
-                                            id: photo.id,
-                                            updates: { ai_analysis: singleAnalysisResult[photo.id] } as any,
-                                          }, {
-                                            onSuccess: () => {
-                                              toast({ title: "Análise salva no prontuário." });
-                                            }
-                                          });
-                                        }}
-                                        disabled={updateEvolutionPhotoMutation.isPending}
-                                      >
-                                        {(photo as any).ai_analysis === singleAnalysisResult[photo.id] ? (
-                                          <><Check className="h-3.5 w-3.5 text-emerald-600" /> Salvo no prontuário</>
-                                        ) : (
-                                          <><Save className="h-3.5 w-3.5" /> Salvar no prontuário</>
-                                        )}
-                                      </Button>
                                     )}
                                   </div>
-                                )}
-                              </div>
+                                ))}
+                              </>
                             )}
                           </div>
                         </div>
