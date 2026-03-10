@@ -544,3 +544,33 @@ export function useEvolutionPhotoUrl(imagePath: string | undefined) {
     staleTime: 30 * 60 * 1000, // 30 min
   });
 }
+
+// =============================================
+// AVALIACOES CORPORAIS
+// =============================================
+export function useAvaliacoesCorporais(patientId: string | undefined) {
+  return useQuery({
+    queryKey: ["avaliacoes_corporais", patientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("avaliacoes_corporais" as any)
+        .select("*")
+        .eq("patient_id", patientId!)
+        .order("date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<{
+        id: string;
+        patient_id: string;
+        date: string;
+        photo_paths: string[];
+        angles: string[] | null;
+        resultado_analise_ia: string | null;
+        status: string;
+        metadata: any;
+        created_at: string;
+        updated_at: string;
+      }>;
+    },
+    enabled: !!patientId,
+  });
+}

@@ -37,6 +37,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { differenceInYears, differenceInMonths } from "date-fns";
 import { StatusBadge } from "@/components/StatusBadge";
 
+import { AvaliacoesCorporaisCard } from "@/components/AvaliacoesCorporaisCard";
 import { MultiPhotoUploader } from "@/components/MultiPhotoUploader";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -1391,6 +1392,9 @@ export default function PacienteDetalhe() {
               )}
             </CardContent>
           </Card>
+
+          {/* Histórico de Avaliações Corporais */}
+          <AvaliacoesCorporaisCard patientId={patient.id} />
         </TabsContent>
 
         {/* ===== TAB DIAGNÓSTICOS ===== */}
