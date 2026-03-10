@@ -197,17 +197,17 @@ export default function PacienteDetalhe() {
   const [analysisModalResult, setAnalysisModalResult] = useState("");
   const [analysisModalType, setAnalysisModalType] = useState<string>("");
 
-  // Inline photo editing
+  // Inline photo editing (session-based)
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editWeight, setEditWeight] = useState("");
-  const [editAngle, setEditAngle] = useState("frente");
   const [editNotes, setEditNotes] = useState("");
   const [editHeight, setEditHeight] = useState("");
   const [editWaist, setEditWaist] = useState("");
   const [editGoal, setEditGoal] = useState("");
-  const [editFocus, setEditFocus] = useState("");
+  const [editBodyFat, setEditBodyFat] = useState("");
 
   const { data: dbEvolutionPhotos = [] } = useEvolutionPhotos(id);
   const addEvolutionPhotoMutation = useAddEvolutionPhoto();
