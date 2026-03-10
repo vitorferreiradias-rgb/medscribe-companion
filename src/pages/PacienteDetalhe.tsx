@@ -12,7 +12,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppData } from "@/hooks/useAppData";
 import { updatePatient, deletePatient, duplicateEncounter, deleteEncounter } from "@/lib/store";
-import { useEvolutionPhotos, useDeleteEvolutionPhoto, useUpdateEvolutionPhoto, useAvaliacoesCorporais } from "@/hooks/useSupabaseData";
+import { useEvolutionPhotos, useAddEvolutionPhoto, useDeleteEvolutionPhoto, useUpdateEvolutionPhoto, useAvaliacoesCorporais } from "@/hooks/useSupabaseData";
 import { EvolutionPhotoImage } from "@/components/EvolutionPhotoImage";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -177,6 +177,16 @@ export default function PacienteDetalhe() {
   const [docType, setDocType] = useState<PatientDocument["type"]>("exame");
 
   // Tab Evolução (Evolution Timeline) - Supabase
+  const [photoLabel, setPhotoLabel] = useState("");
+  const [photoDate, setPhotoDate] = useState("");
+  const [photoNotes, setPhotoNotes] = useState("");
+  const [photoWeight, setPhotoWeight] = useState("");
+  const [photoAngle, setPhotoAngle] = useState("frontal");
+  const [photoHeight, setPhotoHeight] = useState("");
+  const [photoWaist, setPhotoWaist] = useState("");
+  const [photoGoal, setPhotoGoal] = useState("");
+  const [photoFocus, setPhotoFocus] = useState("");
+  const [showPhotoForm, setShowPhotoForm] = useState(false);
   const [showMultiUpload, setShowMultiUpload] = useState(false);
   const [multiUploadLoading, setMultiUploadLoading] = useState(false);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
@@ -202,7 +212,7 @@ export default function PacienteDetalhe() {
   const [editFocus, setEditFocus] = useState("");
 
   const { data: dbEvolutionPhotos = [] } = useEvolutionPhotos(id);
-  
+  const addEvolutionPhotoMutation = useAddEvolutionPhoto();
   const deleteEvolutionPhotoMutation = useDeleteEvolutionPhoto();
   const updateEvolutionPhotoMutation = useUpdateEvolutionPhoto();
   const { refetch: refetchAvaliacoes } = useAvaliacoesCorporais(id);
@@ -276,6 +286,39 @@ export default function PacienteDetalhe() {
     }
   }, [id, patient, toast, refetchAvaliacoes]);
 
+  const handleAddEvolutionPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !patient || !id) return;
+    if (photoAngle === "outro" && !photoFocus.trim()) {
+      toast({ title: "Campo obrigatório", description: "Descreva o que está sendo fotografado quando o ângulo é 'Outro'.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+    addEvolutionPhotoMutation.mutate({
+      patientId: id,
+      file,
+      label: photoLabel || "Registro",
+      date: photoDate || format(new Date(), "yyyy-MM-dd"),
+      notes: photoNotes || undefined,
+      weight: photoWeight ? parseFloat(photoWeight) : undefined,
+      angle: photoAngle,
+      height: photoHeight ? parseFloat(photoHeight) : undefined,
+      waist_circumference: photoWaist ? parseFloat(photoWaist) : undefined,
+      treatment_goal: photoGoal || undefined,
+      analysis_focus: photoFocus || undefined,
+    });
+    setPhotoLabel("");
+    setPhotoDate("");
+    setPhotoNotes("");
+    setPhotoWeight("");
+    setPhotoAngle("frontal");
+    setPhotoHeight("");
+    setPhotoWaist("");
+    setPhotoGoal("");
+    setPhotoFocus("");
+    setShowPhotoForm(false);
+    e.target.value = "";
+  };
 
   const handleRemoveEvolutionPhoto = (photoId: string, imagePath: string) => {
     if (!id) return;
@@ -1355,17 +1398,65 @@ export default function PacienteDetalhe() {
                 </div>
               )}
 
-              {/* Upload / Nova Avaliação */}
-              {showMultiUpload ? (
+              {/* Add new photo form */}
+              {showPhotoForm ? (
+                <div className="rounded-xl border border-border/50 p-4 space-y-3 bg-muted/10">
+                  <p className="text-sm font-medium">Nova foto de evolução</p>
+                  <Input placeholder="Descrição (ex: 3ª sessão, pós-procedimento)" value={photoLabel} onChange={(e) => setPhotoLabel(e.target.value)} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input type="date" value={photoDate} onChange={(e) => setPhotoDate(e.target.value)} placeholder="Data" />
+                    <Input type="number" step="0.1" placeholder="Peso (kg) — opcional" value={photoWeight} onChange={(e) => setPhotoWeight(e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input type="number" step="0.1" placeholder="Altura (cm)" value={photoHeight} onChange={(e) => setPhotoHeight(e.target.value)} />
+                    <Input type="number" step="0.1" placeholder="Circ. abd. (cm)" value={photoWaist} onChange={(e) => setPhotoWaist(e.target.value)} />
+                  </div>
+                  <GoalCheckboxGroup value={photoGoal} onChange={setPhotoGoal} />
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">Ângulo</Label>
+                    <Select value={photoAngle} onValueChange={(v) => { setPhotoAngle(v); if (v !== "outro") setPhotoFocus(""); }}>
+                      <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione o ângulo" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="frontal">Frontal</SelectItem>
+                        <SelectItem value="posterior">Posterior</SelectItem>
+                        <SelectItem value="lateral_direito">Lateral Dir.</SelectItem>
+                        <SelectItem value="lateral_esquerdo">Lateral Esq.</SelectItem>
+                        <SelectItem value="outro">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {photoAngle === "outro" && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1 block">O que está sendo fotografado? *</Label>
+                      <Input placeholder="Ex: mancha no braço direito, lesão no dorso" value={photoFocus} onChange={(e) => setPhotoFocus(e.target.value)} />
+                    </div>
+                  )}
+                  <Input placeholder="Observações — opcional (ex: ardor, queimação e febre há 3 dias)" value={photoNotes} onChange={(e) => setPhotoNotes(e.target.value)} />
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer">
+                      <Button variant="default" size="sm" asChild>
+                        <span><Camera className="mr-1.5 h-3.5 w-3.5" /> Selecionar foto</span>
+                      </Button>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleAddEvolutionPhoto} />
+                    </label>
+                    <Button size="sm" variant="ghost" onClick={() => setShowPhotoForm(false)}>Cancelar</Button>
+                  </div>
+                </div>
+              ) : showMultiUpload ? (
                 <MultiPhotoUploader
                   onSubmit={handleConsolidatedAnalysis}
                   onCancel={() => setShowMultiUpload(false)}
                   isLoading={multiUploadLoading}
                 />
               ) : (
-                <Button variant="default" size="sm" className="gap-1.5 w-full" onClick={() => setShowMultiUpload(true)}>
-                  <Sparkles className="h-3.5 w-3.5" /> Nova Avaliação
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setShowPhotoForm(true)} className="flex-1">
+                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar registro de evolução
+                  </Button>
+                  <Button variant="default" size="sm" className="gap-1.5" onClick={() => setShowMultiUpload(true)}>
+                    <Sparkles className="h-3.5 w-3.5" /> Nova Avaliação
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
