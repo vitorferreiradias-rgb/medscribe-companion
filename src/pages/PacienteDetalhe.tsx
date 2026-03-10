@@ -181,7 +181,7 @@ export default function PacienteDetalhe() {
   const [photoDate, setPhotoDate] = useState("");
   const [photoNotes, setPhotoNotes] = useState("");
   const [photoWeight, setPhotoWeight] = useState("");
-  const [photoAngle, setPhotoAngle] = useState("frontal");
+  const [photoAngle, setPhotoAngle] = useState("frente");
   const [photoHeight, setPhotoHeight] = useState("");
   const [photoWaist, setPhotoWaist] = useState("");
   const [photoGoal, setPhotoGoal] = useState("");
