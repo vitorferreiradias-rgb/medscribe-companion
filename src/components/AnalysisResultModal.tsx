@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { Printer, X } from "lucide-react";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import {
   Dialog,
   DialogContent,
