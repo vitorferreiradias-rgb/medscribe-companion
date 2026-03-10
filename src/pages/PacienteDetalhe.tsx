@@ -263,6 +263,14 @@ export default function PacienteDetalhe() {
 
       refetchAvaliacoes();
       setShowMultiUpload(false);
+
+      // Open result modal
+      if (fnData?.analysis) {
+        setAnalysisModalResult(fnData.analysis);
+        setAnalysisModalType(action);
+        setAnalysisModalOpen(true);
+      }
+
       toast({
         title: "Avaliação concluída",
         description: action === "compare"
