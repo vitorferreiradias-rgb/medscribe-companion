@@ -272,7 +272,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { avaliacaoId, photoPaths, action = "composition", patientContext, anthropometrics, sessionData } = await req.json();
+    const { avaliacaoId, photoPaths, action = "composition", patientContext, anthropometrics, sessionData, previousAnalysis } = await req.json();
 
     if (!avaliacaoId || !photoPaths || photoPaths.length === 0) {
       return new Response(
