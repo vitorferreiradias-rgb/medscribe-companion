@@ -1134,7 +1134,7 @@ export default function PacienteDetalhe() {
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Camera className="h-4 w-4 text-primary" /> Timeline de Evolução
                   {evolutionPhotos.length > 0 && (
-                    <Badge variant="outline" className="text-[10px] ml-1">{evolutionPhotos.length} registros</Badge>
+                    <Badge variant="outline" className="text-[10px] ml-1">{sessionGroups.length} sessão{sessionGroups.length !== 1 ? "ões" : ""} • {evolutionPhotos.length} fotos</Badge>
                   )}
                 </CardTitle>
               </div>
