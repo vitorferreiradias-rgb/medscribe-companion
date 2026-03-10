@@ -462,6 +462,7 @@ export function useAddEvolutionPhoto() {
         treatment_goal: treatment_goal || null,
         analysis_focus: analysis_focus || null,
         sessao_id: sessao_id || undefined,
+        body_fat_percentage: body_fat_percentage || null,
       } as any).select().single();
       if (error) throw error;
       return data;

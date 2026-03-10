@@ -307,6 +307,7 @@ export default function PacienteDetalhe() {
     weight?: number;
     height?: number;
     waistCircumference?: number;
+    bodyFatPercentage?: number;
     treatmentGoal?: string;
     notes?: string;
     sessaoId: string;
