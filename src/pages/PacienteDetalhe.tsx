@@ -214,6 +214,10 @@ export default function PacienteDetalhe() {
   const addEvolutionPhotoMutation = useAddEvolutionPhoto();
   const deleteEvolutionPhotoMutation = useDeleteEvolutionPhoto();
   const updateEvolutionPhotoMutation = useUpdateEvolutionPhoto();
+  const replaceEvolutionPhotoMutation = useReplaceEvolutionPhoto();
+  const replaceFileInputRef = useRef<HTMLInputElement>(null);
+  const [replacingPhotoId, setReplacingPhotoId] = useState<string | null>(null);
+  const [replacingPhotoPath, setReplacingPhotoPath] = useState<string | null>(null);
   const { refetch: refetchAvaliacoes } = useAvaliacoesCorporais(id);
 
   const handleConsolidatedAnalysis = useCallback(async (photoPaths: string[], action: "composition" | "compare" | "evolution") => {
