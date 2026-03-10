@@ -96,6 +96,9 @@ REGRAS:
 - Quando dados antropométricos reais forem fornecidos (peso, altura, circunferência), USE-OS para calibrar as estimativas.
 - Calcule IMC e relação cintura/altura quando os dados permitirem.
 - Use a fórmula de Mifflin-St Jeor para estimar TMB quando peso e altura forem fornecidos.
+- Quando circunferência abdominal estiver disponível, use-a como fator de correção para % gordura e gordura visceral.
+- Derive a massa muscular esquelética a partir da massa livre de gordura ajustada (não reinicie cálculos do zero — ajuste a estimativa existente).
+- NUNCA apresente valores como medição exata — sempre indique que são estimativas com margem de erro.
 - Use EXATAMENTE os emojis 🟢 (bom), 🟡 (atenção), 🔴 (crítico) na coluna Status da análise regional.
 - Use ⚠️ para observações e 🎯 para recomendações.
 - A tabela de indicadores DEVE ser a primeira seção do relatório.
