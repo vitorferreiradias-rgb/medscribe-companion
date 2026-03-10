@@ -332,7 +332,7 @@ export default function PacienteDetalhe() {
     setEditLabel(photo.label || "");
     setEditDate(photo.date || "");
     setEditWeight(photo.weight?.toString() || "");
-    setEditAngle(photo.angle || "frontal");
+    setEditAngle(photo.angle || "frente");
     setEditNotes(photo.notes || "");
     setEditHeight((photo as any).height?.toString() || "");
     setEditWaist((photo as any).waist_circumference?.toString() || "");
