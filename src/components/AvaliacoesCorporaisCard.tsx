@@ -10,6 +10,7 @@ import { useAvaliacoesCorporais, useUpdateAvaliacaoCorporal } from "@/hooks/useS
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AnalysisResultModal } from "@/components/AnalysisResultModal";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 interface AvaliacoesCorporaisCardProps {
   patientId: string;
@@ -204,9 +205,7 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
                         />
                       ) : (
                         <ScrollArea className="max-h-[400px]">
-                          <div className="prose prose-sm dark:prose-invert max-w-none text-sm whitespace-pre-wrap">
-                            {av.resultado_analise_ia}
-                          </div>
+                          <MarkdownRenderer content={av.resultado_analise_ia!} className="text-sm" />
                         </ScrollArea>
                       )}
                     </div>

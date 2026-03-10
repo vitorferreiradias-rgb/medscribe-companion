@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { Printer, X } from "lucide-react";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import {
   Dialog,
   DialogContent,
@@ -51,7 +52,12 @@ export function AnalysisResultModal({
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; color: #1a1a1a; line-height: 1.6; }
           h1 { font-size: 20px; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 4px; }
           .meta { font-size: 12px; color: #666; margin-bottom: 24px; }
-          .content { white-space: pre-wrap; font-size: 14px; }
+          .content { font-size: 14px; }
+          .content h1, .content h2, .content h3 { margin-top: 16px; margin-bottom: 8px; }
+          .content h2 { font-size: 16px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+          .content h3 { font-size: 14px; }
+          .content p { margin: 8px 0; }
+          .content ul, .content ol { margin: 8px 0; padding-left: 20px; }
           table { border-collapse: collapse; width: 100%; margin: 12px 0; }
           th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 13px; }
           th { background: #f5f5f5; font-weight: 600; }
@@ -64,7 +70,7 @@ export function AnalysisResultModal({
           ${patientName ? `Paciente: ${patientName}` : ""}
           ${date ? ` • Data: ${date}` : ""}
         </div>
-        <div class="content">${result}</div>
+        <div class="content">${printRef.current?.innerHTML || result}</div>
       </body>
       </html>
     `);
@@ -95,8 +101,8 @@ export function AnalysisResultModal({
         </DialogHeader>
 
         <ScrollArea className="flex-1 min-h-0">
-          <div ref={printRef} className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-sm pr-4">
-            {result}
+          <div ref={printRef} className="pr-4">
+            <MarkdownRenderer content={result} className="text-sm" />
           </div>
         </ScrollArea>
 
