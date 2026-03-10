@@ -1206,7 +1206,7 @@ export default function PacienteDetalhe() {
                                 <div className="flex flex-wrap items-center gap-3 mt-2">
                                   {(photo as any).angle && (photo as any).angle !== "outro" && (
                                     <Badge variant="outline" className="text-[10px]">
-                                      {({ frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lat. Dir.", lateral_esquerdo: "Lat. Esq." } as Record<string,string>)[(photo as any).angle] || (photo as any).angle}
+                                      {({ frente: "Frente", perfil: "Perfil", costas: "Costas", frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lat. Dir.", lateral_esquerdo: "Lat. Esq." } as Record<string,string>)[(photo as any).angle] || (photo as any).angle}
                                     </Badge>
                                   )}
                                   {(photo as any).angle === "outro" && (photo as any).analysis_focus && (
