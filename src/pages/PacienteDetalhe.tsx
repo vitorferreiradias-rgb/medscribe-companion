@@ -1444,12 +1444,9 @@ export default function PacienteDetalhe() {
                 </div>
               ) : showMultiUpload ? (
                 <MultiPhotoUploader
-                  onSubmit={(files) => {
-                    // TODO: lógica de upload e análise IA
-                    toast({ title: `${files.length} fotos prontas para análise` });
-                    setShowMultiUpload(false);
-                  }}
+                  onSubmit={handleConsolidatedAnalysis}
                   onCancel={() => setShowMultiUpload(false)}
+                  isLoading={multiUploadLoading}
                 />
               ) : (
                 <div className="flex gap-2">
