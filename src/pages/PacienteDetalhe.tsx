@@ -328,7 +328,6 @@ export default function PacienteDetalhe() {
     setPhotoGoal("");
     setPhotoFocus("");
     setShowPhotoForm(false);
-    setCurrentSessaoId(crypto.randomUUID());
     e.target.value = "";
   };
 
@@ -1468,7 +1467,7 @@ export default function PacienteDetalhe() {
                 />
               ) : (
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setShowPhotoForm(true)} className="flex-1">
+                  <Button variant="outline" size="sm" onClick={() => { setCurrentSessaoId(crypto.randomUUID()); setShowPhotoForm(true); }} className="flex-1">
                     <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar registro de evolução
                   </Button>
                   <Button variant="default" size="sm" className="gap-1.5" onClick={() => setShowMultiUpload(true)}>

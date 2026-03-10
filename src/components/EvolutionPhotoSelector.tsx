@@ -50,12 +50,12 @@ const REQUIRED_ANGLES = new Set(["frente", "perfil", "costas"]);
 function detectAction(
   selected: PhotoItem[]
 ): { action: AnalysisAction; label: string; icon: typeof Sparkles } | null {
-  // 1. Composition: exactly 3 photos, same sessao_id, angles frente+perfil+costas
+  // 1. Composition: exactly 3 photos, same date, angles frente+perfil+costas
   if (selected.length === 3) {
-    const sessaoIds = new Set(selected.map((p) => p.sessao_id).filter(Boolean));
+    const dates = new Set(selected.map((p) => p.date));
     const angles = new Set(selected.map((p) => p.angle || ""));
     if (
-      sessaoIds.size === 1 &&
+      dates.size === 1 &&
       REQUIRED_ANGLES.size === angles.size &&
       [...REQUIRED_ANGLES].every((a) => angles.has(a))
     ) {
