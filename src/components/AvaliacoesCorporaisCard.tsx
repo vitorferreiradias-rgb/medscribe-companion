@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useAvaliacoesCorporais, useUpdateAvaliacaoCorporal } from "@/hooks/useSupabaseData";
+import { useAvaliacoesCorporais, useUpdateAvaliacaoCorporal, useDeleteAvaliacaoCorporal } from "@/hooks/useSupabaseData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AnalysisResultModal } from "@/components/AnalysisResultModal";
