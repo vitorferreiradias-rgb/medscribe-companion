@@ -1271,6 +1271,11 @@ export default function PacienteDetalhe() {
                                       )}
                                     </div>
                                   )}
+                                  {(photo as any).body_fat_percentage && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                      <Activity className="h-3 w-3" /> {(photo as any).body_fat_percentage}% gordura
+                                    </div>
+                                  )}
                                   {(photo as any).treatment_goal && (
                                     <div className="flex items-center gap-1 flex-wrap">
                                       <Target className="h-3 w-3 text-muted-foreground" />
