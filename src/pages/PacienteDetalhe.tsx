@@ -179,8 +179,6 @@ export default function PacienteDetalhe() {
   // Tab Evolução (Evolution Timeline) - Supabase
   const [showMultiUpload, setShowMultiUpload] = useState(false);
   const [multiUploadLoading, setMultiUploadLoading] = useState(false);
-  const [showMultiUpload, setShowMultiUpload] = useState(false);
-  const [multiUploadLoading, setMultiUploadLoading] = useState(false);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
   const [zoomPhotoId, setZoomPhotoId] = useState<string | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
