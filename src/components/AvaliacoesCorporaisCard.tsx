@@ -215,6 +215,23 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
                             <Button
                               size="sm"
                               variant="outline"
+                              className="h-7 px-2 text-xs"
+                              disabled={summarizingId === format(parseISO(av.date), "dd/MM/yyyy")}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                generateSummary(av.resultado_analise_ia!, format(parseISO(av.date), "dd/MM/yyyy"));
+                              }}
+                            >
+                              {summarizingId === format(parseISO(av.date), "dd/MM/yyyy") ? (
+                                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                              ) : (
+                                <FileDown className="h-3.5 w-3.5 mr-1" />
+                              )}
+                              Resumir
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
                               className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10"
                               disabled={deleteMutation.isPending}
                               onClick={(e) => {
