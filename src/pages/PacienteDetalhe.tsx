@@ -181,7 +181,7 @@ export default function PacienteDetalhe() {
   const [photoDate, setPhotoDate] = useState("");
   const [photoNotes, setPhotoNotes] = useState("");
   const [photoWeight, setPhotoWeight] = useState("");
-  const [photoAngle, setPhotoAngle] = useState("frontal");
+  const [photoAngle, setPhotoAngle] = useState("frente");
   const [photoHeight, setPhotoHeight] = useState("");
   const [photoWaist, setPhotoWaist] = useState("");
   const [photoGoal, setPhotoGoal] = useState("");
@@ -204,7 +204,7 @@ export default function PacienteDetalhe() {
   const [editLabel, setEditLabel] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editWeight, setEditWeight] = useState("");
-  const [editAngle, setEditAngle] = useState("frontal");
+  const [editAngle, setEditAngle] = useState("frente");
   const [editNotes, setEditNotes] = useState("");
   const [editHeight, setEditHeight] = useState("");
   const [editWaist, setEditWaist] = useState("");
@@ -299,7 +299,7 @@ export default function PacienteDetalhe() {
     setPhotoDate("");
     setPhotoNotes("");
     setPhotoWeight("");
-    setPhotoAngle("frontal");
+    setPhotoAngle("frente");
     setPhotoHeight("");
     setPhotoWaist("");
     setPhotoGoal("");
@@ -332,7 +332,7 @@ export default function PacienteDetalhe() {
     setEditLabel(photo.label || "");
     setEditDate(photo.date || "");
     setEditWeight(photo.weight?.toString() || "");
-    setEditAngle(photo.angle || "frontal");
+    setEditAngle(photo.angle || "frente");
     setEditNotes(photo.notes || "");
     setEditHeight((photo as any).height?.toString() || "");
     setEditWaist((photo as any).waist_circumference?.toString() || "");
@@ -390,7 +390,7 @@ export default function PacienteDetalhe() {
 
   // Build patient context for AI analysis
   const buildPatientContext = (photos: { before?: any; after?: any }) => {
-    const angleLabels: Record<string, string> = { frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lateral Direito", lateral_esquerdo: "Lateral Esquerdo", outro: "Outro (focal)" };
+    const angleLabels: Record<string, string> = { frente: "Frente", perfil: "Perfil", costas: "Costas", frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lateral Direito", lateral_esquerdo: "Lateral Esquerdo", outro: "Outro (focal)" };
     const contextParts: string[] = [];
 
     if (patient?.birthDate) {
@@ -1125,10 +1125,9 @@ export default function PacienteDetalhe() {
                                     <Select value={editAngle} onValueChange={(v) => { setEditAngle(v); if (v !== "outro") setEditFocus(""); }}>
                                       <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Ângulo" /></SelectTrigger>
                                       <SelectContent>
-                                        <SelectItem value="frontal">Frontal</SelectItem>
-                                        <SelectItem value="posterior">Posterior</SelectItem>
-                                        <SelectItem value="lateral_direito">Lateral Dir.</SelectItem>
-                                        <SelectItem value="lateral_esquerdo">Lateral Esq.</SelectItem>
+                                        <SelectItem value="frente">Frente</SelectItem>
+                                        <SelectItem value="perfil">Perfil</SelectItem>
+                                        <SelectItem value="costas">Costas</SelectItem>
                                         <SelectItem value="outro">Outro</SelectItem>
                                       </SelectContent>
                                     </Select>
@@ -1207,7 +1206,7 @@ export default function PacienteDetalhe() {
                                 <div className="flex flex-wrap items-center gap-3 mt-2">
                                   {(photo as any).angle && (photo as any).angle !== "outro" && (
                                     <Badge variant="outline" className="text-[10px]">
-                                      {({ frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lat. Dir.", lateral_esquerdo: "Lat. Esq." } as Record<string,string>)[(photo as any).angle] || (photo as any).angle}
+                                      {({ frente: "Frente", perfil: "Perfil", costas: "Costas", frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lat. Dir.", lateral_esquerdo: "Lat. Esq." } as Record<string,string>)[(photo as any).angle] || (photo as any).angle}
                                     </Badge>
                                   )}
                                   {(photo as any).angle === "outro" && (photo as any).analysis_focus && (
@@ -1405,10 +1404,9 @@ export default function PacienteDetalhe() {
                     <Select value={photoAngle} onValueChange={(v) => { setPhotoAngle(v); if (v !== "outro") setPhotoFocus(""); }}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione o ângulo" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="frontal">Frontal</SelectItem>
-                        <SelectItem value="posterior">Posterior</SelectItem>
-                        <SelectItem value="lateral_direito">Lateral Dir.</SelectItem>
-                        <SelectItem value="lateral_esquerdo">Lateral Esq.</SelectItem>
+                        <SelectItem value="frente">Frente</SelectItem>
+                        <SelectItem value="perfil">Perfil</SelectItem>
+                        <SelectItem value="costas">Costas</SelectItem>
                         <SelectItem value="outro">Outro</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1438,6 +1436,7 @@ export default function PacienteDetalhe() {
                     label: p.label,
                     date: p.date,
                     angle: (p as any).angle,
+                    sessao_id: (p as any).sessao_id,
                   }))}
                   onSubmit={handleConsolidatedAnalysis}
                   onCancel={() => setShowMultiUpload(false)}

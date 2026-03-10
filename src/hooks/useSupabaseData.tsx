@@ -418,24 +418,26 @@ export function useAddEvolutionPhoto() {
       date,
       notes,
       weight,
-      angle,
-      height,
-      waist_circumference,
-      treatment_goal,
-      analysis_focus,
-    }: {
-      patientId: string;
-      file: File;
-      label: string;
-      date: string;
-      notes?: string;
-      weight?: number;
-      angle?: string;
-      height?: number;
-      waist_circumference?: number;
-      treatment_goal?: string;
-      analysis_focus?: string;
-    }) => {
+    angle,
+    height,
+    waist_circumference,
+    treatment_goal,
+    analysis_focus,
+    sessao_id,
+  }: {
+    patientId: string;
+    file: File;
+    label: string;
+    date: string;
+    notes?: string;
+    weight?: number;
+    angle?: string;
+    height?: number;
+    waist_circumference?: number;
+    treatment_goal?: string;
+    analysis_focus?: string;
+    sessao_id?: string;
+  }) => {
       // Upload file to storage
       const ext = file.name.split(".").pop() || "jpg";
       const filePath = `${patientId}/${Date.now()}.${ext}`;
@@ -457,6 +459,7 @@ export function useAddEvolutionPhoto() {
         waist_circumference: waist_circumference || null,
         treatment_goal: treatment_goal || null,
         analysis_focus: analysis_focus || null,
+        sessao_id: sessao_id || undefined,
       } as any).select().single();
       if (error) throw error;
       return data;

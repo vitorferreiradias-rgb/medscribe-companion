@@ -1,0 +1,1 @@
+ALTER TABLE public.evolution_photos ADD COLUMN sessao_id uuid DEFAULT gen_random_uuid();
