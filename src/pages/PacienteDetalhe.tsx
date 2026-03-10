@@ -328,6 +328,7 @@ export default function PacienteDetalhe() {
     setPhotoGoal("");
     setPhotoFocus("");
     setShowPhotoForm(false);
+    setCurrentSessaoId(crypto.randomUUID());
     e.target.value = "";
   };
 
