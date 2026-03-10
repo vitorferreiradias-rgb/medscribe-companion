@@ -299,7 +299,7 @@ export default function PacienteDetalhe() {
     setPhotoDate("");
     setPhotoNotes("");
     setPhotoWeight("");
-    setPhotoAngle("frontal");
+    setPhotoAngle("frente");
     setPhotoHeight("");
     setPhotoWaist("");
     setPhotoGoal("");
