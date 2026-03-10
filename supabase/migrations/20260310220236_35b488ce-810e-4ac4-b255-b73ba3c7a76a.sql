@@ -1,0 +1,1 @@
+ALTER TABLE public.evolution_photos ADD COLUMN body_fat_percentage numeric DEFAULT NULL;

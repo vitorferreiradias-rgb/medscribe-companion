@@ -303,6 +303,7 @@ export type Database = {
           ai_analysis: string | null
           analysis_focus: string | null
           angle: string | null
+          body_fat_percentage: number | null
           created_at: string
           date: string
           encounter_id: string | null
@@ -323,6 +324,7 @@ export type Database = {
           ai_analysis?: string | null
           analysis_focus?: string | null
           angle?: string | null
+          body_fat_percentage?: number | null
           created_at?: string
           date?: string
           encounter_id?: string | null
@@ -343,6 +345,7 @@ export type Database = {
           ai_analysis?: string | null
           analysis_focus?: string | null
           angle?: string | null
+          body_fat_percentage?: number | null
           created_at?: string
           date?: string
           encounter_id?: string | null
