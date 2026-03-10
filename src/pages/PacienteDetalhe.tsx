@@ -38,6 +38,7 @@ import { differenceInYears, differenceInMonths } from "date-fns";
 import { StatusBadge } from "@/components/StatusBadge";
 
 import { AvaliacoesCorporaisCard } from "@/components/AvaliacoesCorporaisCard";
+import { AnalysisResultModal } from "@/components/AnalysisResultModal";
 import { EvolutionPhotoSelector } from "@/components/EvolutionPhotoSelector";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
