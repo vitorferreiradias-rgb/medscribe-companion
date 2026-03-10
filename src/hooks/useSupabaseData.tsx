@@ -574,3 +574,70 @@ export function useAvaliacoesCorporais(patientId: string | undefined) {
     enabled: !!patientId,
   });
 }
+
+export function useUpdateAvaliacaoCorporal() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, resultado_analise_ia }: { id: string; resultado_analise_ia: string }) => {
+      const { error } = await supabase
+        .from("avaliacoes_corporais" as any)
+        .update({ resultado_analise_ia } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["avaliacoes_corporais"] });
+      toast({ title: "Análise atualizada com sucesso." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+    },
+  });
+}
+  return useQuery({
+    queryKey: ["avaliacoes_corporais", patientId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("avaliacoes_corporais" as any)
+        .select("*")
+        .eq("patient_id", patientId!)
+        .order("date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<{
+        id: string;
+        patient_id: string;
+        date: string;
+        photo_paths: string[];
+        angles: string[] | null;
+        resultado_analise_ia: string | null;
+        status: string;
+        metadata: any;
+        created_at: string;
+        updated_at: string;
+      }>;
+    },
+    enabled: !!patientId,
+  });
+}
+
+export function useUpdateAvaliacaoCorporal() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, resultado_analise_ia }: { id: string; resultado_analise_ia: string }) => {
+      const { error } = await supabase
+        .from("avaliacoes_corporais" as any)
+        .update({ resultado_analise_ia } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["avaliacoes_corporais"] });
+      toast({ title: "Análise atualizada com sucesso." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
+    },
+  });
+}
