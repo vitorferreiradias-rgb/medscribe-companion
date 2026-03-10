@@ -36,7 +36,6 @@ Deno.serve(async (req) => {
 | IMC | valor |
 | % Gordura Corporal | valor |
 | Massa Gorda | valor kg |
-| Massa Magra | valor kg |
 | Taxa Metabólica Basal | valor kcal/dia |
 | Gordura Visceral | nível |
 
