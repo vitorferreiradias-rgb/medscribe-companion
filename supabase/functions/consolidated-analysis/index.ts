@@ -15,6 +15,17 @@ interface Anthropometrics {
   bodyFatPercentage?: number;
 }
 
+interface SessionAnthro {
+  date?: string;
+  anthropometrics?: Anthropometrics;
+}
+
+interface SessionData {
+  session1?: SessionAnthro;
+  session2?: SessionAnthro;
+  intervalDays?: number;
+}
+
 function getPromptForAction(action: Action): string {
   switch (action) {
     case "composition":
@@ -108,7 +119,22 @@ REGRAS:
 ## LAUDO DE EVOLUÇÃO CORPORAL COMPARATIVA
 
 ### Resumo da Evolução
-Visão geral das mudanças entre as duas sessões.
+Visão geral das mudanças entre as duas sessões. Inclua o intervalo de tempo entre elas.
+
+### Dados Antropométricos Comparativos
+
+| Parâmetro | Sessão 1 | Sessão 2 | Variação | Variação % |
+|---|---|---|---|---|
+| Peso (kg) | ... | ... | ... | ... |
+| IMC | ... | ... | ... | ... |
+| % Gordura Corporal | ... | ... | ... | ... |
+| Circunferência Abdominal (cm) | ... | ... | ... | ... |
+| Massa Gorda Estimada (kg) | ... | ... | ... | ... |
+| Taxa Metabólica Basal (kcal/dia) | ... | ... | ... | ... |
+
+> **Intervalo entre sessões:** [X dias] • **Classificação da Evolução:** [Regressão/Estável/Progresso Leve/Progresso Moderado/Progresso Significativo]
+
+---
 
 ### Comparação por Região
 
@@ -125,13 +151,6 @@ Visão geral das mudanças entre as duas sessões.
 ### Evolução Postural
 Compare a postura entre as duas sessões.
 
-### Composição Corporal Estimada
-
-| Parâmetro | Sessão 1 | Sessão 2 | Variação |
-|---|---|---|---|
-| % gordura estimado | ... | ... | ... |
-| Massa muscular aparente | ... | ... | ... |
-
 ### Score de Evolução
 Nota de 1 a 10 para a evolução entre sessões e justificativa.
 
@@ -142,11 +161,15 @@ REGRAS:
 - Compare sistematicamente cada região nos dois momentos.
 - Seja objetivo e use linguagem médica.
 - NÃO faça diagnósticos definitivos.
-- Destaque as mudanças mais significativas.`;
+- Destaque as mudanças mais significativas.
+- Quando dados antropométricos reais forem fornecidos, USE-OS na tabela comparativa e calcule variações absolutas e percentuais.
+- Quando dados não forem informados, estime a partir das imagens e marque com "~" (estimativa).
+- SEMPRE mencione o intervalo de tempo entre as sessões no resumo.
+- Use a fórmula de Mifflin-St Jeor para TMB quando peso e altura forem disponíveis.`;
   }
 }
 
-function getUserPrompt(action: Action, numPhotos: number, patientContext?: string, anthropometrics?: Anthropometrics): string {
+function getUserPrompt(action: Action, numPhotos: number, patientContext?: string, anthropometrics?: Anthropometrics, sessionData?: SessionData): string {
   const ctx = patientContext ? `\n\nContexto do paciente: ${patientContext}` : "";
 
   let anthroText = "";
@@ -164,9 +187,30 @@ function getUserPrompt(action: Action, numPhotos: number, patientContext?: strin
       return `Analise estas fotos (Frente, Perfil, Costas) da mesma pessoa e gere um relatório completo de composição corporal com estimativas quantitativas e margem de erro.${ctx}${anthroText}`;
     case "compare":
       return `Compare estas 2 fotos do mesmo paciente em datas diferentes e destaque a evolução.${ctx}${anthroText}`;
-    case "evolution":
-      return `Analise estes 2 grupos de fotos (${numPhotos} fotos total) de diferentes datas e gere um laudo de evolução comparativa.${ctx}${anthroText}`;
-  }
+    case "evolution": {
+      let evolutionDetails = "";
+      if (sessionData) {
+        const fmtAnthro = (a?: Anthropometrics) => {
+          if (!a) return "Não informados";
+          const parts: string[] = [];
+          if (a.weight) parts.push(`Peso: ${a.weight}kg`);
+          if (a.height) parts.push(`Altura: ${a.height}cm`);
+          if (a.waistCircumference) parts.push(`Circunferência abdominal: ${a.waistCircumference}cm`);
+          if (a.bodyFatPercentage) parts.push(`% Gordura: ${a.bodyFatPercentage}%`);
+          return parts.length > 0 ? parts.join(", ") : "Não informados";
+        };
+        const s1Date = sessionData.session1?.date || "desconhecida";
+        const s2Date = sessionData.session2?.date || "desconhecida";
+        evolutionDetails += `\n\n--- DADOS DAS SESSÕES ---`;
+        evolutionDetails += `\nSessão 1 (${s1Date}): ${fmtAnthro(sessionData.session1?.anthropometrics)}`;
+        evolutionDetails += `\nSessão 2 (${s2Date}): ${fmtAnthro(sessionData.session2?.anthropometrics)}`;
+        if (sessionData.intervalDays !== undefined) {
+          evolutionDetails += `\nIntervalo entre sessões: ${sessionData.intervalDays} dias`;
+        }
+        evolutionDetails += `\n\nINCLUA estes dados numéricos reais no laudo: monte uma tabela comparativa com os valores da Sessão 1 e Sessão 2 (peso, % gordura, circunferência, IMC calculado). Destaque as variações absolutas e percentuais. Mencione o intervalo de tempo entre as sessões no resumo.`;
+      }
+      return `Analise estes 2 grupos de fotos (${numPhotos} fotos total) de diferentes datas e gere um laudo de evolução comparativa.${ctx}${anthroText}${evolutionDetails}`;
+    }
 }
 
 Deno.serve(async (req) => {
@@ -175,7 +219,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { avaliacaoId, photoPaths, action = "composition", patientContext, anthropometrics } = await req.json();
+    const { avaliacaoId, photoPaths, action = "composition", patientContext, anthropometrics, sessionData } = await req.json();
 
     if (!avaliacaoId || !photoPaths || photoPaths.length === 0) {
       return new Response(
@@ -229,7 +273,7 @@ Deno.serve(async (req) => {
     }
 
     const systemPrompt = getPromptForAction(action as Action);
-    const userText = getUserPrompt(action as Action, signedUrls.length, patientContext, anthropometrics as Anthropometrics | undefined);
+    const userText = getUserPrompt(action as Action, signedUrls.length, patientContext, anthropometrics as Anthropometrics | undefined, sessionData as SessionData | undefined);
 
     const imageContent = signedUrls.map((url: string) => ({
       type: "image_url",
