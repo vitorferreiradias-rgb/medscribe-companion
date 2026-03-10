@@ -1,30 +1,42 @@
 
 
-# Tornar a classificação de receita visualmente automática e clara
+# Adicionar Massa Muscular Esquelética e Distribuição Muscular ao Relatório
 
-## Problema
-O sistema já classifica automaticamente o tipo de receita (simples/antimicrobiano/controle especial) com base no medicamento. Porém, na UI do preview, isso aparece como um dropdown genérico sem destaque — o médico não percebe que a classificação foi automática. Além disso, quando o medicamento não está no banco local, a receita silenciosamente vira "simples".
+## Objetivo
+Integrar a estimativa de massa muscular esquelética com distribuição regional e avaliação abdominal ao relatório de composição corporal, usando o prompt refinado fornecido pelo usuário como base de calibração da IA.
 
-## Solução
+## Mudanças
 
-### 1. Destacar a classificação automática no preview
-No `SmartPrescriptionPreview.tsx`:
-- Adicionar um badge/label ao lado do dropdown indicando "Classificado automaticamente" (verde) quando a medicação foi encontrada no banco
-- Quando a medicação NÃO foi encontrada, mostrar um alerta amarelo mais visível explicando que o tipo precisa ser confirmado manualmente
-- Manter o dropdown como override, mas visualmente secundário
+### 1. Prompt de composição (`supabase/functions/consolidated-analysis/index.ts`)
 
-### 2. Adicionar mais antimicrobianos e controlados ao banco de conhecimento
-No `medication-knowledge.ts`, adicionar medicamentos comuns que faltam:
-- **Antimicrobianos**: Azitromicina, Ciprofloxacino, Cefalexina, Metronidazol, Levofloxacino, Sulfametoxazol+Trimetoprima
-- **Controlados**: Clonazepam, Alprazolam, Fluoxetina, Sertralina, Escitalopram, Ritalina (metilfenidato), Zolpidem
+Adicionar ao template do caso `composition`:
 
-### 3. Melhorar o `ComplianceResult` com flag de confiança
-No `compliance-router.ts`:
-- Adicionar campo `autoClassified: boolean` ao resultado — `true` quando todos os itens foram encontrados no banco, `false` quando algum é desconhecido
-- O preview usa esse campo para decidir se mostra "Classificado automaticamente" ou "Confirme o tipo"
+- **Painel de Indicadores**: adicionar linha `Massa Muscular Esquelética Estimada | valor kg | ± X kg`
+- **Nova seção "Distribuição Muscular Estimada"** (após Análise Regional):
+  ```
+  | Região | Nível |
+  | Membros Superiores | baixo/moderado/alto |
+  | Tronco | baixo/moderado/alto |
+  | Membros Inferiores | baixo/moderado/alto |
+  ```
+- **Nova seção "Avaliação Abdominal"** (após Distribuição Muscular):
+  ```
+  | Parâmetro | Nível |
+  | Adiposidade Abdominal | baixa/moderada/alta |
+  | Risco de Gordura Visceral | baixo/moderado/alto |
+  ```
+- **Nova seção "Confiabilidade da Estimativa"**: nível (baixa/moderada/alta) e margem de erro em kg
 
-## Arquivos modificados
-- `src/lib/medication-knowledge.ts` — adicionar medicamentos
-- `src/lib/compliance-router.ts` — adicionar flag `autoClassified`
-- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — UI de classificação automática
+Nas REGRAS, adicionar:
+- Usar circunferência abdominal como fator de correção para % gordura e gordura visceral quando disponível
+- Derivar massa muscular esquelética a partir da massa livre de gordura ajustada
+- Nunca apresentar valores como medição exata
+
+### 2. Prompt de resumo (`supabase/functions/summarize-analysis/index.ts`)
+
+Adicionar `Massa Muscular Esquelética` à tabela de indicadores do resumo e incluir a distribuição muscular resumida nos destaques quando relevante.
+
+### Arquivos modificados
+- `supabase/functions/consolidated-analysis/index.ts` — prompt composition expandido
+- `supabase/functions/summarize-analysis/index.ts` — indicador adicionado ao resumo
 
