@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Sparkles, ImageIcon, Clock, FileText, Loader2, ChevronDown, ChevronUp, Pencil, Check, X, Printer, Trash2 } from "lucide-react";
+import { Sparkles, ImageIcon, Clock, FileText, Loader2, ChevronDown, ChevronUp, Pencil, Check, X, Printer, Trash2, FileDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AnalysisResultModal } from "@/components/AnalysisResultModal";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface AvaliacoesCorporaisCardProps {
   patientId: string;
@@ -31,6 +33,8 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [printModalData, setPrintModalData] = useState<{ result: string; date: string } | null>(null);
+  const [summarizingId, setSummarizingId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const startEditing = (id: string, text: string) => {
     setEditingId(id);
@@ -49,6 +53,20 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
         setEditText("");
       },
     });
+  };
+  const generateSummary = async (fullAnalysis: string, date: string) => {
+    setSummarizingId(date);
+    try {
+      const { data, error } = await supabase.functions.invoke("summarize-analysis", {
+        body: { fullAnalysis },
+      });
+      if (error) throw error;
+      setPrintModalData({ result: data.summary, date });
+    } catch (err: any) {
+      toast({ title: "Erro ao gerar resumo", description: err.message, variant: "destructive" });
+    } finally {
+      setSummarizingId(null);
+    }
   };
 
   return (
@@ -193,6 +211,23 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
                             >
                               <Printer className="h-3.5 w-3.5 mr-1" />
                               Imprimir
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              disabled={summarizingId === format(parseISO(av.date), "dd/MM/yyyy")}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                generateSummary(av.resultado_analise_ia!, format(parseISO(av.date), "dd/MM/yyyy"));
+                              }}
+                            >
+                              {summarizingId === format(parseISO(av.date), "dd/MM/yyyy") ? (
+                                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                              ) : (
+                                <FileDown className="h-3.5 w-3.5 mr-1" />
+                              )}
+                              Resumir
                             </Button>
                             <Button
                               size="sm"
