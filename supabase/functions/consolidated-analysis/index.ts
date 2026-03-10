@@ -214,7 +214,7 @@ REGRAS CRÍTICAS:
   }
 }
 
-function getUserPrompt(action: Action, numPhotos: number, patientContext?: string, anthropometrics?: Anthropometrics, sessionData?: SessionData): string {
+function getUserPrompt(action: Action, numPhotos: number, patientContext?: string, anthropometrics?: Anthropometrics, sessionData?: SessionData, previousAnalysis?: string): string {
   const ctx = patientContext ? `\n\nContexto do paciente: ${patientContext}` : "";
 
   let anthroText = "";
@@ -254,7 +254,14 @@ function getUserPrompt(action: Action, numPhotos: number, patientContext?: strin
         }
         evolutionDetails += `\n\nINCLUA estes dados numéricos reais no laudo: monte uma tabela comparativa com os valores da Sessão 1 e Sessão 2 (peso, % gordura, circunferência, IMC calculado). Destaque as variações absolutas e percentuais. Mencione o intervalo de tempo entre as sessões no resumo.`;
       }
-      return `Analise estes 2 grupos de fotos (${numPhotos} fotos total) de diferentes datas e gere um laudo de evolução comparativa.${ctx}${anthroText}${evolutionDetails}`;
+
+      // If we have a previous analysis for session 1, include it as context
+      let prevAnalysisText = "";
+      if (previousAnalysis) {
+        prevAnalysisText = `\n\n--- RELATÓRIO JÁ EXISTENTE DA SESSÃO 1 (ANTES) ---\nO relatório abaixo já foi gerado anteriormente para a Sessão 1. USE EXATAMENTE os dados e conclusões deste relatório para a Sessão 1. NÃO re-analise as fotos da Sessão 1 — apenas analise as fotos da Sessão 2 (DEPOIS) que estão sendo enviadas agora.\n\n${previousAnalysis}\n\n--- FIM DO RELATÓRIO DA SESSÃO 1 ---\n\nAs imagens enviadas são APENAS da Sessão 2 (DEPOIS). Analise-as com a mesma profundidade do relatório da Sessão 1, depois compare ambas.`;
+      }
+
+      return `Analise ${previousAnalysis ? "estas fotos da Sessão 2 (DEPOIS)" : `estes 2 grupos de fotos (${numPhotos} fotos total)`} e gere um laudo de evolução comparativa.${ctx}${anthroText}${evolutionDetails}${prevAnalysisText}`;
     }
   }
 }
