@@ -10,6 +10,7 @@ import { useAvaliacoesCorporais, useUpdateAvaliacaoCorporal } from "@/hooks/useS
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AnalysisResultModal } from "@/components/AnalysisResultModal";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 interface AvaliacoesCorporaisCardProps {
   patientId: string;
