@@ -162,18 +162,35 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
                             </Button>
                           </>
                         ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2 text-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startEditing(av.id, av.resultado_analise_ia!);
-                            }}
-                          >
-                            <Pencil className="h-3.5 w-3.5 mr-1" />
-                            Editar
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditing(av.id, av.resultado_analise_ia!);
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5 mr-1" />
+                              Editar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-2 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPrintModalData({
+                                  result: av.resultado_analise_ia!,
+                                  date: format(parseISO(av.date), "dd/MM/yyyy"),
+                                });
+                              }}
+                            >
+                              <Printer className="h-3.5 w-3.5 mr-1" />
+                              Imprimir
+                            </Button>
+                          </div>
                         )}
                       </div>
                       {isEditing ? (
