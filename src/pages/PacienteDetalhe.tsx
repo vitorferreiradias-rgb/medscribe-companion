@@ -217,18 +217,24 @@ export default function PacienteDetalhe() {
   const updateEvolutionPhotoMutation = useUpdateEvolutionPhoto();
   const { refetch: refetchAvaliacoes } = useAvaliacoesCorporais(id);
 
-  const handleConsolidatedAnalysis = useCallback(async (photoPaths: string[]) => {
+  const handleConsolidatedAnalysis = useCallback(async (photoPaths: string[], action: "composition" | "compare" | "evolution") => {
     if (!id || !patient) return;
     setMultiUploadLoading(true);
+
+    const objectiveMap: Record<string, string> = {
+      composition: "Avaliação corporal consolidada",
+      compare: "Comparação simples entre fotos",
+      evolution: "Relatório de evolução completa",
+    };
+
     try {
-      // 1. Create record in avaliacoes_corporais with existing photo paths
       const { data: avaliacao, error: insertError } = await supabase
         .from("avaliacoes_corporais" as any)
         .insert({
           patient_id: id,
           photo_paths: photoPaths,
           status: "pending",
-          analysis_objective: "Avaliação corporal consolidada",
+          analysis_objective: objectiveMap[action],
         } as any)
         .select()
         .single();
@@ -237,18 +243,17 @@ export default function PacienteDetalhe() {
 
       const avaliacaoId = (avaliacao as any).id;
 
-      // Build patient context
       const contextParts: string[] = [];
       if (patient.sex) contextParts.push(`Sexo: ${patient.sex}`);
       if (patient.birthDate) contextParts.push(`Data de nascimento: ${patient.birthDate}`);
       if (patient.diagnoses?.length) contextParts.push(`Diagnósticos: ${patient.diagnoses.join(", ")}`);
       if (patient.drugAllergies?.length) contextParts.push(`Alergias: ${patient.drugAllergies.join(", ")}`);
 
-      // 2. Call edge function
       const { data: fnData, error: fnError } = await supabase.functions.invoke("consolidated-analysis", {
         body: {
           avaliacaoId,
           photoPaths,
+          action,
           patientContext: contextParts.length > 0 ? contextParts.join(". ") : undefined,
         },
       });
@@ -259,7 +264,11 @@ export default function PacienteDetalhe() {
       setShowMultiUpload(false);
       toast({
         title: "Avaliação concluída",
-        description: "O relatório de composição corporal foi gerado com sucesso.",
+        description: action === "compare"
+          ? "A comparação foi gerada com sucesso."
+          : action === "evolution"
+          ? "O relatório de evolução foi gerado com sucesso."
+          : "O relatório de composição corporal foi gerado com sucesso.",
       });
     } catch (err: any) {
       console.error("Consolidated analysis error:", err);
