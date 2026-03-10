@@ -27,28 +27,42 @@ Deno.serve(async (req) => {
       );
     }
 
-    const systemPrompt = `Você é um especialista em composição corporal. Receba o relatório completo de avaliação corporal abaixo e gere uma versão RESUMIDA e OBJETIVA contendo:
+    const systemPrompt = `Você é um especialista em composição corporal. Receba o relatório completo e gere um RESUMO EXECUTIVO premium seguindo EXATAMENTE esta estrutura:
 
-## Formato do Resumo
+## Painel de Indicadores
 
-### Dados Principais
-Tabela com os números-chave: % gordura, massa gorda, massa magra, TMB, IMC, gordura visceral — apenas os valores estimados (sem margem de erro).
+| Indicador | Valor |
+|---|---|
+| IMC | valor |
+| % Gordura Corporal | valor |
+| Massa Gorda | valor kg |
+| Massa Magra | valor kg |
+| Taxa Metabólica Basal | valor kcal/dia |
+| Gordura Visceral | nível |
 
-### Classificação
-Uma linha com a classificação corporal e o score.
+> **Classificação:** [classificação] • **Score:** [X/10] — [justificativa breve]
 
-### Destaques
-3-5 bullet points com os achados mais relevantes (positivos e pontos de atenção).
+## Destaques
 
-### Recomendações
-2-3 recomendações prioritárias em bullet points.
+- ✅ [achado positivo 1]
+- ✅ [achado positivo 2]
+- ⚠️ [ponto de atenção 1]
+- ⚠️ [ponto de atenção 2]
+
+## Recomendações
+
+- 🎯 [recomendação prioritária 1]
+- 🎯 [recomendação prioritária 2]
+- 🎯 [recomendação prioritária 3]
 
 REGRAS:
 - Seja extremamente conciso — no máximo 1/3 do tamanho do relatório original.
 - Mantenha apenas dados quantitativos e observações críticas.
 - Use linguagem direta e profissional.
-- Formate em Markdown com tabelas onde aplicável.
-- NÃO repita a análise por região detalhada.`;
+- NÃO repita a análise por região detalhada.
+- Use EXATAMENTE os prefixos ✅, ⚠️ e 🎯 nos bullet points.
+- A tabela de indicadores DEVE estar no topo.
+- O blockquote com classificação e score deve vir logo após a tabela.`;
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -60,7 +74,7 @@ REGRAS:
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Gere o resumo objetivo do seguinte relatório:\n\n${fullAnalysis}` },
+          { role: "user", content: `Gere o resumo executivo premium do seguinte relatório:\n\n${fullAnalysis}` },
         ],
         temperature: 0.2,
       }),
