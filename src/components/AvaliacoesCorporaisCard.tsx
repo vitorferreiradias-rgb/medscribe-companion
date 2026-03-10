@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Sparkles, ImageIcon, Clock, FileText, Loader2, ChevronDown, ChevronUp, Pencil, Check, X, Printer, Trash2 } from "lucide-react";
+import { Sparkles, ImageIcon, Clock, FileText, Loader2, ChevronDown, ChevronUp, Pencil, Check, X, Printer, Trash2, FileDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AnalysisResultModal } from "@/components/AnalysisResultModal";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface AvaliacoesCorporaisCardProps {
   patientId: string;
@@ -31,6 +33,8 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [printModalData, setPrintModalData] = useState<{ result: string; date: string } | null>(null);
+  const [summarizingId, setSummarizingId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const startEditing = (id: string, text: string) => {
     setEditingId(id);
