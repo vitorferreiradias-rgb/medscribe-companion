@@ -199,6 +199,9 @@ export default function PacienteDetalhe() {
   const [singleAnalysisLoading, setSingleAnalysisLoading] = useState<string | null>(null);
   const [editingAnalysisId, setEditingAnalysisId] = useState<string | null>(null);
   const [editingAnalysisText, setEditingAnalysisText] = useState("");
+  const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
+  const [analysisModalResult, setAnalysisModalResult] = useState("");
+  const [analysisModalType, setAnalysisModalType] = useState<string>("");
 
   // Inline photo editing
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
