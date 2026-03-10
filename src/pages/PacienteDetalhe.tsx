@@ -179,14 +179,6 @@ export default function PacienteDetalhe() {
   // Tab Evolução (Evolution Timeline) - Supabase
   const [photoLabel, setPhotoLabel] = useState("");
   const [photoDate, setPhotoDate] = useState("");
-  const [photoNotes, setPhotoNotes] = useState("");
-  const [photoWeight, setPhotoWeight] = useState("");
-  const [photoAngle, setPhotoAngle] = useState("frontal");
-  const [photoHeight, setPhotoHeight] = useState("");
-  const [photoWaist, setPhotoWaist] = useState("");
-  const [photoGoal, setPhotoGoal] = useState("");
-  const [photoFocus, setPhotoFocus] = useState("");
-  const [showPhotoForm, setShowPhotoForm] = useState(false);
   const [showMultiUpload, setShowMultiUpload] = useState(false);
   const [multiUploadLoading, setMultiUploadLoading] = useState(false);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
