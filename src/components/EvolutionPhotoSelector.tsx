@@ -50,6 +50,9 @@ export function EvolutionPhotoSelector({
   const canSubmit = selectedIds.size >= minPhotos && !isLoading;
 
   const ANGLE_MAP: Record<string, string> = {
+    frente: "Frente",
+    perfil: "Perfil",
+    costas: "Costas",
     frontal: "Frontal",
     posterior: "Posterior",
     lateral_direito: "Lat. Dir.",

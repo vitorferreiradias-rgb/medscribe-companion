@@ -459,6 +459,7 @@ export function useAddEvolutionPhoto() {
         waist_circumference: waist_circumference || null,
         treatment_goal: treatment_goal || null,
         analysis_focus: analysis_focus || null,
+        sessao_id: sessao_id || undefined,
       } as any).select().single();
       if (error) throw error;
       return data;
