@@ -1,34 +1,30 @@
 
 
-## Plano: Botões de ação dinâmicos no EvolutionPhotoSelector
+# Tornar a classificação de receita visualmente automática e clara
 
-### Lógica de detecção (3 modos exclusivos)
+## Problema
+O sistema já classifica automaticamente o tipo de receita (simples/antimicrobiano/controle especial) com base no medicamento. Porém, na UI do preview, isso aparece como um dropdown genérico sem destaque — o médico não percebe que a classificação foi automática. Além disso, quando o medicamento não está no banco local, a receita silenciosamente vira "simples".
 
-Com base nas fotos selecionadas, detectar qual ação está disponível:
+## Solução
 
-1. **Avaliação Única** — Exatamente 3 fotos do mesmo `sessao_id` com ângulos `frente`, `perfil`, `costas` → Botão "Gerar Relatório de Composição"
-2. **Comparação Simples** — Exatamente 2 fotos de datas diferentes (qualquer ângulo) → Botão "Comparar Fotos Selecionadas"  
-3. **Evolução Completa** — Exatamente 2 sessões completas selecionadas (cada uma com `frente`, `perfil`, `costas`) = 6 fotos → Botão "Relatório de Evolução Completa"
-4. **Nenhum** — qualquer outra combinação → nenhum botão de ação habilitado, exibir dica textual
+### 1. Destacar a classificação automática no preview
+No `SmartPrescriptionPreview.tsx`:
+- Adicionar um badge/label ao lado do dropdown indicando "Classificado automaticamente" (verde) quando a medicação foi encontrada no banco
+- Quando a medicação NÃO foi encontrada, mostrar um alerta amarelo mais visível explicando que o tipo precisa ser confirmado manualmente
+- Manter o dropdown como override, mas visualmente secundário
 
-### Badge de ângulo nas fotos
+### 2. Adicionar mais antimicrobianos e controlados ao banco de conhecimento
+No `medication-knowledge.ts`, adicionar medicamentos comuns que faltam:
+- **Antimicrobianos**: Azitromicina, Ciprofloxacino, Cefalexina, Metronidazol, Levofloxacino, Sulfametoxazol+Trimetoprima
+- **Controlados**: Clonazepam, Alprazolam, Fluoxetina, Sertralina, Escitalopram, Ritalina (metilfenidato), Zolpidem
 
-Adicionar um badge pequeno no canto superior esquerdo de cada foto com o ângulo (`F`, `P`, `C` ou `?`) usando cores distintas para facilitar identificação visual rápida.
+### 3. Melhorar o `ComplianceResult` com flag de confiança
+No `compliance-router.ts`:
+- Adicionar campo `autoClassified: boolean` ao resultado — `true` quando todos os itens foram encontrados no banco, `false` quando algum é desconhecido
+- O preview usa esse campo para decidir se mostra "Classificado automaticamente" ou "Confirme o tipo"
 
-### Alterações no `EvolutionPhotoSelector.tsx`
-
-- Expandir a interface `onSubmit` para `onSubmit(paths: string[], action: 'composition' | 'compare' | 'evolution')`
-- Adicionar função `detectAction()` que analisa as fotos selecionadas e retorna o modo ativo
-- Renderizar condicionalmente o botão correto com ícone e label apropriados
-- Remover `minPhotos` prop (a lógica de habilitação agora é baseada nos modos)
-- Adicionar badge de ângulo (canto superior esquerdo) em cada thumbnail
-
-### Alterações no `PacienteDetalhe.tsx`
-
-- Atualizar `handleConsolidatedAnalysis` para aceitar o parâmetro `action` e despachar para a edge function correta (composição, comparação ou evolução)
-- Atualizar a chamada do `EvolutionPhotoSelector` com o novo callback
-
-### Arquivos editados
-- `src/components/EvolutionPhotoSelector.tsx`
-- `src/pages/PacienteDetalhe.tsx`
+## Arquivos modificados
+- `src/lib/medication-knowledge.ts` — adicionar medicamentos
+- `src/lib/compliance-router.ts` — adicionar flag `autoClassified`
+- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — UI de classificação automática
 
