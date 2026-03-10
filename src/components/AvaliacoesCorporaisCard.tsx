@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Sparkles, ImageIcon, Clock, FileText, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, ImageIcon, Clock, FileText, Loader2, ChevronDown, ChevronUp, Pencil, Check, X } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useAvaliacoesCorporais } from "@/hooks/useSupabaseData";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useAvaliacoesCorporais, useUpdateAvaliacaoCorporal } from "@/hooks/useSupabaseData";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -21,7 +23,29 @@ const statusMap: Record<string, { label: string; variant: "default" | "secondary
 
 export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardProps) {
   const { data: avaliacoes, isLoading } = useAvaliacoesCorporais(patientId);
+  const updateMutation = useUpdateAvaliacaoCorporal();
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+
+  const startEditing = (id: string, text: string) => {
+    setEditingId(id);
+    setEditText(text);
+  };
+
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditText("");
+  };
+
+  const saveEdit = (id: string) => {
+    updateMutation.mutate({ id, resultado_analise_ia: editText }, {
+      onSuccess: () => {
+        setEditingId(null);
+        setEditText("");
+      },
+    });
+  };
 
   return (
     <Card className="glass-card">
@@ -53,6 +77,7 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
             {avaliacoes.map((av) => {
               const st = statusMap[av.status] || statusMap.pending;
               const isExpanded = expandedId === av.id;
+              const isEditing = editingId === av.id;
               return (
                 <div key={av.id} className="rounded-lg border bg-muted/10 overflow-hidden">
                   <div
@@ -108,11 +133,62 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
                   {/* Expanded result */}
                   {isExpanded && av.resultado_analise_ia && (
                     <div className="border-t px-4 py-3">
-                      <ScrollArea className="max-h-[400px]">
-                        <div className="prose prose-sm dark:prose-invert max-w-none text-sm whitespace-pre-wrap">
-                          {av.resultado_analise_ia}
-                        </div>
-                      </ScrollArea>
+                      <div className="flex items-center justify-end gap-1 mb-2">
+                        {isEditing ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs"
+                              onClick={cancelEditing}
+                              disabled={updateMutation.isPending}
+                            >
+                              <X className="h-3.5 w-3.5 mr-1" />
+                              Cancelar
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => saveEdit(av.id)}
+                              disabled={updateMutation.isPending}
+                            >
+                              {updateMutation.isPending ? (
+                                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5 mr-1" />
+                              )}
+                              Salvar
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startEditing(av.id, av.resultado_analise_ia!);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5 mr-1" />
+                            Editar
+                          </Button>
+                        )}
+                      </div>
+                      {isEditing ? (
+                        <Textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="min-h-[300px] text-sm font-mono"
+                          placeholder="Edite o relatório da IA..."
+                        />
+                      ) : (
+                        <ScrollArea className="max-h-[400px]">
+                          <div className="prose prose-sm dark:prose-invert max-w-none text-sm whitespace-pre-wrap">
+                            {av.resultado_analise_ia}
+                          </div>
+                        </ScrollArea>
+                      )}
                     </div>
                   )}
 
