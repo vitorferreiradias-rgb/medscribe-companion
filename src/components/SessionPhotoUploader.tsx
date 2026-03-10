@@ -20,7 +20,7 @@ const GOAL_OPTIONS = [
   { value: "recomposicao", label: "Recomposição corporal" },
   { value: "pos_bariatrica", label: "Pós-bariátrica" },
   { value: "manutencao", label: "Manutenção" },
-  { value: "outro", label: "Outro" },
+  { value: "outro", label: "Análise focal (manchas, lesões, dermatites...)" },
 ];
 
 interface PhotoSlot {
