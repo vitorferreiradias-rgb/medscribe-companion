@@ -188,6 +188,7 @@ export default function PacienteDetalhe() {
   const [photoGoal, setPhotoGoal] = useState("");
   const [photoFocus, setPhotoFocus] = useState("");
   const [showPhotoForm, setShowPhotoForm] = useState(false);
+  const [currentSessaoId, setCurrentSessaoId] = useState(() => crypto.randomUUID());
   const [showMultiUpload, setShowMultiUpload] = useState(false);
   const [multiUploadLoading, setMultiUploadLoading] = useState(false);
   const [compareIds, setCompareIds] = useState<[string, string] | null>(null);
@@ -315,6 +316,7 @@ export default function PacienteDetalhe() {
       waist_circumference: photoWaist ? parseFloat(photoWaist) : undefined,
       treatment_goal: photoGoal || undefined,
       analysis_focus: photoFocus || undefined,
+      sessao_id: currentSessaoId,
     });
     setPhotoLabel("");
     setPhotoDate("");
@@ -326,6 +328,7 @@ export default function PacienteDetalhe() {
     setPhotoGoal("");
     setPhotoFocus("");
     setShowPhotoForm(false);
+    setCurrentSessaoId(crypto.randomUUID());
     e.target.value = "";
   };
 
