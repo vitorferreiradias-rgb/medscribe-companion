@@ -1190,9 +1190,6 @@ export default function PacienteDetalhe() {
                                   </div>
                                 </div>
                               </>
-                            ) : editingSessionId && (photo.sessao_id || photo.id) === editingSessionId ? (
-                              /* Hide other photos in the same session being edited (they're shown in the edit form above) */
-                              null
                             ) : (
                               <>
                                 <div className="flex items-start justify-between mb-2">
