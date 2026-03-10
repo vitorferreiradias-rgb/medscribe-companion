@@ -311,6 +311,7 @@ export type Database = {
           label: string
           notes: string | null
           patient_id: string
+          sessao_id: string | null
           treatment_goal: string | null
           waist_circumference: number | null
           weight: number | null
@@ -330,6 +331,7 @@ export type Database = {
           label?: string
           notes?: string | null
           patient_id: string
+          sessao_id?: string | null
           treatment_goal?: string | null
           waist_circumference?: number | null
           weight?: number | null
@@ -349,6 +351,7 @@ export type Database = {
           label?: string
           notes?: string | null
           patient_id?: string
+          sessao_id?: string | null
           treatment_goal?: string | null
           waist_circumference?: number | null
           weight?: number | null
