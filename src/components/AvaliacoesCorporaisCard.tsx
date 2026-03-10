@@ -50,6 +50,7 @@ export function AvaliacoesCorporaisCard({ patientId }: AvaliacoesCorporaisCardPr
   };
 
   return (
+    <>
     <Card className="glass-card">
       <CardHeader className="pb-3 pt-4 px-4">
         <CardTitle className="text-sm flex items-center gap-2">
