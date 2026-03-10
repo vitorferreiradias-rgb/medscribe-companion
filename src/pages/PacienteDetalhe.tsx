@@ -247,12 +247,23 @@ export default function PacienteDetalhe() {
       if (patient.diagnoses?.length) contextParts.push(`Diagnósticos: ${patient.diagnoses.join(", ")}`);
       if (patient.drugAllergies?.length) contextParts.push(`Alergias: ${patient.drugAllergies.join(", ")}`);
 
+      // Extract anthropometric data from selected photos
+      const selectedPhotos = dbEvolutionPhotos.filter((p: any) => photoPaths.includes(p.image_path));
+      const photoWithWeight = selectedPhotos.find((p: any) => p.weight);
+      const photoWithHeight = selectedPhotos.find((p: any) => p.height);
+      const photoWithWaist = selectedPhotos.find((p: any) => p.waist_circumference);
+      const anthropometrics: Record<string, number> = {};
+      if (photoWithWeight?.weight) anthropometrics.weight = Number(photoWithWeight.weight);
+      if (photoWithHeight?.height) anthropometrics.height = Number(photoWithHeight.height);
+      if (photoWithWaist?.waist_circumference) anthropometrics.waistCircumference = Number(photoWithWaist.waist_circumference);
+
       const { data: fnData, error: fnError } = await supabase.functions.invoke("consolidated-analysis", {
         body: {
           avaliacaoId,
           photoPaths,
           action,
           patientContext: contextParts.length > 0 ? contextParts.join(". ") : undefined,
+          anthropometrics: Object.keys(anthropometrics).length > 0 ? anthropometrics : undefined,
         },
       });
 
