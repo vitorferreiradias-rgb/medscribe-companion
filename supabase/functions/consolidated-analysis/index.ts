@@ -20,80 +20,67 @@ function getPromptForAction(action: Action): string {
     case "composition":
       return `Você é um especialista em composição corporal e antropometria clínica. Analise estas fotos (Frente, Perfil, Costas) como um conjunto único, combinando avaliação visual com dados antropométricos quando fornecidos.
 
-## PROCESSO DE ANÁLISE
+Gere o relatório seguindo EXATAMENTE esta estrutura em Markdown:
 
-### 1. Avaliação Visual
-Avalie visualmente:
-- Distribuição de gordura corporal (abdominal, dorsal, membros)
-- Definição muscular e volume muscular (peitoral, ombros, braços, glúteos, pernas)
-- Proporção cintura/quadril aparente
-- Adiposidade abdominal, dorsal e em membros
+## Painel de Indicadores
 
-### 2. Modelos Antropométricos
-Utilize quando dados disponíveis:
-- IMC = peso / altura²
-- Relação cintura/altura (se circunferência fornecida)
-- Estimativa visual de adiposidade calibrada pelos dados reais
-- Distribuição regional de gordura
-
-### 3. Análise por Região
-
-| Região | Observações |
-|---|---|
-| Rosto e Pescoço | ... |
-| Braços | ... |
-| Tronco e Peito | ... |
-| Costas e Coluna | ... |
-| Abdômen | ... |
-| Cintura/Flancos | ... |
-| Quadril e Glúteos | ... |
-| Pernas | ... |
-
-### 4. Análise Postural
-Avalie alinhamento, cifose, lordose, escoliose aparente, projeção de ombros/cabeça.
-
-### 5. Estimativas de Composição Corporal
-
-Forneça SEMPRE uma faixa com margem de erro:
-
-| Parâmetro | Estimativa | Margem de erro |
+| Indicador | Estimativa | Margem |
 |---|---|---|
-| Percentual de gordura corporal (%) | ex: 22% | ± 3-5% |
-| Massa gorda (kg) | ex: 18.7 kg | ± 2-4 kg |
-| Massa magra (kg) | ex: 66.3 kg | ± 2-4 kg |
-| Massa muscular estimada (kg) | ex: 30 kg | ± 3-5 kg |
-| Taxa metabólica basal (kcal/dia) | ex: 1750 kcal | ± 100-150 kcal |
-| Nível de gordura visceral | ex: moderado | baixo/moderado/alto |
+| IMC | valor | — |
+| % Gordura Corporal | valor% | ± X% |
+| Massa Gorda | valor kg | ± X kg |
+| Massa Magra | valor kg | ± X kg |
+| Massa Muscular Estimada | valor kg | ± X kg |
+| Taxa Metabólica Basal | valor kcal/dia | ± X kcal |
+| Gordura Visceral | nível | — |
 
-### 6. Classificação Corporal
+> **Classificação:** [Atleta/Fitness/Normal/Sobrepeso/Obesidade] • **Score:** [X/10] — [justificativa em uma frase]
 
-Classifique em uma das categorias:
-- **Atleta**: % gordura muito baixo, alta definição muscular
-- **Fitness**: % gordura baixo, boa definição muscular
-- **Normal**: % gordura dentro da faixa saudável
-- **Sobrepeso**: % gordura acima do ideal
-- **Obesidade**: % gordura significativamente elevado
+---
 
-### 7. Avaliação Visual Descritiva
+## Análise Regional
+
+| Região | Observações | Status |
+|---|---|---|
+| Rosto e Pescoço | descrição | 🟢/🟡/🔴 |
+| Braços | descrição | 🟢/🟡/🔴 |
+| Tronco e Peito | descrição | 🟢/🟡/🔴 |
+| Costas e Coluna | descrição | 🟢/🟡/🔴 |
+| Abdômen | descrição | 🟢/🟡/🔴 |
+| Cintura/Flancos | descrição | 🟢/🟡/🔴 |
+| Quadril e Glúteos | descrição | 🟢/🟡/🔴 |
+| Pernas | descrição | 🟢/🟡/🔴 |
+
+## Análise Postural
+
+Avalie alinhamento, cifose, lordose, escoliose aparente, projeção de ombros/cabeça. Marque regiões não visíveis como "Não avaliável".
+
+## Avaliação Visual Descritiva
+
 Descrição objetiva da distribuição de gordura e massa muscular observada nas imagens.
 
-### 8. Score de Avaliação
-Nota de 1 a 10 para condição física geral com justificativa.
+## Observações Clínicas
 
-### 9. Observações Clínicas
-Pontos de atenção para o médico.
+- ⚠️ [ponto de atenção 1]
+- ⚠️ [ponto de atenção 2]
 
-### 10. Recomendações
-Sugestões baseadas nos achados visuais e antropométricos.
+## Recomendações
+
+- 🎯 [recomendação 1]
+- 🎯 [recomendação 2]
+- 🎯 [recomendação 3]
 
 REGRAS:
 - Seja objetivo, preciso e use linguagem médica adequada.
 - NÃO faça diagnósticos definitivos — descreva achados visuais e estimativas.
-- SEMPRE forneça estimativas com margem de erro.
-- Quando dados antropométricos reais forem fornecidos (peso, altura, circunferência), USE-OS para calibrar as estimativas — não invente valores incompatíveis.
+- SEMPRE forneça estimativas com margem de erro na tabela de indicadores.
+- Quando dados antropométricos reais forem fornecidos (peso, altura, circunferência), USE-OS para calibrar as estimativas.
 - Calcule IMC e relação cintura/altura quando os dados permitirem.
 - Use a fórmula de Mifflin-St Jeor para estimar TMB quando peso e altura forem fornecidos.
-- Marque regiões não visíveis como "Não avaliável".`;
+- Use EXATAMENTE os emojis 🟢 (bom), 🟡 (atenção), 🔴 (crítico) na coluna Status da análise regional.
+- Use ⚠️ para observações e 🎯 para recomendações.
+- A tabela de indicadores DEVE ser a primeira seção do relatório.
+- O blockquote com classificação e score deve vir logo após a tabela de indicadores.`;
 
     case "compare":
       return `Compare estas 2 fotos do mesmo paciente em datas diferentes. Foque exclusivamente na mudança visual entre as duas imagens (ex: redução de volume abdominal, melhora na silhueta). Gere um comentário breve e motivador destacando a evolução.
