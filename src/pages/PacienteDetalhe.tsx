@@ -1404,10 +1404,9 @@ export default function PacienteDetalhe() {
                     <Select value={photoAngle} onValueChange={(v) => { setPhotoAngle(v); if (v !== "outro") setPhotoFocus(""); }}>
                       <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione o ângulo" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="frontal">Frontal</SelectItem>
-                        <SelectItem value="posterior">Posterior</SelectItem>
-                        <SelectItem value="lateral_direito">Lateral Dir.</SelectItem>
-                        <SelectItem value="lateral_esquerdo">Lateral Esq.</SelectItem>
+                        <SelectItem value="frente">Frente</SelectItem>
+                        <SelectItem value="perfil">Perfil</SelectItem>
+                        <SelectItem value="costas">Costas</SelectItem>
                         <SelectItem value="outro">Outro</SelectItem>
                       </SelectContent>
                     </Select>
