@@ -142,6 +142,9 @@ export function SessionPhotoUploader({ onSubmit, onCancel, isLoading = false, se
           <Input type="number" step="0.1" placeholder="Altura (cm)" value={height} onChange={(e) => setHeight(e.target.value)} />
           <Input type="number" step="0.1" placeholder="Circ. abd. (cm)" value={waist} onChange={(e) => setWaist(e.target.value)} />
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input type="number" step="0.1" placeholder="% Gordura corporal" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)} />
+        </div>
 
         {/* Goals */}
         <div className="space-y-1.5">
