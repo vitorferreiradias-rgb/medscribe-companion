@@ -390,7 +390,7 @@ export default function PacienteDetalhe() {
 
   // Build patient context for AI analysis
   const buildPatientContext = (photos: { before?: any; after?: any }) => {
-    const angleLabels: Record<string, string> = { frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lateral Direito", lateral_esquerdo: "Lateral Esquerdo", outro: "Outro (focal)" };
+    const angleLabels: Record<string, string> = { frente: "Frente", perfil: "Perfil", costas: "Costas", frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lateral Direito", lateral_esquerdo: "Lateral Esquerdo", outro: "Outro (focal)" };
     const contextParts: string[] = [];
 
     if (patient?.birthDate) {
