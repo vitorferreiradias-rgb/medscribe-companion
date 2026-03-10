@@ -119,6 +119,7 @@ export function SessionPhotoUploader({ onSubmit, onCancel, isLoading = false, se
       weight: weight ? parseFloat(weight) : undefined,
       height: height ? parseFloat(height) : undefined,
       waistCircumference: waist ? parseFloat(waist) : undefined,
+      bodyFatPercentage: bodyFat ? parseFloat(bodyFat) : undefined,
       treatmentGoal: goal || undefined,
       notes: notes || undefined,
       sessaoId,
