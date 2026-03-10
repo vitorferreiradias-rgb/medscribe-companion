@@ -1,30 +1,42 @@
 
 
-# Tornar a classificação de receita visualmente automática e clara
+## Análise: Abordagem mais fluida
 
-## Problema
-O sistema já classifica automaticamente o tipo de receita (simples/antimicrobiano/controle especial) com base no medicamento. Porém, na UI do preview, isso aparece como um dropdown genérico sem destaque — o médico não percebe que a classificação foi automática. Além disso, quando o medicamento não está no banco local, a receita silenciosamente vira "simples".
+O caminho mais simples é trabalhar na tabela `evolution_photos`, que já tem a coluna `angle`. Não precisa duplicar informação na `avaliacoes_corporais`.
 
-## Solução
+### O que já existe
 
-### 1. Destacar a classificação automática no preview
-No `SmartPrescriptionPreview.tsx`:
-- Adicionar um badge/label ao lado do dropdown indicando "Classificado automaticamente" (verde) quando a medicação foi encontrada no banco
-- Quando a medicação NÃO foi encontrada, mostrar um alerta amarelo mais visível explicando que o tipo precisa ser confirmado manualmente
-- Manter o dropdown como override, mas visualmente secundário
+- `evolution_photos.angle` — já armazena o ângulo de cada foto (valores atuais: frontal, posterior, lateral_direito, lateral_esquerdo, outro)
+- `avaliacoes_corporais.photo_paths` — array que referencia as fotos usadas na avaliação
+- `avaliacoes_corporais.angles` — array paralelo (redundante com o angle da foto individual)
 
-### 2. Adicionar mais antimicrobianos e controlados ao banco de conhecimento
-No `medication-knowledge.ts`, adicionar medicamentos comuns que faltam:
-- **Antimicrobianos**: Azitromicina, Ciprofloxacino, Cefalexina, Metronidazol, Levofloxacino, Sulfametoxazol+Trimetoprima
-- **Controlados**: Clonazepam, Alprazolam, Fluoxetina, Sertralina, Escitalopram, Ritalina (metilfenidato), Zolpidem
+### Proposta
 
-### 3. Melhorar o `ComplianceResult` com flag de confiança
-No `compliance-router.ts`:
-- Adicionar campo `autoClassified: boolean` ao resultado — `true` quando todos os itens foram encontrados no banco, `false` quando algum é desconhecido
-- O preview usa esse campo para decidir se mostra "Classificado automaticamente" ou "Confirme o tipo"
+**1. Adicionar `sessao_id` na tabela `evolution_photos`**
 
-## Arquivos modificados
-- `src/lib/medication-knowledge.ts` — adicionar medicamentos
-- `src/lib/compliance-router.ts` — adicionar flag `autoClassified`
-- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — UI de classificação automática
+Uma coluna `sessao_id UUID DEFAULT gen_random_uuid()` que agrupa fotos enviadas juntas. Quando o médico faz upload de 3 fotos de uma vez, todas recebem o mesmo `sessao_id`. Isso permite:
+- Agrupar visualmente por sessão na aba Evolução
+- No seletor de "Nova Avaliação", mostrar fotos agrupadas por sessão em vez de uma lista solta
+
+**2. Padronizar os valores de `angle` existentes**
+
+Manter a coluna `angle` que já existe em `evolution_photos`, mas padronizar para os 3 valores principais: `frente`, `perfil`, `costas` (além de `outro`). O formulário de upload já pede o ângulo — basta atualizar as opções.
+
+**3. Não alterar `avaliacoes_corporais`**
+
+A tabela de avaliações já funciona bem. Ela referencia `photo_paths` e pode buscar o ângulo de cada foto via `evolution_photos.angle` quando necessário. A coluna `angles` existente pode ser preenchida automaticamente a partir dos dados das fotos selecionadas.
+
+### Mudanças
+
+| Onde | O quê |
+|------|-------|
+| Migration | `ALTER TABLE evolution_photos ADD COLUMN sessao_id uuid DEFAULT gen_random_uuid()` |
+| `useAddEvolutionPhoto` | Aceitar `sessao_id` opcional no insert |
+| Upload de fotos | Gerar um `sessao_id` compartilhado quando múltiplas fotos são enviadas juntas |
+| `EvolutionPhotoSelector` | Agrupar fotos por `sessao_id` ou `date` para facilitar seleção |
+| Opções de ângulo no form | Atualizar para: Frente, Perfil, Costas, Outro |
+
+### Resultado
+
+O fluxo fica: Upload de fotos (com ângulo + agrupamento automático por sessão) → Seletor agrupa por sessão → Nova Avaliação usa as fotos existentes. Sem redundância de dados entre tabelas.
 
