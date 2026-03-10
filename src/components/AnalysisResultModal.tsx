@@ -52,7 +52,12 @@ export function AnalysisResultModal({
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; color: #1a1a1a; line-height: 1.6; }
           h1 { font-size: 20px; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 4px; }
           .meta { font-size: 12px; color: #666; margin-bottom: 24px; }
-          .content { white-space: pre-wrap; font-size: 14px; }
+          .content { font-size: 14px; }
+          .content h1, .content h2, .content h3 { margin-top: 16px; margin-bottom: 8px; }
+          .content h2 { font-size: 16px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+          .content h3 { font-size: 14px; }
+          .content p { margin: 8px 0; }
+          .content ul, .content ol { margin: 8px 0; padding-left: 20px; }
           table { border-collapse: collapse; width: 100%; margin: 12px 0; }
           th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 13px; }
           th { background: #f5f5f5; font-weight: 600; }
