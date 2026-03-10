@@ -211,6 +211,7 @@ function getUserPrompt(action: Action, numPhotos: number, patientContext?: strin
       }
       return `Analise estes 2 grupos de fotos (${numPhotos} fotos total) de diferentes datas e gere um laudo de evolução comparativa.${ctx}${anthroText}${evolutionDetails}`;
     }
+  }
 }
 
 Deno.serve(async (req) => {
