@@ -278,39 +278,6 @@ export default function PacienteDetalhe() {
     }
   }, [id, patient, toast, refetchAvaliacoes]);
 
-  const handleAddEvolutionPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !patient || !id) return;
-    if (photoAngle === "outro" && !photoFocus.trim()) {
-      toast({ title: "Campo obrigatório", description: "Descreva o que está sendo fotografado quando o ângulo é 'Outro'.", variant: "destructive" });
-      e.target.value = "";
-      return;
-    }
-    addEvolutionPhotoMutation.mutate({
-      patientId: id,
-      file,
-      label: photoLabel || "Registro",
-      date: photoDate || format(new Date(), "yyyy-MM-dd"),
-      notes: photoNotes || undefined,
-      weight: photoWeight ? parseFloat(photoWeight) : undefined,
-      angle: photoAngle,
-      height: photoHeight ? parseFloat(photoHeight) : undefined,
-      waist_circumference: photoWaist ? parseFloat(photoWaist) : undefined,
-      treatment_goal: photoGoal || undefined,
-      analysis_focus: photoFocus || undefined,
-    });
-    setPhotoLabel("");
-    setPhotoDate("");
-    setPhotoNotes("");
-    setPhotoWeight("");
-    setPhotoAngle("frontal");
-    setPhotoHeight("");
-    setPhotoWaist("");
-    setPhotoGoal("");
-    setPhotoFocus("");
-    setShowPhotoForm(false);
-    e.target.value = "";
-  };
 
   const handleRemoveEvolutionPhoto = (photoId: string, imagePath: string) => {
     if (!id) return;
