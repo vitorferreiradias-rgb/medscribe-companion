@@ -11,6 +11,7 @@ interface PhotoItem {
   label: string;
   date: string;
   angle?: string | null;
+  sessao_id?: string | null;
 }
 
 interface EvolutionPhotoSelectorProps {
