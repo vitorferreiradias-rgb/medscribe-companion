@@ -25,6 +25,8 @@ import { DietaPlaceholder } from "@/components/DietaPlaceholder";
 import { NoteSection } from "@/types";
 import type { Prescription } from "@/components/receita/PrescriptionFlow";
 import { streamClinicalSummary } from "@/lib/ai-summary";
+import { streamPatientInstructions } from "@/lib/ai-instructions";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 const PRESCRIPTIONS_KEY = "medscribe_prescriptions";
 
