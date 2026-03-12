@@ -1,30 +1,50 @@
 
 
-# Tornar a classificação de receita visualmente automática e clara
+# Orientação de Uso dos Medicamentos e Recomendações da Consulta
 
-## Problema
-O sistema já classifica automaticamente o tipo de receita (simples/antimicrobiano/controle especial) com base no medicamento. Porém, na UI do preview, isso aparece como um dropdown genérico sem destaque — o médico não percebe que a classificação foi automática. Além disso, quando o medicamento não está no banco local, a receita silenciosamente vira "simples".
+## O que é
+Um documento clínico gerado por IA, voltado ao **paciente**, com linguagem acessível, contendo:
+1. Como tomar cada medicamento prescrito (horários, doses, cuidados)
+2. Recomendações gerais da consulta (dieta, repouso, sinais de alerta, retorno)
 
-## Solução
+Diferente do "Resumo GenAI" que é técnico e para o médico, este documento é para **entregar ao paciente**.
 
-### 1. Destacar a classificação automática no preview
-No `SmartPrescriptionPreview.tsx`:
-- Adicionar um badge/label ao lado do dropdown indicando "Classificado automaticamente" (verde) quando a medicação foi encontrada no banco
-- Quando a medicação NÃO foi encontrada, mostrar um alerta amarelo mais visível explicando que o tipo precisa ser confirmado manualmente
-- Manter o dropdown como override, mas visualmente secundário
+## Fluxo proposto
 
-### 2. Adicionar mais antimicrobianos e controlados ao banco de conhecimento
-No `medication-knowledge.ts`, adicionar medicamentos comuns que faltam:
-- **Antimicrobianos**: Azitromicina, Ciprofloxacino, Cefalexina, Metronidazol, Levofloxacino, Sulfametoxazol+Trimetoprima
-- **Controlados**: Clonazepam, Alprazolam, Fluoxetina, Sertralina, Escitalopram, Ritalina (metilfenidato), Zolpidem
+1. Botão **"Orientações ao Paciente"** na área de ações do prontuário (ao lado do "Gerar Resumo GenAI"), com ícone de FileHeart ou similar
+2. Ao clicar, a IA recebe: medicações prescritas (conduta + interconsultas), conteúdo do prontuário, queixa principal e nome do paciente
+3. Gera um texto em **linguagem leiga** com:
+   - Tabela simplificada de medicamentos (nome, dose, quando tomar, por quanto tempo, cuidados)
+   - Sinais de alerta para procurar atendimento
+   - Recomendações de seguimento (dieta, atividade, retorno)
+4. O médico pode **editar** antes de imprimir/entregar
+5. Botão de **imprimir** e **copiar**
 
-### 3. Melhorar o `ComplianceResult` com flag de confiança
-No `compliance-router.ts`:
-- Adicionar campo `autoClassified: boolean` ao resultado — `true` quando todos os itens foram encontrados no banco, `false` quando algum é desconhecido
-- O preview usa esse campo para decidir se mostra "Classificado automaticamente" ou "Confirme o tipo"
+## Sugestão de melhoria no fluxo
 
-## Arquivos modificados
-- `src/lib/medication-knowledge.ts` — adicionar medicamentos
-- `src/lib/compliance-router.ts` — adicionar flag `autoClassified`
-- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — UI de classificação automática
+Em vez de ser apenas um botão solto, adicionar como uma **nova aba** "Orientações" no painel lateral (junto com Transcrição, Receita, Dieta, Checklist, Histórico). Isso porque:
+- É um artefato da consulta que o médico pode querer revisar depois
+- Fica organizado junto com os outros documentos
+- Pode ser persistido no banco para consultas futuras
+
+## Implementação técnica
+
+### 1. Nova Edge Function `patient-instructions`
+- Prompt em linguagem acessível, evitando termos técnicos
+- Recebe: medicações, prontuário, queixa, nome do paciente
+- Retorna stream de texto em Markdown com tabela de medicamentos e recomendações
+- Modelo: `google/gemini-3-flash-preview`
+
+### 2. Frontend — Nova aba "Orientações" em `ConsultaDetalhe.tsx`
+- Adicionar aba no TabsList (6 colunas: Transcrição, Receita, Dieta, Checklist, Histórico, **Orientações**)
+- Conteúdo: botão "Gerar Orientações", área de preview com Markdown renderizado
+- Botões: Imprimir, Copiar, Editar (textarea toggle)
+
+### 3. Streaming helper `src/lib/ai-instructions.ts`
+- Similar ao `ai-summary.ts`, chama a edge function com streaming
+
+### Arquivos
+- **Criar**: `supabase/functions/patient-instructions/index.ts`
+- **Criar**: `src/lib/ai-instructions.ts`
+- **Editar**: `src/pages/ConsultaDetalhe.tsx` — nova aba "Orientações"
 
