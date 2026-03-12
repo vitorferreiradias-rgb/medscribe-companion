@@ -445,12 +445,13 @@ export default function ConsultaDetalhe() {
         {/* Column B - Transcript & Tools */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="transcricao">
-            <TabsList className="w-full grid grid-cols-5 h-9">
-              <TabsTrigger value="transcricao" className="text-xs px-1.5">Transcrição</TabsTrigger>
-              <TabsTrigger value="receita" className="text-xs px-1.5">Receita</TabsTrigger>
-              <TabsTrigger value="dieta" className="text-xs px-1.5">Dieta</TabsTrigger>
-              <TabsTrigger value="checklist" className="text-xs px-1.5">Checklist</TabsTrigger>
-              <TabsTrigger value="historico" className="text-xs px-1.5">Histórico</TabsTrigger>
+            <TabsList className="w-full grid grid-cols-6 h-9">
+              <TabsTrigger value="transcricao" className="text-xs px-1">Transcrição</TabsTrigger>
+              <TabsTrigger value="receita" className="text-xs px-1">Receita</TabsTrigger>
+              <TabsTrigger value="dieta" className="text-xs px-1">Dieta</TabsTrigger>
+              <TabsTrigger value="checklist" className="text-xs px-1">Checklist</TabsTrigger>
+              <TabsTrigger value="historico" className="text-xs px-1">Histórico</TabsTrigger>
+              <TabsTrigger value="orientacoes" className="text-xs px-1">Orientações</TabsTrigger>
             </TabsList>
 
             <TabsContent value="transcricao" className="space-y-3 mt-3">
