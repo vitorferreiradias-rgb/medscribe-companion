@@ -1,7 +1,7 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3, ClipboardPaste, CalendarDays, Pill, ArrowRightLeft, BrainCircuit, Loader2, AlertTriangle } from "lucide-react";
+import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3, ClipboardPaste, CalendarDays, Pill, ArrowRightLeft, BrainCircuit, Loader2, AlertTriangle, FileHeart } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { updateEncounter, deleteEncounter } from "@/lib/store";
 import { MedicationHistorySheet } from "@/components/MedicationHistorySheet";
