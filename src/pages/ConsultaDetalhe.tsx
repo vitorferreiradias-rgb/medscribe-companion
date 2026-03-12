@@ -1,7 +1,7 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3, ClipboardPaste, CalendarDays, Pill, ArrowRightLeft, BrainCircuit, Loader2, AlertTriangle } from "lucide-react";
+import { Save, CheckCircle, Lock, Printer, Trash2, Copy, Search, Sparkles, Edit3, ClipboardPaste, CalendarDays, Pill, ArrowRightLeft, BrainCircuit, Loader2, AlertTriangle, FileHeart } from "lucide-react";
 import { useAppData } from "@/hooks/useAppData";
 import { updateEncounter, deleteEncounter } from "@/lib/store";
 import { MedicationHistorySheet } from "@/components/MedicationHistorySheet";
@@ -25,6 +25,8 @@ import { DietaPlaceholder } from "@/components/DietaPlaceholder";
 import { NoteSection } from "@/types";
 import type { Prescription } from "@/components/receita/PrescriptionFlow";
 import { streamClinicalSummary } from "@/lib/ai-summary";
+import { streamPatientInstructions } from "@/lib/ai-instructions";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 const PRESCRIPTIONS_KEY = "medscribe_prescriptions";
 
@@ -53,6 +55,10 @@ export default function ConsultaDetalhe() {
   const [aiLoading, setAiLoading] = useState(false);
   const [showMedHistory, setShowMedHistory] = useState(false);
   const [showSmartPrescription, setShowSmartPrescription] = useState(false);
+  const [instructionsText, setInstructionsText] = useState("");
+  const [instructionsLoading, setInstructionsLoading] = useState(false);
+  const [instructionsEditing, setInstructionsEditing] = useState(false);
+  const [instructionsEditBuffer, setInstructionsEditBuffer] = useState("");
   const enc = data.encounters.find((e) => e.id === id);
   const patient = enc ? data.patients.find((p) => p.id === enc.patientId) : undefined;
   const clinician = enc ? data.clinicians.find((c) => c.id === enc.clinicianId) : undefined;
@@ -169,6 +175,57 @@ export default function ConsultaDetalhe() {
       setUnifiedText((prev) => prev + "\n\n" + aiSummary);
       toast({ title: "Resumo adicionado ao prontuário." });
     }
+  };
+
+  const handleGenerateInstructions = async () => {
+    setInstructionsLoading(true);
+    setInstructionsText("");
+    setInstructionsEditing(false);
+    const medStrings = condutaMeds.map((m) =>
+      m.isCompounded
+        ? `Fórmula Manipulada — ${m.compoundedFormula || "sem descrição"}`
+        : `${[m.commercialName, m.concentration, m.presentation].filter(Boolean).join(" ")} — ${m.usageInstructions || "sem posologia"}`
+    );
+    const interStrings = interconsultaMeds
+      .flatMap((g) => g.medications.map((m) =>
+        m.isCompounded
+          ? `Fórmula Manipulada — ${m.compoundedFormula || "sem descrição"}`
+          : `${[m.commercialName, m.concentration, m.presentation].filter(Boolean).join(" ")} — ${m.usageInstructions || "sem posologia"}`
+      ));
+    await streamPatientInstructions({
+      input: {
+        noteContent: unifiedText,
+        patientName: patient?.name || "",
+        chiefComplaint: enc.chiefComplaint || "",
+        medications: medStrings,
+        interconsultaMedications: interStrings,
+      },
+      onDelta: (text) => setInstructionsText((prev) => prev + text),
+      onDone: () => setInstructionsLoading(false),
+      onError: (msg) => { toast({ title: "Erro", description: msg, variant: "destructive" }); setInstructionsLoading(false); },
+    });
+  };
+
+  const handlePrintInstructions = () => {
+    const content = instructionsEditing ? instructionsEditBuffer : instructionsText;
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+        <html><head><title>Orientações ao Paciente</title>
+        <style>body{font-family:system-ui,sans-serif;padding:40px;max-width:700px;margin:0 auto;line-height:1.6}
+        table{width:100%;border-collapse:collapse;margin:16px 0}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+        th{background:#f5f5f5}h2{margin-top:24px}</style></head>
+        <body>${content}</body></html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  const copyInstructions = () => {
+    const content = instructionsEditing ? instructionsEditBuffer : instructionsText;
+    navigator.clipboard.writeText(content);
+    toast({ title: "Orientações copiadas." });
   };
 
   const filteredUtterances = transcript?.content.filter((u) =>
@@ -388,12 +445,13 @@ export default function ConsultaDetalhe() {
         {/* Column B - Transcript & Tools */}
         <div className="lg:col-span-2">
           <Tabs defaultValue="transcricao">
-            <TabsList className="w-full grid grid-cols-5 h-9">
-              <TabsTrigger value="transcricao" className="text-xs px-1.5">Transcrição</TabsTrigger>
-              <TabsTrigger value="receita" className="text-xs px-1.5">Receita</TabsTrigger>
-              <TabsTrigger value="dieta" className="text-xs px-1.5">Dieta</TabsTrigger>
-              <TabsTrigger value="checklist" className="text-xs px-1.5">Checklist</TabsTrigger>
-              <TabsTrigger value="historico" className="text-xs px-1.5">Histórico</TabsTrigger>
+            <TabsList className="w-full grid grid-cols-6 h-9">
+              <TabsTrigger value="transcricao" className="text-xs px-1">Transcrição</TabsTrigger>
+              <TabsTrigger value="receita" className="text-xs px-1">Receita</TabsTrigger>
+              <TabsTrigger value="dieta" className="text-xs px-1">Dieta</TabsTrigger>
+              <TabsTrigger value="checklist" className="text-xs px-1">Checklist</TabsTrigger>
+              <TabsTrigger value="historico" className="text-xs px-1">Histórico</TabsTrigger>
+              <TabsTrigger value="orientacoes" className="text-xs px-1">Orientações</TabsTrigger>
             </TabsList>
 
             <TabsContent value="transcricao" className="space-y-3 mt-3">
@@ -489,6 +547,71 @@ export default function ConsultaDetalhe() {
                   />
                 </CardContent>
               </Card>
+            </TabsContent>
+
+            <TabsContent value="orientacoes" className="mt-3 space-y-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateInstructions}
+                disabled={instructionsLoading}
+                className="w-full"
+              >
+                {instructionsLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileHeart className="mr-1.5 h-3.5 w-3.5" />}
+                {instructionsLoading ? "Gerando orientações..." : instructionsText ? "Regenerar Orientações" : "Gerar Orientações ao Paciente"}
+              </Button>
+
+              {instructionsText && (
+                <Card className="glass-card">
+                  <CardContent className="pt-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileHeart className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">Orientações ao Paciente</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => {
+                            if (!instructionsEditing) setInstructionsEditBuffer(instructionsText);
+                            setInstructionsEditing(!instructionsEditing);
+                          }}
+                        >
+                          <Edit3 className="mr-1 h-3 w-3" /> {instructionsEditing ? "Visualizar" : "Editar"}
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={copyInstructions}>
+                          <Copy className="mr-1 h-3 w-3" /> Copiar
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={handlePrintInstructions}>
+                          <Printer className="mr-1 h-3 w-3" /> Imprimir
+                        </Button>
+                      </div>
+                    </div>
+                    <Separator />
+                    {instructionsEditing ? (
+                      <Textarea
+                        value={instructionsEditBuffer}
+                        onChange={(e) => setInstructionsEditBuffer(e.target.value)}
+                        className="resize-y min-h-[300px] font-mono text-sm"
+                      />
+                    ) : (
+                      <MarkdownRenderer content={instructionsText} className="text-sm" />
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {!instructionsText && !instructionsLoading && (
+                <Card className="glass-card">
+                  <CardContent className="py-12 text-center text-muted-foreground text-sm">
+                    <FileHeart className="h-8 w-8 mx-auto mb-3 opacity-30" />
+                    <p>Gere orientações com linguagem acessível para entregar ao paciente.</p>
+                    <p className="text-xs mt-1">Inclui tabela de medicamentos, sinais de alerta e recomendações.</p>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
         </div>
