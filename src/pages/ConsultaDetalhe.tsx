@@ -55,6 +55,10 @@ export default function ConsultaDetalhe() {
   const [aiLoading, setAiLoading] = useState(false);
   const [showMedHistory, setShowMedHistory] = useState(false);
   const [showSmartPrescription, setShowSmartPrescription] = useState(false);
+  const [instructionsText, setInstructionsText] = useState("");
+  const [instructionsLoading, setInstructionsLoading] = useState(false);
+  const [instructionsEditing, setInstructionsEditing] = useState(false);
+  const [instructionsEditBuffer, setInstructionsEditBuffer] = useState("");
   const enc = data.encounters.find((e) => e.id === id);
   const patient = enc ? data.patients.find((p) => p.id === enc.patientId) : undefined;
   const clinician = enc ? data.clinicians.find((c) => c.id === enc.clinicianId) : undefined;
