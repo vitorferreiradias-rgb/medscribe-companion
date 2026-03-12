@@ -177,6 +177,57 @@ export default function ConsultaDetalhe() {
     }
   };
 
+  const handleGenerateInstructions = async () => {
+    setInstructionsLoading(true);
+    setInstructionsText("");
+    setInstructionsEditing(false);
+    const medStrings = condutaMeds.map((m) =>
+      m.isCompounded
+        ? `Fórmula Manipulada — ${m.compoundedFormula || "sem descrição"}`
+        : `${[m.commercialName, m.concentration, m.presentation].filter(Boolean).join(" ")} — ${m.usageInstructions || "sem posologia"}`
+    );
+    const interStrings = interconsultaMeds
+      .flatMap((g) => g.medications.map((m) =>
+        m.isCompounded
+          ? `Fórmula Manipulada — ${m.compoundedFormula || "sem descrição"}`
+          : `${[m.commercialName, m.concentration, m.presentation].filter(Boolean).join(" ")} — ${m.usageInstructions || "sem posologia"}`
+      ));
+    await streamPatientInstructions({
+      input: {
+        noteContent: unifiedText,
+        patientName: patient?.name || "",
+        chiefComplaint: enc.chiefComplaint || "",
+        medications: medStrings,
+        interconsultaMedications: interStrings,
+      },
+      onDelta: (text) => setInstructionsText((prev) => prev + text),
+      onDone: () => setInstructionsLoading(false),
+      onError: (msg) => { toast({ title: "Erro", description: msg, variant: "destructive" }); setInstructionsLoading(false); },
+    });
+  };
+
+  const handlePrintInstructions = () => {
+    const content = instructionsEditing ? instructionsEditBuffer : instructionsText;
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(`
+        <html><head><title>Orientações ao Paciente</title>
+        <style>body{font-family:system-ui,sans-serif;padding:40px;max-width:700px;margin:0 auto;line-height:1.6}
+        table{width:100%;border-collapse:collapse;margin:16px 0}th,td{border:1px solid #ddd;padding:8px;text-align:left}
+        th{background:#f5f5f5}h2{margin-top:24px}</style></head>
+        <body>${content}</body></html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  const copyInstructions = () => {
+    const content = instructionsEditing ? instructionsEditBuffer : instructionsText;
+    navigator.clipboard.writeText(content);
+    toast({ title: "Orientações copiadas." });
+  };
+
   const filteredUtterances = transcript?.content.filter((u) =>
     !transcriptSearch || u.text.toLowerCase().includes(transcriptSearch.toLowerCase())
   ) ?? [];
