@@ -598,6 +598,19 @@ export default function PacienteDetalhe() {
     }
   };
 
+  // Filtered session groups for sub-tabs
+  const bodySessionGroups = useMemo(() => {
+    return sessionGroups
+      .map(g => ({ ...g, photos: g.photos.filter((p: any) => p.angle !== "outro") }))
+      .filter(g => g.photos.length > 0);
+  }, [sessionGroups]);
+
+  const focalSessionGroups = useMemo(() => {
+    return sessionGroups
+      .map(g => ({ ...g, photos: g.photos.filter((p: any) => p.angle === "outro") }))
+      .filter(g => g.photos.length > 0);
+  }, [sessionGroups]);
+
 
   const handleSinglePhotoAnalysis = async (photo: any) => {
     setSingleAnalysisLoading(photo.id);
