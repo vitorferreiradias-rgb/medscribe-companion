@@ -1582,9 +1582,18 @@ export default function PacienteDetalhe() {
                                       </Button>
                                       {focalCompareResult[sessaoId] && (
                                         <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
-                                          <div className="flex items-center gap-1.5 mb-2">
-                                            <GitCompareArrows className="h-3.5 w-3.5 text-primary" />
-                                            <span className="text-xs font-semibold text-primary">Análise Comparativa Consolidada</span>
+                                          <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-1.5">
+                                              <GitCompareArrows className="h-3.5 w-3.5 text-primary" />
+                                              <span className="text-xs font-semibold text-primary">Análise Comparativa Consolidada</span>
+                                            </div>
+                                            <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-destructive hover:text-destructive"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setFocalCompareResult(prev => { const next = { ...prev }; delete next[sessaoId]; return next; });
+                                              }}>
+                                              <Trash2 className="h-3 w-3" /> Excluir
+                                            </Button>
                                           </div>
                                           <div className="text-xs prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
                                             {focalCompareResult[sessaoId]}
