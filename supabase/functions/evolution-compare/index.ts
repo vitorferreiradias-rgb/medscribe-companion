@@ -12,28 +12,30 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { beforeImagePath, afterImagePath, patientContext } = await req.json();
+    const { beforeImagePath, afterImagePath, patientContext, imagePaths } = await req.json();
 
-    const isSinglePhoto = !afterImagePath;
+    // Support multi-photo mode (imagePaths array) or legacy 2-photo mode
+    const allPaths: string[] = imagePaths && Array.isArray(imagePaths) && imagePaths.length > 0
+      ? imagePaths
+      : [beforeImagePath, afterImagePath].filter(Boolean);
 
-    if (!beforeImagePath) {
+    if (allPaths.length === 0) {
       return new Response(
-        JSON.stringify({ error: "beforeImagePath is required" }),
+        JSON.stringify({ error: "At least one image path is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const isSinglePhoto = allPaths.length === 1;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get signed URLs
-    const signedUrlPromises = [
-      supabase.storage.from("evolution-photos").createSignedUrl(beforeImagePath, 600),
-    ];
-    if (!isSinglePhoto) {
-      signedUrlPromises.push(supabase.storage.from("evolution-photos").createSignedUrl(afterImagePath, 600));
-    }
+    // Get signed URLs for all photos
+    const signedUrlPromises = allPaths.map(path =>
+      supabase.storage.from("evolution-photos").createSignedUrl(path, 600)
+    );
     const urlResults = await Promise.all(signedUrlPromises);
 
     if (urlResults.some(r => r.error)) {
@@ -43,8 +45,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const beforeSignedUrl = urlResults[0].data.signedUrl;
-    const afterSignedUrl = isSinglePhoto ? null : urlResults[1].data.signedUrl;
+    const signedUrls = urlResults.map(r => r.data.signedUrl);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
