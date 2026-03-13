@@ -6,7 +6,7 @@ import {
   ArrowLeft, Edit3, Save, X, MoreVertical, Trash2, Pencil, Check,
   Plus, CalendarIcon, Heart, MapPin, Users, Activity, Megaphone,
   AlertTriangle, FileText, Search, Copy, Clock, Stethoscope, FolderOpen,
-  Camera, ImageIcon, Eye, ZoomIn, TrendingUp, Weight, StickyNote, Sparkles, Loader2,
+  Camera, ImageIcon, Eye, ZoomIn, TrendingUp, Weight, StickyNote, Sparkles, Loader2, Upload,
   User, UserRound, ArrowRight, Target, ScanSearch, GitCompareArrows,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -237,6 +237,71 @@ export default function PacienteDetalhe() {
   const [labResult, setLabResult] = useState("");
   const [labReference, setLabReference] = useState("");
   const [labNotes, setLabNotes] = useState("");
+
+  // Lab import from file
+  interface ExtractedLabResult { name: string; result: string; reference_range?: string | null; type: "laboratorial" | "biopsia"; date?: string | null; }
+  const [importedLabs, setImportedLabs] = useState<ExtractedLabResult[]>([]);
+  const [importLoading, setImportLoading] = useState(false);
+  const [showImportPreview, setShowImportPreview] = useState(false);
+  const labFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLabFileImport = useCallback(async (file: File) => {
+    setImportLoading(true);
+    try {
+      const isImage = file.type.startsWith("image/");
+      let body: any = {};
+      if (isImage) {
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
+          reader.readAsDataURL(file);
+        });
+        body = { imageBase64: base64, mimeType: file.type };
+      } else {
+        const text = await file.text();
+        body = { textContent: text };
+      }
+
+      const { data, error } = await supabase.functions.invoke("extract-lab-results", { body });
+      if (error) throw error;
+      if (data?.results?.length) {
+        setImportedLabs(data.results);
+        setShowImportPreview(true);
+      } else {
+        toast({ title: "Nenhum exame encontrado", description: "A IA não conseguiu identificar exames no documento.", variant: "destructive" });
+      }
+    } catch (e: any) {
+      console.error("Import error:", e);
+      toast({ title: "Erro ao importar", description: e?.message || "Não foi possível processar o arquivo.", variant: "destructive" });
+    } finally {
+      setImportLoading(false);
+      if (labFileInputRef.current) labFileInputRef.current.value = "";
+    }
+  }, [toast]);
+
+  const handleConfirmImport = useCallback(async () => {
+    if (!id) return;
+    setImportLoading(true);
+    try {
+      for (const lab of importedLabs) {
+        await addLabResultMutation.mutateAsync({
+          patient_id: id,
+          date: lab.date || new Date().toISOString().slice(0, 10),
+          type: lab.type,
+          name: lab.name,
+          result: lab.result,
+          reference_range: lab.reference_range || undefined,
+        });
+      }
+      toast({ title: "Exames importados", description: `${importedLabs.length} exame(s) adicionado(s) com sucesso.` });
+      setImportedLabs([]);
+      setShowImportPreview(false);
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e?.message || "Falha ao salvar exames.", variant: "destructive" });
+    } finally {
+      setImportLoading(false);
+    }
+  }, [id, importedLabs, addLabResultMutation, toast]);
   const handleConsolidatedAnalysis = useCallback(async (photoPaths: string[], action: "composition" | "compare" | "evolution") => {
     if (!id || !patient) return;
     setMultiUploadLoading(true);
@@ -1773,10 +1838,17 @@ export default function PacienteDetalhe() {
             <CardHeader className="pb-3 pt-4 px-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-2"><FlaskConical className="h-4 w-4 text-primary" /> Exames Laboratoriais e Biópsias</CardTitle>
-                {!showLabForm && (
-                  <Button variant="outline" size="sm" onClick={() => setShowLabForm(true)}>
-                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar
-                  </Button>
+                {!showLabForm && !showImportPreview && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setShowLabForm(true)}>
+                      <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar
+                    </Button>
+                    <Button variant="outline" size="sm" disabled={importLoading} onClick={() => labFileInputRef.current?.click()}>
+                      {importLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
+                      Importar arquivo
+                    </Button>
+                    <input ref={labFileInputRef} type="file" accept="image/*,.pdf,.txt" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLabFileImport(f); }} />
+                  </div>
                 )}
               </div>
             </CardHeader>
@@ -1835,6 +1907,70 @@ export default function PacienteDetalhe() {
                       <Plus className="mr-1 h-3 w-3" /> Salvar
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setShowLabForm(false)}>Cancelar</Button>
+                  </div>
+                </div>
+              )}
+
+              {showImportPreview && importedLabs.length > 0 && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Exames extraídos — revise antes de confirmar</p>
+                    <Button size="sm" variant="ghost" onClick={() => { setShowImportPreview(false); setImportedLabs([]); }}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <div className="overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Exame</TableHead>
+                          <TableHead className="text-xs">Tipo</TableHead>
+                          <TableHead className="text-xs">Resultado</TableHead>
+                          <TableHead className="text-xs">Referência</TableHead>
+                          <TableHead className="text-xs">Data</TableHead>
+                          <TableHead className="text-xs w-8"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {importedLabs.map((r, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="text-xs">
+                              <Input className="h-7 text-xs" value={r.name} onChange={(e) => setImportedLabs(prev => prev.map((item, i) => i === idx ? { ...item, name: e.target.value } : item))} />
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <Select value={r.type} onValueChange={(v) => setImportedLabs(prev => prev.map((item, i) => i === idx ? { ...item, type: v as any } : item))}>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="laboratorial">Lab</SelectItem>
+                                  <SelectItem value="biopsia">Biópsia</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <Input className="h-7 text-xs" value={r.result} onChange={(e) => setImportedLabs(prev => prev.map((item, i) => i === idx ? { ...item, result: e.target.value } : item))} />
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <Input className="h-7 text-xs" value={r.reference_range || ""} onChange={(e) => setImportedLabs(prev => prev.map((item, i) => i === idx ? { ...item, reference_range: e.target.value } : item))} />
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <Input className="h-7 text-xs" type="date" value={r.date || ""} onChange={(e) => setImportedLabs(prev => prev.map((item, i) => i === idx ? { ...item, date: e.target.value } : item))} />
+                            </TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setImportedLabs(prev => prev.filter((_, i) => i !== idx))}>
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" disabled={importLoading || importedLabs.length === 0} onClick={handleConfirmImport}>
+                      {importLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3 w-3" />}
+                      Confirmar {importedLabs.length} exame(s)
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setShowImportPreview(false); setImportedLabs([]); }}>Cancelar</Button>
                   </div>
                 </div>
               )}

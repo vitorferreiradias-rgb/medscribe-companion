@@ -1,43 +1,30 @@
 
 
-# Extração automática de exames a partir de arquivos (PDF/imagem)
+# Tornar a classificação de receita visualmente automática e clara
 
 ## Problema
-O formulário atual de exames exige preenchimento manual de cada campo (nome, resultado, referência, data, tipo). O usuário quer fazer upload de um laudo (PDF ou imagem) e ter os dados extraídos automaticamente.
+O sistema já classifica automaticamente o tipo de receita (simples/antimicrobiano/controle especial) com base no medicamento. Porém, na UI do preview, isso aparece como um dropdown genérico sem destaque — o médico não percebe que a classificação foi automática. Além disso, quando o medicamento não está no banco local, a receita silenciosamente vira "simples".
 
 ## Solução
 
-Criar um fluxo de "importar exames via arquivo" que:
-1. Aceita upload de PDF ou imagem (foto de laudo)
-2. Envia o conteúdo para uma Edge Function que usa IA para extrair os dados estruturados
-3. Apresenta os resultados extraídos para revisão/edição antes de salvar
+### 1. Destacar a classificação automática no preview
+No `SmartPrescriptionPreview.tsx`:
+- Adicionar um badge/label ao lado do dropdown indicando "Classificado automaticamente" (verde) quando a medicação foi encontrada no banco
+- Quando a medicação NÃO foi encontrada, mostrar um alerta amarelo mais visível explicando que o tipo precisa ser confirmado manualmente
+- Manter o dropdown como override, mas visualmente secundário
 
-### Mudanças
+### 2. Adicionar mais antimicrobianos e controlados ao banco de conhecimento
+No `medication-knowledge.ts`, adicionar medicamentos comuns que faltam:
+- **Antimicrobianos**: Azitromicina, Ciprofloxacino, Cefalexina, Metronidazol, Levofloxacino, Sulfametoxazol+Trimetoprima
+- **Controlados**: Clonazepam, Alprazolam, Fluoxetina, Sertralina, Escitalopram, Ritalina (metilfenidato), Zolpidem
 
-**1. Nova Edge Function `extract-lab-results`**
-- Recebe imagem (base64) ou texto extraído de PDF
-- Usa modelo Gemini (suportado pelo Lovable AI, sem API key extra) para extrair dados estruturados: array de `{ name, result, reference_range, type, date }`
-- Prompt instruído a identificar nome do exame, valor, faixa de referência, data e tipo (laboratorial/biópsia/imagem)
+### 3. Melhorar o `ComplianceResult` com flag de confiança
+No `compliance-router.ts`:
+- Adicionar campo `autoClassified: boolean` ao resultado — `true` quando todos os itens foram encontrados no banco, `false` quando algum é desconhecido
+- O preview usa esse campo para decidir se mostra "Classificado automaticamente" ou "Confirme o tipo"
 
-**2. UI — Botão "Importar de arquivo" na aba Exames (`PacienteDetalhe.tsx`)**
-- Novo botão ao lado do "+ Adicionar" manual
-- Aceita PDF ou imagem (JPG/PNG)
-- Para imagens: converte para base64 e envia à Edge Function
-- Para PDFs: usa `document--parse_document` no client ou envia raw à Edge Function
-- Mostra spinner durante processamento
-- Após extração: exibe tabela de preview com os resultados extraídos, permitindo editar/remover antes de confirmar
-- Ao confirmar, insere todos os registros via `useAddPatientLabResult`
-
-**3. Fluxo do usuário**
-```
-[Importar arquivo] → Upload PDF/imagem → IA extrai dados →
-Preview editável → [Confirmar] → Registros salvos na tabela
-```
-
-### Arquivos modificados
-
-| Arquivo | Mudança |
-|---|---|
-| `supabase/functions/extract-lab-results/index.ts` | Nova Edge Function para extração via IA |
-| `src/pages/PacienteDetalhe.tsx` | Botão "Importar", lógica de upload, preview e confirmação |
+## Arquivos modificados
+- `src/lib/medication-knowledge.ts` — adicionar medicamentos
+- `src/lib/compliance-router.ts` — adicionar flag `autoClassified`
+- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — UI de classificação automática
 
