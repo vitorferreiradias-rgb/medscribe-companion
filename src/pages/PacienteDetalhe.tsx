@@ -1649,7 +1649,7 @@ export default function PacienteDetalhe() {
                                     })()}
                                   </>
                                 );
-                              })()
+                              })()}
                           </div>
                         </div>
                       );
