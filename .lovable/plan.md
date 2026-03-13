@@ -1,30 +1,45 @@
 
 
-# Tornar a classificação de receita visualmente automática e clara
+# Raciocínio Clínico Integrativo — Plano de Implementação
 
-## Problema
-O sistema já classifica automaticamente o tipo de receita (simples/antimicrobiano/controle especial) com base no medicamento. Porém, na UI do preview, isso aparece como um dropdown genérico sem destaque — o médico não percebe que a classificação foi automática. Além disso, quando o medicamento não está no banco local, a receita silenciosamente vira "simples".
+## Análise
 
-## Solução
+O framework proposto é excelente e eleva significativamente a qualidade dos laudos. Ele transforma a IA de um "descritor visual" para um **assistente de raciocínio clínico estruturado**, com hierarquia de evidências e diagnósticos diferenciais probabilísticos.
 
-### 1. Destacar a classificação automática no preview
-No `SmartPrescriptionPreview.tsx`:
-- Adicionar um badge/label ao lado do dropdown indicando "Classificado automaticamente" (verde) quando a medicação foi encontrada no banco
-- Quando a medicação NÃO foi encontrada, mostrar um alerta amarelo mais visível explicando que o tipo precisa ser confirmado manualmente
-- Manter o dropdown como override, mas visualmente secundário
+## Onde aplicar
 
-### 2. Adicionar mais antimicrobianos e controlados ao banco de conhecimento
-No `medication-knowledge.ts`, adicionar medicamentos comuns que faltam:
-- **Antimicrobianos**: Azitromicina, Ciprofloxacino, Cefalexina, Metronidazol, Levofloxacino, Sulfametoxazol+Trimetoprima
-- **Controlados**: Clonazepam, Alprazolam, Fluoxetina, Sertralina, Escitalopram, Ritalina (metilfenidato), Zolpidem
+O framework se encaixa em **dois contextos distintos** no sistema atual:
 
-### 3. Melhorar o `ComplianceResult` com flag de confiança
-No `compliance-router.ts`:
-- Adicionar campo `autoClassified: boolean` ao resultado — `true` quando todos os itens foram encontrados no banco, `false` quando algum é desconhecido
-- O preview usa esse campo para decidir se mostra "Classificado automaticamente" ou "Confirme o tipo"
+| Contexto | Edge Function | Aplicação |
+|---|---|---|
+| **Análise Focal** (lesões, manchas) | `evolution-compare` | Aplicação **completa** — todos os 7 passos fazem sentido (diagnóstico diferencial, conduta, exames) |
+| **Composição Corporal** (F/P/C) | `consolidated-analysis` | Aplicação **parcial** — passos 1, 2, 4, 7 são relevantes; diagnóstico diferencial (passo 5) é menos aplicável a avaliação de composição |
 
-## Arquivos modificados
-- `src/lib/medication-knowledge.ts` — adicionar medicamentos
-- `src/lib/compliance-router.ts` — adicionar flag `autoClassified`
-- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — UI de classificação automática
+## Proposta de implementação
+
+### 1. Análise Focal (`evolution-compare/index.ts`)
+Reescrever o prompt para seguir **exatamente** a sequência de 7 passos proposta. A IA receberá as fotos focais e gerará o laudo com:
+- Descrição morfológica detalhada (formato, bordas, coloração, textura, simetria, sinais inflamatórios)
+- Integração com contexto clínico do paciente (quando fornecido via `patientContext`)
+- Hierarquia de evidência explícita
+- Diagnósticos diferenciais classificados por probabilidade
+- Diagnóstico mais provável com justificativa estruturada (por que este, por que não os outros)
+- Conduta sugerida com exames e critérios de gravidade
+
+### 2. Composição Corporal (`consolidated-analysis/index.ts`)
+Incorporar os passos aplicáveis ao prompt existente:
+- Passo 1 (descrição morfológica) — já existe, reforçar com os critérios de alterações de pele, postura e proporções
+- Passo 2 (dados clínicos) — integrar melhor quando `patientContext` e `anthropometrics` forem fornecidos
+- Passo 4 (integração clínica) — adicionar as perguntas obrigatórias de validação
+- Passo 7 (conduta) — já existe como "Recomendações", manter mas enriquecer com critérios de gravidade
+
+### 3. Ajuste no frontend
+Nenhuma mudança no frontend é necessária — o `MarkdownRenderer` já renderiza a estrutura proposta (headers, listas, tabelas). Os laudos continuarão sendo exibidos no mesmo modal/timeline.
+
+## Resumo das alterações
+
+| Arquivo | Mudança |
+|---|---|
+| `supabase/functions/evolution-compare/index.ts` | Reescrever prompt focal com os 7 passos completos |
+| `supabase/functions/consolidated-analysis/index.ts` | Enriquecer prompt de composição com passos 1, 2, 4, 7 adaptados |
 
