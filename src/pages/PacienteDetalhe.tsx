@@ -1328,290 +1328,328 @@ export default function PacienteDetalhe() {
                                 </div>
                               </div>
                             ) : (
-                              <>
-                                <div className="flex items-start justify-between mb-2">
-                                  <div>
-                                    <p className="text-sm font-semibold">{firstPhoto.label}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {format(parseISO(firstPhoto.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                                      {prevFirstPhoto && (() => {
-                                        const days = Math.round((parseISO(firstPhoto.date).getTime() - parseISO(prevFirstPhoto.date).getTime()) / 86400000);
-                                        return days > 0 ? <span className="ml-1.5 text-primary/70">({days}d desde anterior)</span> : null;
-                                      })()}
-                                      {group.photos.length > 1 && (
-                                        <span className="ml-1.5">• {group.photos.length} fotos</span>
-                                      )}
-                                    </p>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); startEditPhoto(firstPhoto); }} title="Editar sessão">
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
-                                      e.stopPropagation();
-                                      group.photos.forEach(p => handleRemoveEvolutionPhoto(p.id, p.image_path));
-                                    }} title="Excluir sessão">
-                                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                                    </Button>
-                                  </div>
-                                </div>
+                              (() => {
+                                const bodyPhotos = group.photos.filter((p: any) => p.angle !== "outro");
+                                const focalPhotosAll = group.photos.filter((p: any) => p.angle === "outro");
+                                const hasBody = bodyPhotos.length > 0;
+                                const hasFocal = focalPhotosAll.length > 0;
 
-                                <div className={cn("grid gap-2 mt-2", group.photos.length >= 3 ? "grid-cols-3" : group.photos.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
-                                  {group.photos.map((photo) => (
-                                    <div key={photo.id} className="relative group/photo">
-                                      <div className={cn(
-                                        "rounded-lg overflow-hidden bg-muted/30 border border-border/30",
-                                        group.photos.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-[3/4]"
-                                      )}>
-                                        <EvolutionPhotoImage
-                                          imagePath={photo.image_path}
-                                          alt={photo.label}
-                                          onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
-                                        />
-                                        {replaceEvolutionPhotoMutation.isPending && replacingPhotoId === photo.id && (
-                                          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
-                                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                                          </div>
-                                        )}
-                                      </div>
-                                      {(photo as any).angle && (photo as any).angle !== "outro" && (
-                                        <Badge variant="outline" className="absolute top-1 left-1 text-[10px] bg-background/80 backdrop-blur-sm">
-                                          {angleBadgeMap[(photo as any).angle] || (photo as any).angle}
-                                        </Badge>
-                                      )}
-                                      {(photo as any).angle === "outro" && (photo as any).analysis_focus && (
-                                        <Badge variant="outline" className="absolute top-1 left-1 max-w-[calc(100%-2.5rem)] text-[10px] bg-background/80 backdrop-blur-sm gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
-                                          <ScanSearch className="h-2.5 w-2.5 shrink-0" />
-                                          <span className="truncate">{(photo as any).analysis_focus}</span>
-                                        </Badge>
-                                      )}
-                                      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover/photo:opacity-100 transition-opacity">
-                                        <Button
-                                          variant="secondary"
-                                          size="icon"
-                                          className="h-6 w-6 bg-background/80 backdrop-blur-sm"
-                                          title="Trocar foto"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setReplacingPhotoId(photo.id);
-                                            setReplacingPhotoPath(photo.image_path);
-                                            replaceFileInputRef.current?.click();
-                                          }}
-                                        >
-                                          <Camera className="h-3 w-3" />
-                                        </Button>
-                                        <Button
-                                          variant="secondary"
-                                          size="icon"
-                                          className="h-6 w-6 bg-background/80 backdrop-blur-sm hover:bg-destructive/20"
-                                          title="Excluir foto"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleRemoveEvolutionPhoto(photo.id, photo.image_path);
-                                          }}
-                                        >
-                                          <Trash2 className="h-3 w-3 text-destructive" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-
-                                {group.photos.some(p => zoomPhotoId === p.id) && (
-                                  <div className="mt-2 rounded-lg overflow-hidden bg-muted/30 border border-border/30">
-                                    <EvolutionPhotoImage
-                                      imagePath={group.photos.find(p => p.id === zoomPhotoId)!.image_path}
-                                      alt="Zoom"
-                                      onClick={() => setZoomPhotoId(null)}
-                                    />
-                                  </div>
-                                )}
-
-                                <div className="flex flex-wrap items-center gap-3 mt-2">
-                                  {firstPhoto.weight && (
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                      <Weight className="h-3 w-3" /> {firstPhoto.weight} kg
-                                      {prevFirstPhoto?.weight && (
-                                        <span className={cn(
-                                          "ml-1 font-medium",
-                                          firstPhoto.weight - prevFirstPhoto.weight! > 0
-                                            ? "text-destructive"
-                                            : "text-emerald-600 dark:text-emerald-400"
+                                const renderPhotoGrid = (photos: typeof group.photos) => (
+                                  <div className={cn("grid gap-2", photos.length >= 3 ? "grid-cols-3" : photos.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
+                                    {photos.map((photo) => (
+                                      <div key={photo.id} className="relative group/photo">
+                                        <div className={cn(
+                                          "rounded-lg overflow-hidden bg-muted/30 border border-border/30",
+                                          photos.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-[3/4]"
                                         )}>
-                                          ({firstPhoto.weight - prevFirstPhoto.weight! > 0 ? "+" : ""}
-                                          {(firstPhoto.weight - prevFirstPhoto.weight!).toFixed(1)})
-                                        </span>
+                                          <EvolutionPhotoImage
+                                            imagePath={photo.image_path}
+                                            alt={photo.label}
+                                            onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
+                                          />
+                                          {replaceEvolutionPhotoMutation.isPending && replacingPhotoId === photo.id && (
+                                            <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
+                                              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                            </div>
+                                          )}
+                                        </div>
+                                        {(photo as any).angle && (photo as any).angle !== "outro" && (
+                                          <Badge variant="outline" className="absolute top-1 left-1 text-[10px] bg-background/80 backdrop-blur-sm">
+                                            {angleBadgeMap[(photo as any).angle] || (photo as any).angle}
+                                          </Badge>
+                                        )}
+                                        {(photo as any).angle === "outro" && (photo as any).analysis_focus && (
+                                          <Badge variant="outline" className="absolute top-1 left-1 max-w-[calc(100%-2.5rem)] text-[10px] bg-background/80 backdrop-blur-sm gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
+                                            <ScanSearch className="h-2.5 w-2.5 shrink-0" />
+                                            <span className="truncate">{(photo as any).analysis_focus}</span>
+                                          </Badge>
+                                        )}
+                                        <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover/photo:opacity-100 transition-opacity">
+                                          <Button
+                                            variant="secondary"
+                                            size="icon"
+                                            className="h-6 w-6 bg-background/80 backdrop-blur-sm"
+                                            title="Trocar foto"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setReplacingPhotoId(photo.id);
+                                              setReplacingPhotoPath(photo.image_path);
+                                              replaceFileInputRef.current?.click();
+                                            }}
+                                          >
+                                            <Camera className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            variant="secondary"
+                                            size="icon"
+                                            className="h-6 w-6 bg-background/80 backdrop-blur-sm hover:bg-destructive/20"
+                                            title="Excluir foto"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleRemoveEvolutionPhoto(photo.id, photo.image_path);
+                                            }}
+                                          >
+                                            <Trash2 className="h-3 w-3 text-destructive" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+
+                                return (
+                                  <>
+                                    {/* Session header */}
+                                    <div className="flex items-start justify-between mb-2">
+                                      <div>
+                                        <p className="text-sm font-semibold">{firstPhoto.label}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          {format(parseISO(firstPhoto.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                                          {prevFirstPhoto && (() => {
+                                            const days = Math.round((parseISO(firstPhoto.date).getTime() - parseISO(prevFirstPhoto.date).getTime()) / 86400000);
+                                            return days > 0 ? <span className="ml-1.5 text-primary/70">({days}d desde anterior)</span> : null;
+                                          })()}
+                                          {group.photos.length > 1 && (
+                                            <span className="ml-1.5">• {group.photos.length} fotos</span>
+                                          )}
+                                        </p>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); startEditPhoto(firstPhoto); }} title="Editar sessão">
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
+                                          e.stopPropagation();
+                                          group.photos.forEach(p => handleRemoveEvolutionPhoto(p.id, p.image_path));
+                                        }} title="Excluir sessão">
+                                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                        </Button>
+                                      </div>
+                                    </div>
+
+                                    {/* Body Composition Section (F/P/C) */}
+                                    {hasBody && (
+                                      <div className="mt-2">
+                                        {hasFocal && (
+                                          <div className="flex items-center gap-1.5 mb-2">
+                                            <Camera className="h-3 w-3 text-primary" />
+                                            <span className="text-[11px] font-semibold text-primary uppercase tracking-wide">Composição Corporal</span>
+                                            <Badge variant="outline" className="text-[10px] py-0 h-4">{bodyPhotos.length}</Badge>
+                                          </div>
+                                        )}
+                                        {renderPhotoGrid(bodyPhotos)}
+                                      </div>
+                                    )}
+
+                                    {/* Focal Analysis Section (Outro) */}
+                                    {hasFocal && (
+                                      <div className={cn("mt-3", hasBody && "pt-3 border-t border-amber-500/20")}>
+                                        <div className="flex items-center gap-1.5 mb-2">
+                                          <ScanSearch className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+                                          <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">Análise Focal</span>
+                                          <Badge variant="outline" className="text-[10px] py-0 h-4 border-amber-500/40 text-amber-700 dark:text-amber-400">{focalPhotosAll.length}</Badge>
+                                        </div>
+                                        {renderPhotoGrid(focalPhotosAll)}
+                                      </div>
+                                    )}
+
+                                    {group.photos.some(p => zoomPhotoId === p.id) && (
+                                      <div className="mt-2 rounded-lg overflow-hidden bg-muted/30 border border-border/30">
+                                        <EvolutionPhotoImage
+                                          imagePath={group.photos.find(p => p.id === zoomPhotoId)!.image_path}
+                                          alt="Zoom"
+                                          onClick={() => setZoomPhotoId(null)}
+                                        />
+                                      </div>
+                                    )}
+
+                                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                                      {firstPhoto.weight && (
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                          <Weight className="h-3 w-3" /> {firstPhoto.weight} kg
+                                          {prevFirstPhoto?.weight && (
+                                            <span className={cn(
+                                              "ml-1 font-medium",
+                                              firstPhoto.weight - prevFirstPhoto.weight! > 0
+                                                ? "text-destructive"
+                                                : "text-emerald-600 dark:text-emerald-400"
+                                            )}>
+                                              ({firstPhoto.weight - prevFirstPhoto.weight! > 0 ? "+" : ""}
+                                              {(firstPhoto.weight - prevFirstPhoto.weight!).toFixed(1)})
+                                            </span>
+                                          )}
+                                        </div>
+                                      )}
+                                      {(firstPhoto as any).body_fat_percentage && (
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                          <Activity className="h-3 w-3" /> {(firstPhoto as any).body_fat_percentage}% gordura
+                                        </div>
+                                      )}
+                                      {(firstPhoto as any).height && (
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                          {(firstPhoto as any).height} cm
+                                        </div>
+                                      )}
+                                      {(firstPhoto as any).waist_circumference && (
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                          Circ. {(firstPhoto as any).waist_circumference} cm
+                                        </div>
+                                      )}
+                                      {(firstPhoto as any).treatment_goal && (
+                                        <div className="flex items-center gap-1 flex-wrap">
+                                          <Target className="h-3 w-3 text-muted-foreground" />
+                                          {(firstPhoto as any).treatment_goal.split(",").filter(Boolean).map((g: string) => (
+                                            <Badge key={g} variant="secondary" className="text-[10px] py-0">
+                                              {GOAL_OPTIONS.find(o => o.value === g)?.label || g}
+                                            </Badge>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {firstPhoto.notes && (
+                                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                          <StickyNote className="h-3 w-3" /> {firstPhoto.notes}
+                                        </div>
                                       )}
                                     </div>
-                                  )}
-                                  {(firstPhoto as any).body_fat_percentage && (
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                      <Activity className="h-3 w-3" /> {(firstPhoto as any).body_fat_percentage}% gordura
-                                    </div>
-                                  )}
-                                  {(firstPhoto as any).height && (
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                      {(firstPhoto as any).height} cm
-                                    </div>
-                                  )}
-                                  {(firstPhoto as any).waist_circumference && (
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                      Circ. {(firstPhoto as any).waist_circumference} cm
-                                    </div>
-                                  )}
-                                  {(firstPhoto as any).treatment_goal && (
-                                    <div className="flex items-center gap-1 flex-wrap">
-                                      <Target className="h-3 w-3 text-muted-foreground" />
-                                      {(firstPhoto as any).treatment_goal.split(",").filter(Boolean).map((g: string) => (
-                                        <Badge key={g} variant="secondary" className="text-[10px] py-0">
-                                          {GOAL_OPTIONS.find(o => o.value === g)?.label || g}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  )}
-                                  {firstPhoto.notes && (
-                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                      <StickyNote className="h-3 w-3" /> {firstPhoto.notes}
-                                    </div>
-                                  )}
-                                </div>
 
-                                {(() => {
-                                  const allFocal = group.photos.filter((p: any) => p.angle === "outro" && p.analysis_focus);
-                                  // Only show individual "Avaliar" buttons when there's exactly 1 focal photo
-                                  if (allFocal.length !== 1) return null;
-                                  return allFocal.map((focalPhoto: any) => (
-                                    <div key={focalPhoto.id} className="mt-2 space-y-2">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-full gap-2 text-xs border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
-                                        onClick={(e) => { e.stopPropagation(); handleSinglePhotoAnalysis(focalPhoto); }}
-                                        disabled={singleAnalysisLoading === focalPhoto.id}
-                                      >
-                                        {singleAnalysisLoading === focalPhoto.id ? (
-                                          <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analisando…</>
-                                        ) : (
-                                          <><ScanSearch className="h-3.5 w-3.5" /> Avaliar com IA</>
-                                        )}
-                                      </Button>
-                                      {singleAnalysisResult[focalPhoto.id] && (
-                                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
-                                          <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5">
-                                              <Sparkles className="h-3.5 w-3.5 text-primary" />
-                                              <span className="text-xs font-semibold text-primary">Análise Focal com IA</span>
-                                            </div>
-                                            <div className="flex items-center gap-1">
+                                    {/* Single focal photo analysis */}
+                                    {(() => {
+                                      const singleFocals = focalPhotosAll.filter((p: any) => p.analysis_focus);
+                                      if (singleFocals.length !== 1) return null;
+                                      return singleFocals.map((focalPhoto: any) => (
+                                        <div key={focalPhoto.id} className="mt-2 space-y-2">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full gap-2 text-xs border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
+                                            onClick={(e) => { e.stopPropagation(); handleSinglePhotoAnalysis(focalPhoto); }}
+                                            disabled={singleAnalysisLoading === focalPhoto.id}
+                                          >
+                                            {singleAnalysisLoading === focalPhoto.id ? (
+                                              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analisando…</>
+                                            ) : (
+                                              <><ScanSearch className="h-3.5 w-3.5" /> Avaliar com IA</>
+                                            )}
+                                          </Button>
+                                          {singleAnalysisResult[focalPhoto.id] && (
+                                            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+                                              <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-1.5">
+                                                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                                  <span className="text-xs font-semibold text-primary">Análise Focal com IA</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                  {editingAnalysisId === focalPhoto.id ? (
+                                                    <>
+                                                      <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
+                                                        onClick={(e) => { e.stopPropagation(); setSingleAnalysisResult(prev => ({ ...prev, [focalPhoto.id]: editingAnalysisText })); setEditingAnalysisId(null); }}>
+                                                        <Check className="h-3 w-3" /> OK
+                                                      </Button>
+                                                      <Button variant="ghost" size="sm" className="h-6 text-[10px]"
+                                                        onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(null); }}>
+                                                        <X className="h-3 w-3" />
+                                                      </Button>
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
+                                                        onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(focalPhoto.id); setEditingAnalysisText(singleAnalysisResult[focalPhoto.id]); }}>
+                                                        <Pencil className="h-3 w-3" /> Editar
+                                                      </Button>
+                                                      <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 hover:bg-destructive/10"
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          setSingleAnalysisResult(prev => { const next = { ...prev }; delete next[focalPhoto.id]; return next; });
+                                                          if ((focalPhoto as any).ai_analysis) {
+                                                            updateEvolutionPhotoMutation.mutate({ id: focalPhoto.id, updates: { ai_analysis: null } as any });
+                                                          }
+                                                        }}>
+                                                        <Trash2 className="h-3 w-3 text-destructive" />
+                                                      </Button>
+                                                    </>
+                                                  )}
+                                                </div>
+                                              </div>
                                               {editingAnalysisId === focalPhoto.id ? (
-                                                <>
-                                                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
-                                                    onClick={(e) => { e.stopPropagation(); setSingleAnalysisResult(prev => ({ ...prev, [focalPhoto.id]: editingAnalysisText })); setEditingAnalysisId(null); }}>
-                                                    <Check className="h-3 w-3" /> OK
-                                                  </Button>
-                                                  <Button variant="ghost" size="sm" className="h-6 text-[10px]"
-                                                    onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(null); }}>
-                                                    <X className="h-3 w-3" />
-                                                  </Button>
-                                                </>
+                                                <textarea
+                                                  className="w-full min-h-[120px] text-xs bg-background rounded border p-2"
+                                                  value={editingAnalysisText}
+                                                  onChange={(e) => setEditingAnalysisText(e.target.value)}
+                                                  onClick={(e) => e.stopPropagation()}
+                                                />
                                               ) : (
-                                                <>
-                                                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
-                                                    onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(focalPhoto.id); setEditingAnalysisText(singleAnalysisResult[focalPhoto.id]); }}>
-                                                    <Pencil className="h-3 w-3" /> Editar
-                                                  </Button>
-                                                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 hover:bg-destructive/10"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      setSingleAnalysisResult(prev => { const next = { ...prev }; delete next[focalPhoto.id]; return next; });
-                                                      if ((focalPhoto as any).ai_analysis) {
-                                                        updateEvolutionPhotoMutation.mutate({ id: focalPhoto.id, updates: { ai_analysis: null } as any });
-                                                      }
-                                                    }}>
-                                                    <Trash2 className="h-3 w-3 text-destructive" />
-                                                  </Button>
-                                                </>
+                                                <div className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto">
+                                                  {singleAnalysisResult[focalPhoto.id]}
+                                                </div>
+                                              )}
+                                              {editingAnalysisId !== focalPhoto.id && (
+                                                <Button variant="outline" size="sm" className="w-full gap-2 text-xs"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    updateEvolutionPhotoMutation.mutate({ id: focalPhoto.id, updates: { ai_analysis: singleAnalysisResult[focalPhoto.id] } as any }, {
+                                                      onSuccess: () => { toast({ title: "Análise salva no prontuário." }); }
+                                                    });
+                                                  }}
+                                                  disabled={updateEvolutionPhotoMutation.isPending}
+                                                >
+                                                  {(focalPhoto as any).ai_analysis === singleAnalysisResult[focalPhoto.id] ? (
+                                                    <><Check className="h-3.5 w-3.5 text-emerald-600" /> Salvo no prontuário</>
+                                                  ) : (
+                                                    <><Save className="h-3.5 w-3.5" /> Salvar no prontuário</>
+                                                  )}
+                                                </Button>
                                               )}
                                             </div>
-                                          </div>
-                                          {editingAnalysisId === focalPhoto.id ? (
-                                            <textarea
-                                              className="w-full min-h-[120px] text-xs bg-background rounded border p-2"
-                                              value={editingAnalysisText}
-                                              onChange={(e) => setEditingAnalysisText(e.target.value)}
-                                              onClick={(e) => e.stopPropagation()}
-                                            />
-                                          ) : (
-                                            <div className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto">
-                                              {singleAnalysisResult[focalPhoto.id]}
-                                            </div>
-                                          )}
-                                          {editingAnalysisId !== focalPhoto.id && (
-                                            <Button variant="outline" size="sm" className="w-full gap-2 text-xs"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                updateEvolutionPhotoMutation.mutate({ id: focalPhoto.id, updates: { ai_analysis: singleAnalysisResult[focalPhoto.id] } as any }, {
-                                                  onSuccess: () => { toast({ title: "Análise salva no prontuário." }); }
-                                                });
-                                              }}
-                                              disabled={updateEvolutionPhotoMutation.isPending}
-                                            >
-                                              {(focalPhoto as any).ai_analysis === singleAnalysisResult[focalPhoto.id] ? (
-                                                <><Check className="h-3.5 w-3.5 text-emerald-600" /> Salvo no prontuário</>
-                                              ) : (
-                                                <><Save className="h-3.5 w-3.5" /> Salvar no prontuário</>
-                                              )}
-                                            </Button>
                                           )}
                                         </div>
-                                      )}
-                                    </div>
-                                  ));
-                                })()}
+                                      ));
+                                    })()}
 
-                                {/* Comparar lesões com IA - when 2+ focal photos */}
-                                {(() => {
-                                  const focalPhotos = group.photos.filter((p: any) => p.angle === "outro" && p.analysis_focus);
-                                  if (focalPhotos.length < 2) return null;
-                                  return (
-                                    <div className="mt-3 space-y-2">
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="w-full gap-2 text-xs border-primary/40 text-primary hover:bg-primary/10"
-                                        onClick={(e) => { e.stopPropagation(); handleFocalCompare(sessaoId, focalPhotos); }}
-                                        disabled={focalCompareLoading === sessaoId}
-                                      >
-                                        {focalCompareLoading === sessaoId ? (
-                                          <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Comparando lesões…</>
-                                        ) : (
-                                          <><GitCompareArrows className="h-3.5 w-3.5" /> Comparar lesões com IA ({focalPhotos.length} fotos)</>
-                                        )}
-                                      </Button>
-                                      {focalCompareResult[sessaoId] && (
-                                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
-                                          <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-1.5">
-                                              <GitCompareArrows className="h-3.5 w-3.5 text-primary" />
-                                              <span className="text-xs font-semibold text-primary">Análise Comparativa Consolidada</span>
+                                    {/* Multi-focal comparison */}
+                                    {(() => {
+                                      const focalPhotos = focalPhotosAll.filter((p: any) => p.analysis_focus);
+                                      if (focalPhotos.length < 2) return null;
+                                      return (
+                                        <div className="mt-3 space-y-2">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            className="w-full gap-2 text-xs border-primary/40 text-primary hover:bg-primary/10"
+                                            onClick={(e) => { e.stopPropagation(); handleFocalCompare(sessaoId, focalPhotos); }}
+                                            disabled={focalCompareLoading === sessaoId}
+                                          >
+                                            {focalCompareLoading === sessaoId ? (
+                                              <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Comparando lesões…</>
+                                            ) : (
+                                              <><GitCompareArrows className="h-3.5 w-3.5" /> Comparar lesões com IA ({focalPhotos.length} fotos)</>
+                                            )}
+                                          </Button>
+                                          {focalCompareResult[sessaoId] && (
+                                            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+                                              <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-1.5">
+                                                  <GitCompareArrows className="h-3.5 w-3.5 text-primary" />
+                                                  <span className="text-xs font-semibold text-primary">Análise Comparativa Consolidada</span>
+                                                </div>
+                                                <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-destructive hover:text-destructive"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setFocalCompareResult(prev => { const next = { ...prev }; delete next[sessaoId]; return next; });
+                                                  }}>
+                                                  <Trash2 className="h-3 w-3" /> Excluir
+                                                </Button>
+                                              </div>
+                                              <div className="text-xs prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                                                {focalCompareResult[sessaoId]}
+                                              </div>
                                             </div>
-                                            <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-destructive hover:text-destructive"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setFocalCompareResult(prev => { const next = { ...prev }; delete next[sessaoId]; return next; });
-                                              }}>
-                                              <Trash2 className="h-3 w-3" /> Excluir
-                                            </Button>
-                                          </div>
-                                          <div className="text-xs prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                                            {focalCompareResult[sessaoId]}
-                                          </div>
+                                          )}
                                         </div>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                              </>
+                                      );
+                                    })()}
+                                  </>
+                                );
+                              })()
                             )}
                           </div>
                         </div>
