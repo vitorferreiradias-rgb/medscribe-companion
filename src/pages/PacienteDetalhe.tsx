@@ -6,7 +6,7 @@ import {
   ArrowLeft, Edit3, Save, X, MoreVertical, Trash2, Pencil, Check,
   Plus, CalendarIcon, Heart, MapPin, Users, Activity, Megaphone,
   AlertTriangle, FileText, Search, Copy, Clock, Stethoscope, FolderOpen,
-  Camera, ImageIcon, Eye, ZoomIn, TrendingUp, Weight, StickyNote, Sparkles, Loader2,
+  Camera, ImageIcon, Eye, ZoomIn, TrendingUp, Weight, StickyNote, Sparkles, Loader2, Upload,
   User, UserRound, ArrowRight, Target, ScanSearch, GitCompareArrows,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
