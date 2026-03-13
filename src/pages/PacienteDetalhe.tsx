@@ -1760,6 +1760,124 @@ export default function PacienteDetalhe() {
           <AvaliacoesCorporaisCard patientId={patient.id} />
         </TabsContent>
 
+        {/* ===== TAB EXAMES ===== */}
+        <TabsContent value="exames" className="space-y-4 mt-4">
+          <Card className="glass-card">
+            <CardHeader className="pb-3 pt-4 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center gap-2"><FlaskConical className="h-4 w-4 text-primary" /> Exames Laboratoriais e Biópsias</CardTitle>
+                {!showLabForm && (
+                  <Button variant="outline" size="sm" onClick={() => setShowLabForm(true)}>
+                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-3">
+              {showLabForm && (
+                <div className="rounded-lg border border-border/50 p-3 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Nome do exame *</Label>
+                      <Input value={labName} onChange={(e) => setLabName(e.target.value)} placeholder="Ex: Hemoglobina glicada, TSH..." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Tipo</Label>
+                      <Select value={labType} onValueChange={(v) => setLabType(v as any)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="laboratorial">Laboratorial</SelectItem>
+                          <SelectItem value="biopsia">Biópsia</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Resultado *</Label>
+                      <Input value={labResult} onChange={(e) => setLabResult(e.target.value)} placeholder="Ex: 7.2%, Positivo..." />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Valor de referência</Label>
+                      <Input value={labReference} onChange={(e) => setLabReference(e.target.value)} placeholder="Ex: < 5.7%, 0.4-4.0 mUI/L" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Data *</Label>
+                      <Input type="date" value={labDate} onChange={(e) => setLabDate(e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <Label className="text-xs">Observações</Label>
+                      <Input value={labNotes} onChange={(e) => setLabNotes(e.target.value)} placeholder="Observações adicionais..." />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" disabled={!labName.trim() || !labResult.trim() || !labDate} onClick={() => {
+                      addLabResultMutation.mutate({
+                        patient_id: id!,
+                        date: labDate,
+                        type: labType,
+                        name: labName.trim(),
+                        result: labResult.trim(),
+                        reference_range: labReference.trim() || undefined,
+                        notes: labNotes.trim() || undefined,
+                      }, {
+                        onSuccess: () => {
+                          setLabName(""); setLabDate(""); setLabResult(""); setLabReference(""); setLabNotes(""); setLabType("laboratorial");
+                          setShowLabForm(false);
+                        }
+                      });
+                    }}>
+                      <Plus className="mr-1 h-3 w-3" /> Salvar
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setShowLabForm(false)}>Cancelar</Button>
+                  </div>
+                </div>
+              )}
+
+              {labResults.length > 0 ? (
+                <div className="overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs">Data</TableHead>
+                        <TableHead className="text-xs">Tipo</TableHead>
+                        <TableHead className="text-xs">Exame</TableHead>
+                        <TableHead className="text-xs">Resultado</TableHead>
+                        <TableHead className="text-xs">Referência</TableHead>
+                        <TableHead className="text-xs w-8"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {labResults.map((r) => (
+                        <TableRow key={r.id}>
+                          <TableCell className="text-xs">{(() => { try { return format(parseISO(r.date), "dd/MM/yyyy"); } catch { return r.date; } })()}</TableCell>
+                          <TableCell className="text-xs">
+                            <Badge variant={r.type === "biopsia" ? "default" : "secondary"} className="text-[10px]">
+                              {r.type === "biopsia" ? "Biópsia" : "Lab"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs font-medium">{r.name}</TableCell>
+                          <TableCell className="text-xs">{r.result}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{r.reference_range || "—"}</TableCell>
+                          <TableCell className="text-xs">
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteLabResultMutation.mutate({ id: r.id, patientId: id! })}>
+                              <Trash2 className="h-3 w-3 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : !showLabForm ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FlaskConical className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">Nenhum exame cadastrado.</p>
+                  <p className="text-xs mt-1">Adicione exames laboratoriais ou biópsias para correlação com as fotos de evolução.</p>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* ===== TAB DIAGNÓSTICOS ===== */}
         <TabsContent value="diagnosticos" className="space-y-4 mt-4">
           <Card className="glass-card">
