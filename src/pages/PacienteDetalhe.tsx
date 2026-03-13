@@ -1699,11 +1699,12 @@ export default function PacienteDetalhe() {
                 </div>
               ) : (
                 <div className="text-center py-10 text-muted-foreground">
-                  <Camera className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm font-medium mb-1">Nenhum registro de evolução</p>
+                  <EmptyIcon className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm font-medium mb-1">{emptyLabel}</p>
                   <p className="text-xs">Adicione fotos a cada consulta para acompanhar a evolução do paciente ao longo do tempo.</p>
                 </div>
-              )}
+              );
+              })()}
 
               {/* Add new photo form */}
               {showPhotoForm ? (
