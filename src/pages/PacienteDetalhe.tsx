@@ -600,7 +600,8 @@ export default function PacienteDetalhe() {
       try { const d = parseISO(after.date); if (isValid(d)) contextParts.push(`Data da foto DEPOIS: ${format(d, "dd/MM/yyyy")}`); } catch {}
     }
 
-    // Include recent lab results for temporal correlation
+    // Build lab data as separate string for AI prominence
+    let labData = "";
     if (labResults.length > 0) {
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
@@ -608,20 +609,20 @@ export default function PacienteDetalhe() {
         try { return isAfter(parseISO(r.date), oneYearAgo); } catch { return false; }
       });
       if (recentLabs.length > 0) {
-        const labParts = recentLabs.map(r => {
-          let text = `${r.name}: ${r.result}`;
-          if (r.reference_range) text += ` (ref: ${r.reference_range})`;
-          try { text += ` em ${format(parseISO(r.date), "dd/MM/yyyy")}`; } catch {}
-          return text;
-        });
+        const labDataParts: string[] = [];
         const labs = recentLabs.filter(r => r.type === "laboratorial");
         const biopsias = recentLabs.filter(r => r.type === "biopsia");
-        if (labs.length > 0) contextParts.push(`Exames laboratoriais recentes: ${labs.map(r => { let t = `${r.name}: ${r.result}`; if (r.reference_range) t += ` (ref: ${r.reference_range})`; try { t += ` em ${format(parseISO(r.date), "dd/MM/yyyy")}`; } catch {} return t; }).join("; ")}`);
-        if (biopsias.length > 0) contextParts.push(`Biópsias: ${biopsias.map(r => { let t = `${r.name}: ${r.result}`; try { t += ` em ${format(parseISO(r.date), "dd/MM/yyyy")}`; } catch {} return t; }).join("; ")}`);
+        if (biopsias.length > 0) {
+          labDataParts.push(`Biópsias: ${biopsias.map(r => { let t = `${r.name}: ${r.result}`; if (r.notes) t += ` (${r.notes})`; try { t += ` em ${format(parseISO(r.date), "dd/MM/yyyy")}`; } catch {} return t; }).join("; ")}`);
+        }
+        if (labs.length > 0) {
+          labDataParts.push(`Exames laboratoriais: ${labs.map(r => { let t = `${r.name}: ${r.result}`; if (r.reference_range) t += ` (ref: ${r.reference_range})`; try { t += ` em ${format(parseISO(r.date), "dd/MM/yyyy")}`; } catch {} return t; }).join("; ")}`);
+        }
+        labData = labDataParts.join("\n");
       }
     }
 
-    return contextParts.join(". ");
+    return { context: contextParts.join(". "), labData };
   };
 
   const handleAiCompare = async () => {
@@ -629,12 +630,13 @@ export default function PacienteDetalhe() {
     setAiAnalysisLoading(true);
     setAiAnalysis(null);
     try {
-      const patientContext = buildPatientContext({ before: comparePhotos[0], after: comparePhotos[1] });
+      const { context, labData } = buildPatientContext({ before: comparePhotos[0], after: comparePhotos[1] });
       const { data, error } = await supabase.functions.invoke("evolution-compare", {
         body: {
           beforeImagePath: comparePhotos[0].image_path,
           afterImagePath: comparePhotos[1].image_path,
-          patientContext: patientContext || undefined,
+          patientContext: context || undefined,
+          labData: labData || undefined,
         },
       });
       if (error) throw error;
@@ -664,11 +666,12 @@ export default function PacienteDetalhe() {
     setSingleAnalysisLoading(photo.id);
     setSingleAnalysisId(photo.id);
     try {
-      const patientContext = buildPatientContext({ before: photo });
+      const { context, labData } = buildPatientContext({ before: photo });
       const { data, error } = await supabase.functions.invoke("evolution-compare", {
         body: {
           beforeImagePath: photo.image_path,
-          patientContext: patientContext || undefined,
+          patientContext: context || undefined,
+          labData: labData || undefined,
         },
       });
       if (error) throw error;
@@ -685,11 +688,12 @@ export default function PacienteDetalhe() {
     setFocalCompareLoading(sessaoId);
     try {
       // Build context from first and last photo for patient data
-      const patientContext = buildPatientContext({ before: focalPhotos[0], after: focalPhotos[focalPhotos.length - 1] });
+      const { context, labData } = buildPatientContext({ before: focalPhotos[0], after: focalPhotos[focalPhotos.length - 1] });
       const { data, error } = await supabase.functions.invoke("evolution-compare", {
         body: {
           imagePaths: focalPhotos.map((p: any) => p.image_path),
-          patientContext: patientContext || undefined,
+          patientContext: context || undefined,
+          labData: labData || undefined,
         },
       });
       if (error) throw error;
