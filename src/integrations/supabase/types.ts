@@ -605,6 +605,50 @@ export type Database = {
           },
         ]
       }
+      patient_lab_results: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          name: string
+          notes: string | null
+          patient_id: string
+          reference_range: string | null
+          result: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          name: string
+          notes?: string | null
+          patient_id: string
+          reference_range?: string | null
+          result: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          patient_id?: string
+          reference_range?: string | null
+          result?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_lab_results_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           address_line: string | null
