@@ -1731,7 +1731,10 @@ export default function PacienteDetalhe() {
                 />
               ) : showMultiUpload ? (
                 <EvolutionPhotoSelector
-                  photos={(evolutionPhotos ?? []).map((p) => ({
+                  photos={(evoSubTab === "corpo"
+                    ? evolutionPhotos.filter((p: any) => p.angle !== "outro")
+                    : evolutionPhotos.filter((p: any) => p.angle === "outro")
+                  ).map((p) => ({
                     id: p.id,
                     image_path: p.image_path,
                     label: p.label,
