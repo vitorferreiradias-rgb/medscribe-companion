@@ -1476,93 +1476,98 @@ export default function PacienteDetalhe() {
                                   )}
                                 </div>
 
-                                {group.photos.filter((p: any) => p.angle === "outro" && p.analysis_focus).map((focalPhoto: any) => (
-                                  <div key={focalPhoto.id} className="mt-2 space-y-2">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="w-full gap-2 text-xs border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
-                                      onClick={(e) => { e.stopPropagation(); handleSinglePhotoAnalysis(focalPhoto); }}
-                                      disabled={singleAnalysisLoading === focalPhoto.id}
-                                    >
-                                      {singleAnalysisLoading === focalPhoto.id ? (
-                                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analisando…</>
-                                      ) : (
-                                        <><ScanSearch className="h-3.5 w-3.5" /> Avaliar com IA</>
-                                      )}
-                                    </Button>
-                                    {singleAnalysisResult[focalPhoto.id] && (
-                                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center gap-1.5">
-                                            <Sparkles className="h-3.5 w-3.5 text-primary" />
-                                            <span className="text-xs font-semibold text-primary">Análise Focal com IA</span>
-                                          </div>
-                                          <div className="flex items-center gap-1">
-                                            {editingAnalysisId === focalPhoto.id ? (
-                                              <>
-                                                <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
-                                                  onClick={(e) => { e.stopPropagation(); setSingleAnalysisResult(prev => ({ ...prev, [focalPhoto.id]: editingAnalysisText })); setEditingAnalysisId(null); }}>
-                                                  <Check className="h-3 w-3" /> OK
-                                                </Button>
-                                                <Button variant="ghost" size="sm" className="h-6 text-[10px]"
-                                                  onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(null); }}>
-                                                  <X className="h-3 w-3" />
-                                                </Button>
-                                              </>
-                                            ) : (
-                                              <>
-                                                <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
-                                                  onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(focalPhoto.id); setEditingAnalysisText(singleAnalysisResult[focalPhoto.id]); }}>
-                                                  <Pencil className="h-3 w-3" /> Editar
-                                                </Button>
-                                                <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-destructive hover:text-destructive"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSingleAnalysisResult(prev => { const next = { ...prev }; delete next[focalPhoto.id]; return next; });
-                                                    if ((focalPhoto as any).ai_analysis) {
-                                                      updateEvolutionPhotoMutation.mutate({ id: focalPhoto.id, updates: { ai_analysis: null } as any });
-                                                    }
-                                                  }}>
-                                                  <Trash2 className="h-3 w-3" />
-                                                </Button>
-                                              </>
-                                            )}
-                                          </div>
-                                        </div>
-                                        {editingAnalysisId === focalPhoto.id ? (
-                                          <textarea
-                                            className="w-full min-h-[120px] text-xs rounded-md border border-input bg-background p-2 resize-y focus:outline-none focus:ring-1 focus:ring-ring"
-                                            value={editingAnalysisText}
-                                            onChange={(e) => setEditingAnalysisText(e.target.value)}
-                                            onClick={(e) => e.stopPropagation()}
-                                          />
+                                {(() => {
+                                  const allFocal = group.photos.filter((p: any) => p.angle === "outro" && p.analysis_focus);
+                                  // Only show individual "Avaliar" buttons when there's exactly 1 focal photo
+                                  if (allFocal.length !== 1) return null;
+                                  return allFocal.map((focalPhoto: any) => (
+                                    <div key={focalPhoto.id} className="mt-2 space-y-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full gap-2 text-xs border-amber-500/30 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10"
+                                        onClick={(e) => { e.stopPropagation(); handleSinglePhotoAnalysis(focalPhoto); }}
+                                        disabled={singleAnalysisLoading === focalPhoto.id}
+                                      >
+                                        {singleAnalysisLoading === focalPhoto.id ? (
+                                          <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analisando…</>
                                         ) : (
-                                          <div className="text-xs prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                                            {singleAnalysisResult[focalPhoto.id]}
+                                          <><ScanSearch className="h-3.5 w-3.5" /> Avaliar com IA</>
+                                        )}
+                                      </Button>
+                                      {singleAnalysisResult[focalPhoto.id] && (
+                                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-1.5">
+                                              <Sparkles className="h-3.5 w-3.5 text-primary" />
+                                              <span className="text-xs font-semibold text-primary">Análise Focal com IA</span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                              {editingAnalysisId === focalPhoto.id ? (
+                                                <>
+                                                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
+                                                    onClick={(e) => { e.stopPropagation(); setSingleAnalysisResult(prev => ({ ...prev, [focalPhoto.id]: editingAnalysisText })); setEditingAnalysisId(null); }}>
+                                                    <Check className="h-3 w-3" /> OK
+                                                  </Button>
+                                                  <Button variant="ghost" size="sm" className="h-6 text-[10px]"
+                                                    onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(null); }}>
+                                                    <X className="h-3 w-3" />
+                                                  </Button>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
+                                                    onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(focalPhoto.id); setEditingAnalysisText(singleAnalysisResult[focalPhoto.id]); }}>
+                                                    <Pencil className="h-3 w-3" /> Editar
+                                                  </Button>
+                                                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 hover:bg-destructive/10"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setSingleAnalysisResult(prev => { const next = { ...prev }; delete next[focalPhoto.id]; return next; });
+                                                      if ((focalPhoto as any).ai_analysis) {
+                                                        updateEvolutionPhotoMutation.mutate({ id: focalPhoto.id, updates: { ai_analysis: null } as any });
+                                                      }
+                                                    }}>
+                                                    <Trash2 className="h-3 w-3 text-destructive" />
+                                                  </Button>
+                                                </>
+                                              )}
+                                            </div>
                                           </div>
-                                        )}
-                                        {editingAnalysisId !== focalPhoto.id && (
-                                          <Button variant="outline" size="sm" className="w-full gap-2 text-xs"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              updateEvolutionPhotoMutation.mutate({ id: focalPhoto.id, updates: { ai_analysis: singleAnalysisResult[focalPhoto.id] } as any }, {
-                                                onSuccess: () => { toast({ title: "Análise salva no prontuário." }); }
-                                              });
-                                            }}
-                                            disabled={updateEvolutionPhotoMutation.isPending}
-                                          >
-                                            {(focalPhoto as any).ai_analysis === singleAnalysisResult[focalPhoto.id] ? (
-                                              <><Check className="h-3.5 w-3.5 text-emerald-600" /> Salvo no prontuário</>
-                                            ) : (
-                                              <><Save className="h-3.5 w-3.5" /> Salvar no prontuário</>
-                                            )}
-                                          </Button>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
+                                          {editingAnalysisId === focalPhoto.id ? (
+                                            <textarea
+                                              className="w-full min-h-[120px] text-xs bg-background rounded border p-2"
+                                              value={editingAnalysisText}
+                                              onChange={(e) => setEditingAnalysisText(e.target.value)}
+                                              onClick={(e) => e.stopPropagation()}
+                                            />
+                                          ) : (
+                                            <div className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto">
+                                              {singleAnalysisResult[focalPhoto.id]}
+                                            </div>
+                                          )}
+                                          {editingAnalysisId !== focalPhoto.id && (
+                                            <Button variant="outline" size="sm" className="w-full gap-2 text-xs"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                updateEvolutionPhotoMutation.mutate({ id: focalPhoto.id, updates: { ai_analysis: singleAnalysisResult[focalPhoto.id] } as any }, {
+                                                  onSuccess: () => { toast({ title: "Análise salva no prontuário." }); }
+                                                });
+                                              }}
+                                              disabled={updateEvolutionPhotoMutation.isPending}
+                                            >
+                                              {(focalPhoto as any).ai_analysis === singleAnalysisResult[focalPhoto.id] ? (
+                                                <><Check className="h-3.5 w-3.5 text-emerald-600" /> Salvo no prontuário</>
+                                              ) : (
+                                                <><Save className="h-3.5 w-3.5" /> Salvar no prontuário</>
+                                              )}
+                                            </Button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ));
+                                })()}
 
                                 {/* Comparar lesões com IA - when 2+ focal photos */}
                                 {(() => {
