@@ -1,30 +1,27 @@
 
 
-# Tornar a classificação de receita visualmente automática e clara
+# Adicionar botões de Excluir Foto Individual e Excluir Laudo
 
-## Problema
-O sistema já classifica automaticamente o tipo de receita (simples/antimicrobiano/controle especial) com base no medicamento. Porém, na UI do preview, isso aparece como um dropdown genérico sem destaque — o médico não percebe que a classificação foi automática. Além disso, quando o medicamento não está no banco local, a receita silenciosamente vira "simples".
+## O que será feito
 
-## Solução
+Dois novos botões na timeline de evolução:
 
-### 1. Destacar a classificação automática no preview
-No `SmartPrescriptionPreview.tsx`:
-- Adicionar um badge/label ao lado do dropdown indicando "Classificado automaticamente" (verde) quando a medicação foi encontrada no banco
-- Quando a medicação NÃO foi encontrada, mostrar um alerta amarelo mais visível explicando que o tipo precisa ser confirmado manualmente
-- Manter o dropdown como override, mas visualmente secundário
+1. **Excluir foto individual** — botão Trash no hover de cada miniatura de foto (ao lado do botão de trocar foto já existente), que remove aquela foto específica da sessão
+2. **Excluir laudo** — botão Trash ao lado do botão "Editar" no resultado de análise focal e no resultado da comparação consolidada, que limpa o laudo exibido
 
-### 2. Adicionar mais antimicrobianos e controlados ao banco de conhecimento
-No `medication-knowledge.ts`, adicionar medicamentos comuns que faltam:
-- **Antimicrobianos**: Azitromicina, Ciprofloxacino, Cefalexina, Metronidazol, Levofloxacino, Sulfametoxazol+Trimetoprima
-- **Controlados**: Clonazepam, Alprazolam, Fluoxetina, Sertralina, Escitalopram, Ritalina (metilfenidato), Zolpidem
+## Arquivo a editar
 
-### 3. Melhorar o `ComplianceResult` com flag de confiança
-No `compliance-router.ts`:
-- Adicionar campo `autoClassified: boolean` ao resultado — `true` quando todos os itens foram encontrados no banco, `false` quando algum é desconhecido
-- O preview usa esse campo para decidir se mostra "Classificado automaticamente" ou "Confirme o tipo"
+**`src/pages/PacienteDetalhe.tsx`**
 
-## Arquivos modificados
-- `src/lib/medication-knowledge.ts` — adicionar medicamentos
-- `src/lib/compliance-router.ts` — adicionar flag `autoClassified`
-- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — UI de classificação automática
+### 1. Botão de excluir foto individual (por miniatura)
+- Adicionar um segundo botão no overlay de hover de cada foto (linhas ~1387-1400), ao lado do botão "Trocar foto" (Camera)
+- Ícone `Trash2`, cor destructive, com confirmação simples (ou direto com toast)
+- Chama `handleRemoveEvolutionPhoto(photo.id, photo.image_path)` que já existe
+
+### 2. Botão de excluir laudo focal individual
+- Na barra de ações do resultado da análise focal (linhas ~1486-1503), adicionar botão Trash2 que limpa `singleAnalysisResult[focalPhoto.id]` do state
+- Se o laudo já foi salvo no prontuário (`ai_analysis`), também chamar `updateEvolutionPhotoMutation` para limpar o campo `ai_analysis` no banco
+
+### 3. Botão de excluir laudo comparativo consolidado
+- No bloco do `focalCompareResult[sessaoId]` (linhas ~1559-1568), adicionar botão Trash2 no header que limpa `focalCompareResult[sessaoId]` do state
 
