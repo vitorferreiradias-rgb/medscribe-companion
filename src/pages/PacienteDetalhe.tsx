@@ -1613,7 +1613,7 @@ export default function PacienteDetalhe() {
 
                                     {/* Multi-focal comparison */}
                                     {(() => {
-                                      const focalPhotos = focalPhotosAll.filter((p: any) => p.analysis_focus);
+                                      const focalPhotos = group.photos.filter((p: any) => p.angle === "outro" && p.analysis_focus);
                                       if (focalPhotos.length < 2) return null;
                                       return (
                                         <div className="mt-3 space-y-2">
