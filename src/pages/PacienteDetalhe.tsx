@@ -1384,20 +1384,34 @@ export default function PacienteDetalhe() {
                                           <ScanSearch className="h-2.5 w-2.5" /> {(photo as any).analysis_focus}
                                         </Badge>
                                       )}
-                                      <Button
-                                        variant="secondary"
-                                        size="icon"
-                                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/photo:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
-                                        title="Trocar foto"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setReplacingPhotoId(photo.id);
-                                          setReplacingPhotoPath(photo.image_path);
-                                          replaceFileInputRef.current?.click();
-                                        }}
-                                      >
-                                        <Camera className="h-3 w-3" />
-                                      </Button>
+                                      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover/photo:opacity-100 transition-opacity">
+                                        <Button
+                                          variant="secondary"
+                                          size="icon"
+                                          className="h-6 w-6 bg-background/80 backdrop-blur-sm"
+                                          title="Trocar foto"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setReplacingPhotoId(photo.id);
+                                            setReplacingPhotoPath(photo.image_path);
+                                            replaceFileInputRef.current?.click();
+                                          }}
+                                        >
+                                          <Camera className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          variant="secondary"
+                                          size="icon"
+                                          className="h-6 w-6 bg-background/80 backdrop-blur-sm hover:bg-destructive/20"
+                                          title="Excluir foto"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRemoveEvolutionPhoto(photo.id, photo.image_path);
+                                          }}
+                                        >
+                                          <Trash2 className="h-3 w-3 text-destructive" />
+                                        </Button>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
@@ -1496,10 +1510,22 @@ export default function PacienteDetalhe() {
                                                 </Button>
                                               </>
                                             ) : (
-                                              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
-                                                onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(focalPhoto.id); setEditingAnalysisText(singleAnalysisResult[focalPhoto.id]); }}>
-                                                <Pencil className="h-3 w-3" /> Editar
-                                              </Button>
+                                              <>
+                                                <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1"
+                                                  onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(focalPhoto.id); setEditingAnalysisText(singleAnalysisResult[focalPhoto.id]); }}>
+                                                  <Pencil className="h-3 w-3" /> Editar
+                                                </Button>
+                                                <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-destructive hover:text-destructive"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSingleAnalysisResult(prev => { const next = { ...prev }; delete next[focalPhoto.id]; return next; });
+                                                    if ((focalPhoto as any).ai_analysis) {
+                                                      updateEvolutionPhotoMutation.mutate({ id: focalPhoto.id, updates: { ai_analysis: null } as any });
+                                                    }
+                                                  }}>
+                                                  <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                              </>
                                             )}
                                           </div>
                                         </div>
@@ -1558,9 +1584,18 @@ export default function PacienteDetalhe() {
                                       </Button>
                                       {focalCompareResult[sessaoId] && (
                                         <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
-                                          <div className="flex items-center gap-1.5 mb-2">
-                                            <GitCompareArrows className="h-3.5 w-3.5 text-primary" />
-                                            <span className="text-xs font-semibold text-primary">Análise Comparativa Consolidada</span>
+                                          <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-1.5">
+                                              <GitCompareArrows className="h-3.5 w-3.5 text-primary" />
+                                              <span className="text-xs font-semibold text-primary">Análise Comparativa Consolidada</span>
+                                            </div>
+                                            <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-destructive hover:text-destructive"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setFocalCompareResult(prev => { const next = { ...prev }; delete next[sessaoId]; return next; });
+                                              }}>
+                                              <Trash2 className="h-3 w-3" /> Excluir
+                                            </Button>
                                           </div>
                                           <div className="text-xs prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
                                             {focalCompareResult[sessaoId]}
