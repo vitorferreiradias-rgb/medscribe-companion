@@ -1251,18 +1251,44 @@ export default function PacienteDetalhe() {
 
           {/* Timeline Grid */}
           <Card className="glass-card">
-            <CardHeader className="pb-3 pt-4 px-4">
+            <CardHeader className="pb-2 pt-4 px-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Camera className="h-4 w-4 text-primary" /> Timeline de Evolução
-                  {evolutionPhotos.length > 0 && (
-                    <Badge variant="outline" className="text-[10px] ml-1">{sessionGroups.length} sessão{sessionGroups.length !== 1 ? "ões" : ""} • {evolutionPhotos.length} fotos</Badge>
-                  )}
                 </CardTitle>
+              </div>
+              <div className="flex gap-1 mt-2">
+                <Button
+                  variant={evoSubTab === "corpo" ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={() => setEvoSubTab("corpo")}
+                >
+                  <Camera className="h-3 w-3" /> Composição Corporal
+                  {bodySessionGroups.length > 0 && (
+                    <Badge variant={evoSubTab === "corpo" ? "secondary" : "outline"} className="text-[10px] py-0 h-4 ml-0.5">{bodySessionGroups.length}</Badge>
+                  )}
+                </Button>
+                <Button
+                  variant={evoSubTab === "focal" ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={() => setEvoSubTab("focal")}
+                >
+                  <ScanSearch className="h-3 w-3" /> Análise Focal
+                  {focalSessionGroups.length > 0 && (
+                    <Badge variant={evoSubTab === "focal" ? "secondary" : "outline"} className="text-[10px] py-0 h-4 ml-0.5">{focalSessionGroups.length}</Badge>
+                  )}
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-4">
-              {evolutionPhotos.length > 0 ? (
+              {(() => {
+                const activeGroups = evoSubTab === "corpo" ? bodySessionGroups : focalSessionGroups;
+                const emptyIcon = evoSubTab === "corpo" ? Camera : ScanSearch;
+                const emptyLabel = evoSubTab === "corpo" ? "Nenhum registro de composição corporal" : "Nenhum registro de análise focal";
+                const EmptyIcon = emptyIcon;
+                return activeGroups.length > 0 ? (
                   <div className="relative">
                   {/* Timeline line */}
                   <div className="absolute left-[18px] top-0 bottom-0 w-px bg-border/60" />
