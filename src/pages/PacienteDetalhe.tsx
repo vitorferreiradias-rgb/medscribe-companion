@@ -180,6 +180,7 @@ export default function PacienteDetalhe() {
   const [docType, setDocType] = useState<PatientDocument["type"]>("exame");
 
   // Tab Evolução (Evolution Timeline) - Supabase
+  const [evoSubTab, setEvoSubTab] = useState<"corpo" | "focal">("corpo");
   const [showPhotoForm, setShowPhotoForm] = useState(false);
   const [currentSessaoId, setCurrentSessaoId] = useState(() => crypto.randomUUID());
   const [sessionSaving, setSessionSaving] = useState(false);
@@ -596,6 +597,19 @@ export default function PacienteDetalhe() {
       setAiAnalysisLoading(false);
     }
   };
+
+  // Filtered session groups for sub-tabs
+  const bodySessionGroups = useMemo(() => {
+    return sessionGroups
+      .map(g => ({ ...g, photos: g.photos.filter((p: any) => p.angle !== "outro") }))
+      .filter(g => g.photos.length > 0);
+  }, [sessionGroups]);
+
+  const focalSessionGroups = useMemo(() => {
+    return sessionGroups
+      .map(g => ({ ...g, photos: g.photos.filter((p: any) => p.angle === "outro") }))
+      .filter(g => g.photos.length > 0);
+  }, [sessionGroups]);
 
 
   const handleSinglePhotoAnalysis = async (photo: any) => {
@@ -1237,18 +1251,44 @@ export default function PacienteDetalhe() {
 
           {/* Timeline Grid */}
           <Card className="glass-card">
-            <CardHeader className="pb-3 pt-4 px-4">
+            <CardHeader className="pb-2 pt-4 px-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Camera className="h-4 w-4 text-primary" /> Timeline de Evolução
-                  {evolutionPhotos.length > 0 && (
-                    <Badge variant="outline" className="text-[10px] ml-1">{sessionGroups.length} sessão{sessionGroups.length !== 1 ? "ões" : ""} • {evolutionPhotos.length} fotos</Badge>
-                  )}
                 </CardTitle>
+              </div>
+              <div className="flex gap-1 mt-2">
+                <Button
+                  variant={evoSubTab === "corpo" ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={() => setEvoSubTab("corpo")}
+                >
+                  <Camera className="h-3 w-3" /> Composição Corporal
+                  {bodySessionGroups.length > 0 && (
+                    <Badge variant={evoSubTab === "corpo" ? "secondary" : "outline"} className="text-[10px] py-0 h-4 ml-0.5">{bodySessionGroups.length}</Badge>
+                  )}
+                </Button>
+                <Button
+                  variant={evoSubTab === "focal" ? "default" : "outline"}
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={() => setEvoSubTab("focal")}
+                >
+                  <ScanSearch className="h-3 w-3" /> Análise Focal
+                  {focalSessionGroups.length > 0 && (
+                    <Badge variant={evoSubTab === "focal" ? "secondary" : "outline"} className="text-[10px] py-0 h-4 ml-0.5">{focalSessionGroups.length}</Badge>
+                  )}
+                </Button>
               </div>
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-4">
-              {evolutionPhotos.length > 0 ? (
+              {(() => {
+                const activeGroups = evoSubTab === "corpo" ? bodySessionGroups : focalSessionGroups;
+                const emptyIcon = evoSubTab === "corpo" ? Camera : ScanSearch;
+                const emptyLabel = evoSubTab === "corpo" ? "Nenhum registro de composição corporal" : "Nenhum registro de análise focal";
+                const EmptyIcon = emptyIcon;
+                return activeGroups.length > 0 ? (
                   <div className="relative">
                   {/* Timeline line */}
                   <div className="absolute left-[18px] top-0 bottom-0 w-px bg-border/60" />
@@ -1274,13 +1314,13 @@ export default function PacienteDetalhe() {
                     }}
                   />
                   <div className="space-y-6">
-                    {sessionGroups.map((group, gIdx) => {
+                    {activeGroups.map((group, gIdx) => {
                       const firstPhoto = group.photos[0];
                       const sessaoId = group.sessaoId;
                       const isEditing = editingSessionId === sessaoId;
                       const angleLabelsMap: Record<string,string> = { frente: "Frente", perfil: "Perfil", costas: "Costas", frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lat. Dir.", lateral_esquerdo: "Lat. Esq." };
                       const angleBadgeMap: Record<string,string> = { frente: "F", perfil: "P", costas: "C" };
-                      const prevGroup = gIdx > 0 ? sessionGroups[gIdx - 1] : null;
+                      const prevGroup = gIdx > 0 ? activeGroups[gIdx - 1] : null;
                       const prevFirstPhoto = prevGroup?.photos[0];
 
                       return (
@@ -1328,130 +1368,96 @@ export default function PacienteDetalhe() {
                                 </div>
                               </div>
                             ) : (
-                              (() => {
-                                const bodyPhotos = group.photos.filter((p: any) => p.angle !== "outro");
-                                const focalPhotosAll = group.photos.filter((p: any) => p.angle === "outro");
-                                const hasBody = bodyPhotos.length > 0;
-                                const hasFocal = focalPhotosAll.length > 0;
-
-                                const renderPhotoGrid = (photos: typeof group.photos) => (
-                                  <div className={cn("grid gap-2", photos.length >= 3 ? "grid-cols-3" : photos.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
-                                    {photos.map((photo) => (
-                                      <div key={photo.id} className="relative group/photo">
-                                        <div className={cn(
-                                          "rounded-lg overflow-hidden bg-muted/30 border border-border/30",
-                                          photos.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-[3/4]"
-                                        )}>
-                                          <EvolutionPhotoImage
-                                            imagePath={photo.image_path}
-                                            alt={photo.label}
-                                            onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
-                                          />
-                                          {replaceEvolutionPhotoMutation.isPending && replacingPhotoId === photo.id && (
-                                            <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
-                                              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                                            </div>
-                                          )}
-                                        </div>
-                                        {(photo as any).angle && (photo as any).angle !== "outro" && (
-                                          <Badge variant="outline" className="absolute top-1 left-1 text-[10px] bg-background/80 backdrop-blur-sm">
-                                            {angleBadgeMap[(photo as any).angle] || (photo as any).angle}
-                                          </Badge>
-                                        )}
-                                        {(photo as any).angle === "outro" && (photo as any).analysis_focus && (
-                                          <Badge variant="outline" className="absolute top-1 left-1 max-w-[calc(100%-2.5rem)] text-[10px] bg-background/80 backdrop-blur-sm gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
-                                            <ScanSearch className="h-2.5 w-2.5 shrink-0" />
-                                            <span className="truncate">{(photo as any).analysis_focus}</span>
-                                          </Badge>
-                                        )}
-                                        <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover/photo:opacity-100 transition-opacity">
-                                          <Button
-                                            variant="secondary"
-                                            size="icon"
-                                            className="h-6 w-6 bg-background/80 backdrop-blur-sm"
-                                            title="Trocar foto"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setReplacingPhotoId(photo.id);
-                                              setReplacingPhotoPath(photo.image_path);
-                                              replaceFileInputRef.current?.click();
-                                            }}
-                                          >
-                                            <Camera className="h-3 w-3" />
-                                          </Button>
-                                          <Button
-                                            variant="secondary"
-                                            size="icon"
-                                            className="h-6 w-6 bg-background/80 backdrop-blur-sm hover:bg-destructive/20"
-                                            title="Excluir foto"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleRemoveEvolutionPhoto(photo.id, photo.image_path);
-                                            }}
-                                          >
-                                            <Trash2 className="h-3 w-3 text-destructive" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    ))}
+                              <>
+                                {/* Session header */}
+                                <div className="flex items-start justify-between mb-2">
+                                  <div>
+                                    <p className="text-sm font-semibold">{firstPhoto.label}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {format(parseISO(firstPhoto.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                                      {prevFirstPhoto && (() => {
+                                        const days = Math.round((parseISO(firstPhoto.date).getTime() - parseISO(prevFirstPhoto.date).getTime()) / 86400000);
+                                        return days > 0 ? <span className="ml-1.5 text-primary/70">({days}d desde anterior)</span> : null;
+                                      })()}
+                                      {group.photos.length > 1 && (
+                                        <span className="ml-1.5">• {group.photos.length} fotos</span>
+                                      )}
+                                    </p>
                                   </div>
-                                );
+                                  <div className="flex items-center gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); startEditPhoto(firstPhoto); }} title="Editar sessão">
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
+                                      e.stopPropagation();
+                                      group.photos.forEach(p => handleRemoveEvolutionPhoto(p.id, p.image_path));
+                                    }} title="Excluir sessão">
+                                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                    </Button>
+                                  </div>
+                                </div>
 
-                                return (
-                                  <>
-                                    {/* Session header */}
-                                    <div className="flex items-start justify-between mb-2">
-                                      <div>
-                                        <p className="text-sm font-semibold">{firstPhoto.label}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                          {format(parseISO(firstPhoto.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                                          {prevFirstPhoto && (() => {
-                                            const days = Math.round((parseISO(firstPhoto.date).getTime() - parseISO(prevFirstPhoto.date).getTime()) / 86400000);
-                                            return days > 0 ? <span className="ml-1.5 text-primary/70">({days}d desde anterior)</span> : null;
-                                          })()}
-                                          {group.photos.length > 1 && (
-                                            <span className="ml-1.5">• {group.photos.length} fotos</span>
-                                          )}
-                                        </p>
+                                {/* Photo grid */}
+                                <div className={cn("grid gap-2 mt-2", group.photos.length >= 3 ? "grid-cols-3" : group.photos.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
+                                  {group.photos.map((photo) => (
+                                    <div key={photo.id} className="relative group/photo">
+                                      <div className={cn(
+                                        "rounded-lg overflow-hidden bg-muted/30 border border-border/30",
+                                        group.photos.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-[3/4]"
+                                      )}>
+                                        <EvolutionPhotoImage
+                                          imagePath={photo.image_path}
+                                          alt={photo.label}
+                                          onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
+                                        />
+                                        {replaceEvolutionPhotoMutation.isPending && replacingPhotoId === photo.id && (
+                                          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
+                                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                          </div>
+                                        )}
                                       </div>
-                                      <div className="flex items-center gap-1">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); startEditPhoto(firstPhoto); }} title="Editar sessão">
-                                          <Pencil className="h-3.5 w-3.5" />
+                                      {(photo as any).angle && (photo as any).angle !== "outro" && (
+                                        <Badge variant="outline" className="absolute top-1 left-1 text-[10px] bg-background/80 backdrop-blur-sm">
+                                          {angleBadgeMap[(photo as any).angle] || (photo as any).angle}
+                                        </Badge>
+                                      )}
+                                      {(photo as any).angle === "outro" && (photo as any).analysis_focus && (
+                                        <Badge variant="outline" className="absolute top-1 left-1 max-w-[calc(100%-2.5rem)] text-[10px] bg-background/80 backdrop-blur-sm gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
+                                          <ScanSearch className="h-2.5 w-2.5 shrink-0" />
+                                          <span className="truncate">{(photo as any).analysis_focus}</span>
+                                        </Badge>
+                                      )}
+                                      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover/photo:opacity-100 transition-opacity">
+                                        <Button
+                                          variant="secondary"
+                                          size="icon"
+                                          className="h-6 w-6 bg-background/80 backdrop-blur-sm"
+                                          title="Trocar foto"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setReplacingPhotoId(photo.id);
+                                            setReplacingPhotoPath(photo.image_path);
+                                            replaceFileInputRef.current?.click();
+                                          }}
+                                        >
+                                          <Camera className="h-3 w-3" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
-                                          e.stopPropagation();
-                                          group.photos.forEach(p => handleRemoveEvolutionPhoto(p.id, p.image_path));
-                                        }} title="Excluir sessão">
-                                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                        <Button
+                                          variant="secondary"
+                                          size="icon"
+                                          className="h-6 w-6 bg-background/80 backdrop-blur-sm hover:bg-destructive/20"
+                                          title="Excluir foto"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRemoveEvolutionPhoto(photo.id, photo.image_path);
+                                          }}
+                                        >
+                                          <Trash2 className="h-3 w-3 text-destructive" />
                                         </Button>
                                       </div>
                                     </div>
-
-                                    {/* Body Composition Section (F/P/C) */}
-                                    {hasBody && (
-                                      <div className="mt-2">
-                                        {hasFocal && (
-                                          <div className="flex items-center gap-1.5 mb-2">
-                                            <Camera className="h-3 w-3 text-primary" />
-                                            <span className="text-[11px] font-semibold text-primary uppercase tracking-wide">Composição Corporal</span>
-                                            <Badge variant="outline" className="text-[10px] py-0 h-4">{bodyPhotos.length}</Badge>
-                                          </div>
-                                        )}
-                                        {renderPhotoGrid(bodyPhotos)}
-                                      </div>
-                                    )}
-
-                                    {/* Focal Analysis Section (Outro) */}
-                                    {hasFocal && (
-                                      <div className={cn("mt-3", hasBody && "pt-3 border-t border-amber-500/20")}>
-                                        <div className="flex items-center gap-1.5 mb-2">
-                                          <ScanSearch className="h-3 w-3 text-amber-600 dark:text-amber-400" />
-                                          <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">Análise Focal</span>
-                                          <Badge variant="outline" className="text-[10px] py-0 h-4 border-amber-500/40 text-amber-700 dark:text-amber-400">{focalPhotosAll.length}</Badge>
-                                        </div>
-                                        {renderPhotoGrid(focalPhotosAll)}
-                                      </div>
-                                    )}
+                                  ))}
+                                </div>
 
                                     {group.photos.some(p => zoomPhotoId === p.id) && (
                                       <div className="mt-2 rounded-lg overflow-hidden bg-muted/30 border border-border/30">
@@ -1514,7 +1520,7 @@ export default function PacienteDetalhe() {
 
                                     {/* Single focal photo analysis */}
                                     {(() => {
-                                      const singleFocals = focalPhotosAll.filter((p: any) => p.analysis_focus);
+                                      const singleFocals = group.photos.filter((p: any) => p.angle === "outro" && p.analysis_focus);
                                       if (singleFocals.length !== 1) return null;
                                       return singleFocals.map((focalPhoto: any) => (
                                         <div key={focalPhoto.id} className="mt-2 space-y-2">
@@ -1607,7 +1613,7 @@ export default function PacienteDetalhe() {
 
                                     {/* Multi-focal comparison */}
                                     {(() => {
-                                      const focalPhotos = focalPhotosAll.filter((p: any) => p.analysis_focus);
+                                      const focalPhotos = group.photos.filter((p: any) => p.angle === "outro" && p.analysis_focus);
                                       if (focalPhotos.length < 2) return null;
                                       return (
                                         <div className="mt-3 space-y-2">
@@ -1647,9 +1653,7 @@ export default function PacienteDetalhe() {
                                         </div>
                                       );
                                     })()}
-                                  </>
-                                );
-                              })()
+                              </>
                             )}
                           </div>
                         </div>
@@ -1659,11 +1663,12 @@ export default function PacienteDetalhe() {
                 </div>
               ) : (
                 <div className="text-center py-10 text-muted-foreground">
-                  <Camera className="h-12 w-12 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm font-medium mb-1">Nenhum registro de evolução</p>
+                  <EmptyIcon className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm font-medium mb-1">{emptyLabel}</p>
                   <p className="text-xs">Adicione fotos a cada consulta para acompanhar a evolução do paciente ao longo do tempo.</p>
                 </div>
-              )}
+              );
+              })()}
 
               {/* Add new photo form */}
               {showPhotoForm ? (
