@@ -1911,7 +1911,70 @@ export default function PacienteDetalhe() {
                 </div>
               )}
 
-              {labResults.length > 0 ? (
+              {showImportPreview && importedLabs.length > 0 && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Exames extraídos — revise antes de confirmar</p>
+                    <Button size="sm" variant="ghost" onClick={() => { setShowImportPreview(false); setImportedLabs([]); }}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  <div className="overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Exame</TableHead>
+                          <TableHead className="text-xs">Tipo</TableHead>
+                          <TableHead className="text-xs">Resultado</TableHead>
+                          <TableHead className="text-xs">Referência</TableHead>
+                          <TableHead className="text-xs">Data</TableHead>
+                          <TableHead className="text-xs w-8"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {importedLabs.map((r, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="text-xs">
+                              <Input className="h-7 text-xs" value={r.name} onChange={(e) => setImportedLabs(prev => prev.map((item, i) => i === idx ? { ...item, name: e.target.value } : item))} />
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <Select value={r.type} onValueChange={(v) => setImportedLabs(prev => prev.map((item, i) => i === idx ? { ...item, type: v as any } : item))}>
+                                <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="laboratorial">Lab</SelectItem>
+                                  <SelectItem value="biopsia">Biópsia</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <Input className="h-7 text-xs" value={r.result} onChange={(e) => setImportedLabs(prev => prev.map((item, i) => i === idx ? { ...item, result: e.target.value } : item))} />
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <Input className="h-7 text-xs" value={r.reference_range || ""} onChange={(e) => setImportedLabs(prev => prev.map((item, i) => i === idx ? { ...item, reference_range: e.target.value } : item))} />
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <Input className="h-7 text-xs" type="date" value={r.date || ""} onChange={(e) => setImportedLabs(prev => prev.map((item, i) => i === idx ? { ...item, date: e.target.value } : item))} />
+                            </TableCell>
+                            <TableCell>
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setImportedLabs(prev => prev.filter((_, i) => i !== idx))}>
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" disabled={importLoading || importedLabs.length === 0} onClick={handleConfirmImport}>
+                      {importLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1 h-3 w-3" />}
+                      Confirmar {importedLabs.length} exame(s)
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => { setShowImportPreview(false); setImportedLabs([]); }}>Cancelar</Button>
+                  </div>
+                </div>
+              )}
+
                 <div className="overflow-auto">
                   <Table>
                     <TableHeader>
