@@ -1,30 +1,37 @@
 
 
-# Tornar a classificação de receita visualmente automática e clara
+# Avaliação do Prompt Sugerido vs. Prompt Atual
 
-## Problema
-O sistema já classifica automaticamente o tipo de receita (simples/antimicrobiano/controle especial) com base no medicamento. Porém, na UI do preview, isso aparece como um dropdown genérico sem destaque — o médico não percebe que a classificação foi automática. Além disso, quando o medicamento não está no banco local, a receita silenciosamente vira "simples".
+## Diagnóstico
 
-## Solução
+O prompt sugerido pela outra IA traz **conceitos válidos**, mas o nosso prompt atual já cobre a maioria deles — e com mais profundidade. Veja a comparação:
 
-### 1. Destacar a classificação automática no preview
-No `SmartPrescriptionPreview.tsx`:
-- Adicionar um badge/label ao lado do dropdown indicando "Classificado automaticamente" (verde) quando a medicação foi encontrada no banco
-- Quando a medicação NÃO foi encontrada, mostrar um alerta amarelo mais visível explicando que o tipo precisa ser confirmado manualmente
-- Manter o dropdown como override, mas visualmente secundário
+| Aspecto | Prompt sugerido | Nosso prompt atual | Veredicto |
+|---|---|---|---|
+| Gordura abdominal | ✅ mencionado | ✅ Análise Regional detalhada (abdômen, flancos, padrão androide/ginoide) | Já cobrimos melhor |
+| Perda de definição muscular | ✅ mencionado | ✅ "Massa muscular: desenvolvimento por grupo muscular visível" | Já cobrimos |
+| Postura anteriorizada | ✅ mencionado | ✅ Seção "Análise Postural" com cifose, lordose, escoliose, inclinação pélvica | Já cobrimos melhor |
+| Assimetria muscular | ✅ mencionado | ✅ "simetria" em cada região da tabela + "proporção entre membros" | Já cobrimos |
+| Edema periférico | ✅ mencionado | ✅ "retenção hídrica aparente" nas pernas + "sinais de edema" nos alertas | Já cobrimos |
+| Alterações cutâneas | ✅ mencionado | ✅ Seção "Alertas Cutâneos" + "Aspectos dermatológicos" | Já cobrimos melhor |
+| **Correlação metabólica/saúde** | ✅ educativo | 🟡 Parcial — mencionamos critérios de gravidade mas falta correlação educativa | **Ponto a melhorar** |
 
-### 2. Adicionar mais antimicrobianos e controlados ao banco de conhecimento
-No `medication-knowledge.ts`, adicionar medicamentos comuns que faltam:
-- **Antimicrobianos**: Azitromicina, Ciprofloxacino, Cefalexina, Metronidazol, Levofloxacino, Sulfametoxazol+Trimetoprima
-- **Controlados**: Clonazepam, Alprazolam, Fluoxetina, Sertralina, Escitalopram, Ritalina (metilfenidato), Zolpidem
+## O que falta no nosso prompt
 
-### 3. Melhorar o `ComplianceResult` com flag de confiança
-No `compliance-router.ts`:
-- Adicionar campo `autoClassified: boolean` ao resultado — `true` quando todos os itens foram encontrados no banco, `false` quando algum é desconhecido
-- O preview usa esse campo para decidir se mostra "Classificado automaticamente" ou "Confirme o tipo"
+O prompt sugerido tem um diferencial: **explicação educativa** de como os achados visuais se relacionam com saúde, metabolismo e estilo de vida. Nosso prompt atual é mais técnico/clínico, mas não explica ao paciente *por que* aquilo importa.
 
-## Arquivos modificados
-- `src/lib/medication-knowledge.ts` — adicionar medicamentos
-- `src/lib/compliance-router.ts` — adicionar flag `autoClassified`
-- `src/components/smart-prescription/SmartPrescriptionPreview.tsx` — UI de classificação automática
+Proposta: adicionar uma nova seção **"Correlações Metabólicas e Funcionais"** entre a Integração Clínica (seção 3) e as Observações (seção 4), com instruções para a IA explicar:
+
+- Como a distribuição de gordura observada se relaciona com risco metabólico (ex: gordura visceral → resistência insulínica)
+- Como alterações posturais podem impactar funcionalidade e dor
+- Como sinais de edema ou alterações cutâneas podem indicar processos sistêmicos
+- Linguagem acessível e educativa, que o médico possa compartilhar com o paciente
+
+## Mudanças
+
+| Arquivo | Mudança |
+|---|---|
+| `supabase/functions/consolidated-analysis/index.ts` | Adicionar seção "Correlações Metabólicas e Funcionais" no prompt de `composition` e `evolution`, entre Integração Clínica e Observações |
+
+A seção será concisa (3-5 bullets) e usará linguagem que o médico possa usar diretamente na comunicação com o paciente.
 
