@@ -1488,7 +1488,7 @@ export default function PacienteDetalhe() {
                                       {singleAnalysisLoading === focalPhoto.id ? (
                                         <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Analisando…</>
                                       ) : (
-                                        <><ScanSearch className="h-3.5 w-3.5" /> Avaliar "{focalPhoto.analysis_focus}" com IA</>
+                                        <><ScanSearch className="h-3.5 w-3.5" /> Avaliar com IA</>
                                       )}
                                     </Button>
                                     {singleAnalysisResult[focalPhoto.id] && (
