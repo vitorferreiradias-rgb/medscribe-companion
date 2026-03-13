@@ -7,7 +7,7 @@ import {
   Plus, CalendarIcon, Heart, MapPin, Users, Activity, Megaphone,
   AlertTriangle, FileText, Search, Copy, Clock, Stethoscope, FolderOpen,
   Camera, ImageIcon, Eye, ZoomIn, TrendingUp, Weight, StickyNote, Sparkles, Loader2,
-  User, UserRound, ArrowRight, Target, ScanSearch,
+  User, UserRound, ArrowRight, Target, ScanSearch, GitCompareArrows,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppData } from "@/hooks/useAppData";
