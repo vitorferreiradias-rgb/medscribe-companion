@@ -12,28 +12,30 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { beforeImagePath, afterImagePath, patientContext } = await req.json();
+    const { beforeImagePath, afterImagePath, patientContext, imagePaths } = await req.json();
 
-    const isSinglePhoto = !afterImagePath;
+    // Support multi-photo mode (imagePaths array) or legacy 2-photo mode
+    const allPaths: string[] = imagePaths && Array.isArray(imagePaths) && imagePaths.length > 0
+      ? imagePaths
+      : [beforeImagePath, afterImagePath].filter(Boolean);
 
-    if (!beforeImagePath) {
+    if (allPaths.length === 0) {
       return new Response(
-        JSON.stringify({ error: "beforeImagePath is required" }),
+        JSON.stringify({ error: "At least one image path is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const isSinglePhoto = allPaths.length === 1;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get signed URLs
-    const signedUrlPromises = [
-      supabase.storage.from("evolution-photos").createSignedUrl(beforeImagePath, 600),
-    ];
-    if (!isSinglePhoto) {
-      signedUrlPromises.push(supabase.storage.from("evolution-photos").createSignedUrl(afterImagePath, 600));
-    }
+    // Get signed URLs for all photos
+    const signedUrlPromises = allPaths.map(path =>
+      supabase.storage.from("evolution-photos").createSignedUrl(path, 600)
+    );
     const urlResults = await Promise.all(signedUrlPromises);
 
     if (urlResults.some(r => r.error)) {
@@ -43,8 +45,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const beforeSignedUrl = urlResults[0].data.signedUrl;
-    const afterSignedUrl = isSinglePhoto ? null : urlResults[1].data.signedUrl;
+    const signedUrls = urlResults.map(r => r.data.signedUrl);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -243,18 +244,19 @@ Sugestões de acompanhamento específicas para a região analisada.
 
 ---
 
-## MODO DE ANÁLISE FOCAL COMPARATIVA (2 fotos focais)
+## MODO DE ANÁLISE FOCAL COMPARATIVA (2+ fotos focais)
 
-Quando o contexto do paciente incluir "FOCO DA ANÁLISE: [região/lesão]" **E** duas fotos forem fornecidas, você DEVE:
+Quando o contexto do paciente incluir "FOCO DA ANÁLISE: [região/lesão]" **E** duas ou mais fotos forem fornecidas, você DEVE:
 1. **Ignorar** a análise corporal completa.
 2. Analisar a lesão/região em **cada foto** separadamente com os mesmos critérios do modo focal.
-3. **Consolidar** as informações de ambas as fotos em uma conclusão unificada.
+3. **Consolidar** as informações de TODAS as fotos em uma conclusão unificada.
 4. Estruturar o relatório assim:
 
 ### Identificação da Região
 Descreva a localização anatômica exata da área de foco.
 
-### Análise Detalhada — Foto 1
+### Análise Detalhada — Foto N (repetir para cada foto)
+Para CADA foto fornecida, criar uma seção numerada com:
 - Morfologia (forma, tamanho aproximado em cm)
 - Bordas (regulares/irregulares, definidas/difusas)
 - Coloração (uniforme/heterogênea, cores presentes)
@@ -262,16 +264,13 @@ Descreva a localização anatômica exata da área de foco.
 - Simetria
 - Elevação (plana, papular, nodular)
 
-### Análise Detalhada — Foto 2
-Mesmos critérios acima aplicados à segunda foto.
-
 ### Evolução Comparativa Consolidada
-- Mudanças observadas entre as duas fotos
-- O que a segunda foto revela que a primeira não mostrava (e vice-versa)
+- Mudanças observadas entre as fotos (comparar progressivamente)
+- O que cada foto revela de adicional em relação às demais
 - Classificação: Melhora significativa / Melhora leve / Estável / Piora leve / Piora significativa
 
 ### Classificação ABCDE Consolidada (se lesão pigmentada)
-Considere AMBAS as fotos para cada critério:
+Considere TODAS as fotos para cada critério:
 - **A**ssimetria
 - **B**ordas
 - **C**or
@@ -279,41 +278,38 @@ Considere AMBAS as fotos para cada critério:
 - **E**volução
 
 ### Score de Evolução Focal
-Nota de 1 a 10 para a evolução da lesão/região, justificando com base em ambas as fotos.
+Nota de 1 a 10 para a evolução da lesão/região, justificando com base em todas as fotos.
 
 ### Diagnósticos Diferenciais Consolidados
-3 a 5 diagnósticos do mais ao menos provável, **considerando as informações de AMBAS as fotos** para refinar a probabilidade de cada diagnóstico. Justifique como cada foto contribuiu para a conclusão.
+3 a 5 diagnósticos do mais ao menos provável, **considerando as informações de TODAS as fotos** para refinar a probabilidade de cada diagnóstico. Justifique como cada foto contribuiu para a conclusão.
 
 ### Recomendações
-Sugestões de acompanhamento específicas para a região analisada, considerando a evolução entre as duas fotos.
+Sugestões de acompanhamento específicas para a região analisada, considerando a evolução observada entre todas as fotos.
 
 ⚠️ Este modo substitui completamente a análise corporal padrão.`;
 
-    const userContent: any[] = isSinglePhoto
-      ? [
-          {
-            type: "text",
-            text: `Analise a foto a seguir do paciente. ${patientContext && patientContext.includes("FOCO DA ANÁLISE") ? "Gere um relatório no MODO DE ANÁLISE FOCAL conforme o foco indicado." : "Gere um relatório completo de avaliação física corporal."}${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nAnalise esta imagem:`,
-          },
-          {
-            type: "image_url",
-            image_url: { url: beforeSignedUrl },
-          },
-        ]
-      : [
-          {
-            type: "text",
-            text: `Analise a evolução do paciente comparando as duas fotos a seguir. ${patientContext && patientContext.includes("FOCO DA ANÁLISE") ? "Gere um relatório no MODO DE ANÁLISE FOCAL COMPARATIVA, consolidando as informações de ambas as fotos em diagnósticos unificados." : "Gere um relatório completo de avaliação física corporal comparativa."}${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nA primeira imagem é a Foto 1 e a segunda é a Foto 2.`,
-          },
-          {
-            type: "image_url",
-            image_url: { url: beforeSignedUrl },
-          },
-          {
-            type: "image_url",
-            image_url: { url: afterSignedUrl! },
-          },
-        ];
+    const isFocal = patientContext && patientContext.includes("FOCO DA ANÁLISE");
+    const photoCount = signedUrls.length;
+
+    let userContent: any[];
+    if (isSinglePhoto) {
+      userContent = [
+        {
+          type: "text",
+          text: `Analise a foto a seguir do paciente. ${isFocal ? "Gere um relatório no MODO DE ANÁLISE FOCAL conforme o foco indicado." : "Gere um relatório completo de avaliação física corporal."}${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nAnalise esta imagem:`,
+        },
+        { type: "image_url", image_url: { url: signedUrls[0] } },
+      ];
+    } else {
+      const photoLabels = signedUrls.map((_, i) => `Foto ${i + 1}`).join(", ");
+      userContent = [
+        {
+          type: "text",
+          text: `Analise ${photoCount} fotos do paciente. ${isFocal ? `Gere um relatório no MODO DE ANÁLISE FOCAL COMPARATIVA, consolidando as informações de TODAS as ${photoCount} fotos em diagnósticos unificados. Analise cada foto individualmente e depois forneça uma conclusão comparativa consolidada.` : "Gere um relatório completo de avaliação física corporal comparativa."}${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nAs imagens são: ${photoLabels}.`,
+        },
+        ...signedUrls.map(url => ({ type: "image_url", image_url: { url } })),
+      ];
+    }
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
