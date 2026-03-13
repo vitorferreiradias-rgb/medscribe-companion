@@ -620,15 +620,13 @@ export default function PacienteDetalhe() {
 
   const handleFocalCompare = async (sessaoId: string, focalPhotos: any[]) => {
     if (focalPhotos.length < 2) return;
-    const photo1 = focalPhotos[0];
-    const photo2 = focalPhotos[1];
     setFocalCompareLoading(sessaoId);
     try {
-      const patientContext = buildPatientContext({ before: photo1, after: photo2 });
+      // Build context from first and last photo for patient data
+      const patientContext = buildPatientContext({ before: focalPhotos[0], after: focalPhotos[focalPhotos.length - 1] });
       const { data, error } = await supabase.functions.invoke("evolution-compare", {
         body: {
-          beforeImagePath: photo1.image_path,
-          afterImagePath: photo2.image_path,
+          imagePaths: focalPhotos.map((p: any) => p.image_path),
           patientContext: patientContext || undefined,
         },
       });
