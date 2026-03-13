@@ -1401,13 +1401,15 @@ export default function PacienteDetalhe() {
                                   </div>
                                 </div>
 
-                                {/* Photo grid */}
-                                <div className={cn("grid gap-2 mt-2", group.photos.length >= 3 ? "grid-cols-3" : group.photos.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
+                                {/* Photo grid - always 3 cols for body comp to align across sessions */}
+                                <div className={cn("grid gap-2 mt-2",
+                                  evoSubTab === "corpo" ? "grid-cols-3" : (group.photos.length >= 3 ? "grid-cols-3" : group.photos.length === 2 ? "grid-cols-2" : "grid-cols-1")
+                                )}>
                                   {group.photos.map((photo) => (
                                     <div key={photo.id} className="relative group/photo">
                                       <div className={cn(
                                         "rounded-lg overflow-hidden bg-muted/30 border border-border/30",
-                                        group.photos.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-[3/4]"
+                                        evoSubTab === "corpo" ? "aspect-[3/4]" : (group.photos.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-[3/4]")
                                       )}>
                                         <EvolutionPhotoImage
                                           imagePath={photo.image_path}
