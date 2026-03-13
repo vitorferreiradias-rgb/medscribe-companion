@@ -99,7 +99,23 @@ Integre todos os dados disponíveis (achados visuais + dados antropométricos + 
 
 ---
 
-## 4. OBSERVAÇÕES CLÍNICAS E ALERTAS
+## 4. CORRELAÇÕES METABÓLICAS E FUNCIONAIS
+
+Explique de forma educativa e acessível como os achados visuais se relacionam com saúde, metabolismo e estilo de vida. Esta seção deve usar linguagem que o médico possa compartilhar diretamente com o paciente.
+
+Liste 3-5 correlações relevantes, como:
+- 🔬 **Gordura abdominal e risco metabólico**: Como o acúmulo de gordura visceral se relaciona com resistência insulínica, síndrome metabólica e risco cardiovascular
+- 🔬 **Alterações posturais e funcionalidade**: Como desvios posturais observados podem impactar a biomecânica, gerar dor crônica e limitar a funcionalidade
+- 🔬 **Edema e processos sistêmicos**: Como sinais de retenção hídrica podem indicar alterações renais, cardíacas, hormonais ou nutricionais
+- 🔬 **Distribuição de gordura e perfil hormonal**: Como o padrão de distribuição (androide vs ginoide) reflete influências hormonais (cortisol, estrogênio, testosterona)
+- 🔬 **Alterações cutâneas e saúde metabólica**: Como estrias, acantose nigricans, ou ressecamento podem sinalizar resistência insulínica, disfunção tireoidiana ou deficiências nutricionais
+- 🔬 **Composição corporal e gasto energético**: Como a proporção massa magra/gordura impacta o metabolismo basal e a eficiência energética
+
+Selecione apenas as correlações que forem relevantes para os achados deste paciente. Explique o "porquê" de cada achado de forma clara e didática.
+
+---
+
+## 5. OBSERVAÇÕES CLÍNICAS E ALERTAS
 
 Liste pontos de atenção clínica relevantes:
 - ⚠️ [ponto de atenção] — [explicação clínica do significado e relevância]
@@ -114,7 +130,7 @@ Sinais que indicam necessidade de atenção médica:
 
 ---
 
-## 5. RECOMENDAÇÕES E CONDUTA
+## 6. RECOMENDAÇÕES E CONDUTA
 
 Liste recomendações detalhadas e fundamentadas:
 - 🎯 **[título da recomendação]**: [descrição detalhada com justificativa clínica e sugestões práticas]
@@ -253,6 +269,14 @@ Compare a postura entre as duas sessões.
 
 ### Score de Evolução
 Nota de 1 a 10 para a evolução entre sessões e justificativa.
+
+### Correlações Metabólicas e Funcionais
+Explique de forma educativa e acessível como as mudanças observadas entre as sessões se relacionam com saúde e metabolismo. Use linguagem que o médico possa compartilhar com o paciente. Liste 3-5 correlações relevantes:
+- 🔬 Como a variação de gordura abdominal impacta o risco metabólico (resistência insulínica, síndrome metabólica)
+- 🔬 Como mudanças posturais observadas afetam funcionalidade e dor
+- 🔬 Como a evolução da composição corporal (proporção massa magra/gordura) impacta o metabolismo basal
+- 🔬 Como alterações cutâneas entre sessões podem refletir mudanças hormonais ou nutricionais
+Selecione apenas correlações relevantes para os achados deste paciente.
 
 ### Conclusão e Recomendações
 Resumo clínico com próximos passos sugeridos.
