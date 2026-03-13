@@ -130,7 +130,7 @@ Sinais que indicam necessidade de atenção médica:
 
 ---
 
-## 5. RECOMENDAÇÕES E CONDUTA
+## 6. RECOMENDAÇÕES E CONDUTA
 
 Liste recomendações detalhadas e fundamentadas:
 - 🎯 **[título da recomendação]**: [descrição detalhada com justificativa clínica e sugestões práticas]
