@@ -591,6 +591,36 @@ export default function PacienteDetalhe() {
       if (after?.notes) contextParts.push(`Notas depois: ${after.notes}`);
     }
 
+    // Include photo dates for temporal correlation
+    if (before?.date) {
+      const dateLabel = before.date;
+      try { const d = parseISO(before.date); if (isValid(d)) contextParts.push(`Data da foto${after ? " ANTES" : ""}: ${format(d, "dd/MM/yyyy")}`); } catch {}
+    }
+    if (after?.date) {
+      try { const d = parseISO(after.date); if (isValid(d)) contextParts.push(`Data da foto DEPOIS: ${format(d, "dd/MM/yyyy")}`); } catch {}
+    }
+
+    // Include recent lab results for temporal correlation
+    if (labResults.length > 0) {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const recentLabs = labResults.filter(r => {
+        try { return isAfter(parseISO(r.date), oneYearAgo); } catch { return false; }
+      });
+      if (recentLabs.length > 0) {
+        const labParts = recentLabs.map(r => {
+          let text = `${r.name}: ${r.result}`;
+          if (r.reference_range) text += ` (ref: ${r.reference_range})`;
+          try { text += ` em ${format(parseISO(r.date), "dd/MM/yyyy")}`; } catch {}
+          return text;
+        });
+        const labs = recentLabs.filter(r => r.type === "laboratorial");
+        const biopsias = recentLabs.filter(r => r.type === "biopsia");
+        if (labs.length > 0) contextParts.push(`Exames laboratoriais recentes: ${labs.map(r => { let t = `${r.name}: ${r.result}`; if (r.reference_range) t += ` (ref: ${r.reference_range})`; try { t += ` em ${format(parseISO(r.date), "dd/MM/yyyy")}`; } catch {} return t; }).join("; ")}`);
+        if (biopsias.length > 0) contextParts.push(`Biópsias: ${biopsias.map(r => { let t = `${r.name}: ${r.result}`; try { t += ` em ${format(parseISO(r.date), "dd/MM/yyyy")}`; } catch {} return t; }).join("; ")}`);
+      }
+    }
+
     return contextParts.join(". ");
   };
 
