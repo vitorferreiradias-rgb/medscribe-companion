@@ -1850,7 +1850,6 @@ export default function PacienteDetalhe() {
                     <input ref={labFileInputRef} type="file" accept="image/*,.pdf,.txt" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLabFileImport(f); }} />
                   </div>
                 )}
-                )}
               </div>
             </CardHeader>
             <CardContent className="px-4 pb-4 space-y-3">
