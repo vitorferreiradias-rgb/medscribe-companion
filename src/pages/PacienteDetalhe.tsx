@@ -1380,8 +1380,9 @@ export default function PacienteDetalhe() {
                                         </Badge>
                                       )}
                                       {(photo as any).angle === "outro" && (photo as any).analysis_focus && (
-                                        <Badge variant="outline" className="absolute top-1 left-1 text-[10px] bg-background/80 backdrop-blur-sm gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
-                                          <ScanSearch className="h-2.5 w-2.5" /> {(photo as any).analysis_focus}
+                                        <Badge variant="outline" className="absolute top-1 left-1 max-w-[calc(100%-2.5rem)] text-[10px] bg-background/80 backdrop-blur-sm gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
+                                          <ScanSearch className="h-2.5 w-2.5 shrink-0" />
+                                          <span className="truncate">{(photo as any).analysis_focus}</span>
                                         </Badge>
                                       )}
                                       <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover/photo:opacity-100 transition-opacity">
