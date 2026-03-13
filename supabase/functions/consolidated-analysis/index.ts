@@ -270,6 +270,14 @@ Compare a postura entre as duas sessões.
 ### Score de Evolução
 Nota de 1 a 10 para a evolução entre sessões e justificativa.
 
+### Correlações Metabólicas e Funcionais
+Explique de forma educativa e acessível como as mudanças observadas entre as sessões se relacionam com saúde e metabolismo. Use linguagem que o médico possa compartilhar com o paciente. Liste 3-5 correlações relevantes:
+- 🔬 Como a variação de gordura abdominal impacta o risco metabólico (resistência insulínica, síndrome metabólica)
+- 🔬 Como mudanças posturais observadas afetam funcionalidade e dor
+- 🔬 Como a evolução da composição corporal (proporção massa magra/gordura) impacta o metabolismo basal
+- 🔬 Como alterações cutâneas entre sessões podem refletir mudanças hormonais ou nutricionais
+Selecione apenas correlações relevantes para os achados deste paciente.
+
 ### Conclusão e Recomendações
 Resumo clínico com próximos passos sugeridos.
 
