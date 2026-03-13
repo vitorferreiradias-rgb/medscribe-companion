@@ -290,31 +290,28 @@ Sugestões de acompanhamento específicas para a região analisada, considerando
 
 ⚠️ Este modo substitui completamente a análise corporal padrão.`;
 
-    const userContent: any[] = isSinglePhoto
-      ? [
-          {
-            type: "text",
-            text: `Analise a foto a seguir do paciente. ${patientContext && patientContext.includes("FOCO DA ANÁLISE") ? "Gere um relatório no MODO DE ANÁLISE FOCAL conforme o foco indicado." : "Gere um relatório completo de avaliação física corporal."}${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nAnalise esta imagem:`,
-          },
-          {
-            type: "image_url",
-            image_url: { url: beforeSignedUrl },
-          },
-        ]
-      : [
-          {
-            type: "text",
-            text: `Analise a evolução do paciente comparando as duas fotos a seguir. ${patientContext && patientContext.includes("FOCO DA ANÁLISE") ? "Gere um relatório no MODO DE ANÁLISE FOCAL COMPARATIVA, consolidando as informações de ambas as fotos em diagnósticos unificados." : "Gere um relatório completo de avaliação física corporal comparativa."}${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nA primeira imagem é a Foto 1 e a segunda é a Foto 2.`,
-          },
-          {
-            type: "image_url",
-            image_url: { url: beforeSignedUrl },
-          },
-          {
-            type: "image_url",
-            image_url: { url: afterSignedUrl! },
-          },
-        ];
+    const isFocal = patientContext && patientContext.includes("FOCO DA ANÁLISE");
+    const photoCount = signedUrls.length;
+
+    let userContent: any[];
+    if (isSinglePhoto) {
+      userContent = [
+        {
+          type: "text",
+          text: `Analise a foto a seguir do paciente. ${isFocal ? "Gere um relatório no MODO DE ANÁLISE FOCAL conforme o foco indicado." : "Gere um relatório completo de avaliação física corporal."}${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nAnalise esta imagem:`,
+        },
+        { type: "image_url", image_url: { url: signedUrls[0] } },
+      ];
+    } else {
+      const photoLabels = signedUrls.map((_, i) => `Foto ${i + 1}`).join(", ");
+      userContent = [
+        {
+          type: "text",
+          text: `Analise ${photoCount} fotos do paciente. ${isFocal ? `Gere um relatório no MODO DE ANÁLISE FOCAL COMPARATIVA, consolidando as informações de TODAS as ${photoCount} fotos em diagnósticos unificados. Analise cada foto individualmente e depois forneça uma conclusão comparativa consolidada.` : "Gere um relatório completo de avaliação física corporal comparativa."}${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nAs imagens são: ${photoLabels}.`,
+        },
+        ...signedUrls.map(url => ({ type: "image_url", image_url: { url } })),
+      ];
+    }
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
