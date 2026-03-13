@@ -1384,20 +1384,34 @@ export default function PacienteDetalhe() {
                                           <ScanSearch className="h-2.5 w-2.5" /> {(photo as any).analysis_focus}
                                         </Badge>
                                       )}
-                                      <Button
-                                        variant="secondary"
-                                        size="icon"
-                                        className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover/photo:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm"
-                                        title="Trocar foto"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setReplacingPhotoId(photo.id);
-                                          setReplacingPhotoPath(photo.image_path);
-                                          replaceFileInputRef.current?.click();
-                                        }}
-                                      >
-                                        <Camera className="h-3 w-3" />
-                                      </Button>
+                                      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover/photo:opacity-100 transition-opacity">
+                                        <Button
+                                          variant="secondary"
+                                          size="icon"
+                                          className="h-6 w-6 bg-background/80 backdrop-blur-sm"
+                                          title="Trocar foto"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setReplacingPhotoId(photo.id);
+                                            setReplacingPhotoPath(photo.image_path);
+                                            replaceFileInputRef.current?.click();
+                                          }}
+                                        >
+                                          <Camera className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          variant="secondary"
+                                          size="icon"
+                                          className="h-6 w-6 bg-background/80 backdrop-blur-sm hover:bg-destructive/20"
+                                          title="Excluir foto"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRemoveEvolutionPhoto(photo.id, photo.image_path);
+                                          }}
+                                        >
+                                          <Trash2 className="h-3 w-3 text-destructive" />
+                                        </Button>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
