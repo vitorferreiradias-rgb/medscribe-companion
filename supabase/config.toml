@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.patient-instructions]
 verify_jwt = false
+
+[functions.extract-lab-results]
+verify_jwt = false
