@@ -1975,6 +1975,7 @@ export default function PacienteDetalhe() {
                 </div>
               )}
 
+              {labResults.length > 0 ? (
                 <div className="overflow-auto">
                   <Table>
                     <TableHeader>
