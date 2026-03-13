@@ -1543,7 +1543,7 @@ export default function PacienteDetalhe() {
                                             />
                                           ) : (
                                             <div className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-y-auto">
-                                              <MarkdownRenderer content={singleAnalysisResult[focalPhoto.id]} />
+                                              {singleAnalysisResult[focalPhoto.id]}
                                             </div>
                                           )}
                                           {editingAnalysisId !== focalPhoto.id && (
