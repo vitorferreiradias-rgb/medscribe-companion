@@ -1514,6 +1514,16 @@ export default function PacienteDetalhe() {
                                                 onClick={(e) => { e.stopPropagation(); setEditingAnalysisId(focalPhoto.id); setEditingAnalysisText(singleAnalysisResult[focalPhoto.id]); }}>
                                                 <Pencil className="h-3 w-3" /> Editar
                                               </Button>
+                                              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 text-destructive hover:text-destructive"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setSingleAnalysisResult(prev => { const next = { ...prev }; delete next[focalPhoto.id]; return next; });
+                                                  if ((focalPhoto as any).ai_analysis) {
+                                                    updateEvolutionPhotoMutation.mutate({ id: focalPhoto.id, updates: { ai_analysis: null } as any });
+                                                  }
+                                                }}>
+                                                <Trash2 className="h-3 w-3" />
+                                              </Button>
                                             )}
                                           </div>
                                         </div>
