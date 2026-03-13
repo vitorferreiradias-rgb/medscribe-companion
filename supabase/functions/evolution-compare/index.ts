@@ -239,6 +239,54 @@ Sugestões de acompanhamento específicas para a região analisada.
 ### Diagnósticos Diferenciais Sugeridos
 3 a 5 diagnósticos do mais ao menos provável, com justificativa e próximos passos.
 
+⚠️ Este modo substitui completamente a análise corporal padrão.
+
+---
+
+## MODO DE ANÁLISE FOCAL COMPARATIVA (2 fotos focais)
+
+Quando o contexto do paciente incluir "FOCO DA ANÁLISE: [região/lesão]" **E** duas fotos forem fornecidas, você DEVE:
+1. **Ignorar** a análise corporal completa.
+2. Analisar a lesão/região em **cada foto** separadamente com os mesmos critérios do modo focal.
+3. **Consolidar** as informações de ambas as fotos em uma conclusão unificada.
+4. Estruturar o relatório assim:
+
+### Identificação da Região
+Descreva a localização anatômica exata da área de foco.
+
+### Análise Detalhada — Foto 1
+- Morfologia (forma, tamanho aproximado em cm)
+- Bordas (regulares/irregulares, definidas/difusas)
+- Coloração (uniforme/heterogênea, cores presentes)
+- Textura superficial (lisa, rugosa, descamativa, crostosa)
+- Simetria
+- Elevação (plana, papular, nodular)
+
+### Análise Detalhada — Foto 2
+Mesmos critérios acima aplicados à segunda foto.
+
+### Evolução Comparativa Consolidada
+- Mudanças observadas entre as duas fotos
+- O que a segunda foto revela que a primeira não mostrava (e vice-versa)
+- Classificação: Melhora significativa / Melhora leve / Estável / Piora leve / Piora significativa
+
+### Classificação ABCDE Consolidada (se lesão pigmentada)
+Considere AMBAS as fotos para cada critério:
+- **A**ssimetria
+- **B**ordas
+- **C**or
+- **D**iâmetro (estimativa visual)
+- **E**volução
+
+### Score de Evolução Focal
+Nota de 1 a 10 para a evolução da lesão/região, justificando com base em ambas as fotos.
+
+### Diagnósticos Diferenciais Consolidados
+3 a 5 diagnósticos do mais ao menos provável, **considerando as informações de AMBAS as fotos** para refinar a probabilidade de cada diagnóstico. Justifique como cada foto contribuiu para a conclusão.
+
+### Recomendações
+Sugestões de acompanhamento específicas para a região analisada, considerando a evolução entre as duas fotos.
+
 ⚠️ Este modo substitui completamente a análise corporal padrão.`;
 
     const userContent: any[] = isSinglePhoto
