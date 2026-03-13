@@ -237,6 +237,71 @@ export default function PacienteDetalhe() {
   const [labResult, setLabResult] = useState("");
   const [labReference, setLabReference] = useState("");
   const [labNotes, setLabNotes] = useState("");
+
+  // Lab import from file
+  interface ExtractedLabResult { name: string; result: string; reference_range?: string | null; type: "laboratorial" | "biopsia"; date?: string | null; }
+  const [importedLabs, setImportedLabs] = useState<ExtractedLabResult[]>([]);
+  const [importLoading, setImportLoading] = useState(false);
+  const [showImportPreview, setShowImportPreview] = useState(false);
+  const labFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLabFileImport = useCallback(async (file: File) => {
+    setImportLoading(true);
+    try {
+      const isImage = file.type.startsWith("image/");
+      let body: any = {};
+      if (isImage) {
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
+          reader.readAsDataURL(file);
+        });
+        body = { imageBase64: base64, mimeType: file.type };
+      } else {
+        const text = await file.text();
+        body = { textContent: text };
+      }
+
+      const { data, error } = await supabase.functions.invoke("extract-lab-results", { body });
+      if (error) throw error;
+      if (data?.results?.length) {
+        setImportedLabs(data.results);
+        setShowImportPreview(true);
+      } else {
+        toast({ title: "Nenhum exame encontrado", description: "A IA não conseguiu identificar exames no documento.", variant: "destructive" });
+      }
+    } catch (e: any) {
+      console.error("Import error:", e);
+      toast({ title: "Erro ao importar", description: e?.message || "Não foi possível processar o arquivo.", variant: "destructive" });
+    } finally {
+      setImportLoading(false);
+      if (labFileInputRef.current) labFileInputRef.current.value = "";
+    }
+  }, [toast]);
+
+  const handleConfirmImport = useCallback(async () => {
+    if (!id) return;
+    setImportLoading(true);
+    try {
+      for (const lab of importedLabs) {
+        await addLabResultMutation.mutateAsync({
+          patient_id: id,
+          date: lab.date || new Date().toISOString().slice(0, 10),
+          type: lab.type,
+          name: lab.name,
+          result: lab.result,
+          reference_range: lab.reference_range || undefined,
+        });
+      }
+      toast({ title: "Exames importados", description: `${importedLabs.length} exame(s) adicionado(s) com sucesso.` });
+      setImportedLabs([]);
+      setShowImportPreview(false);
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e?.message || "Falha ao salvar exames.", variant: "destructive" });
+    } finally {
+      setImportLoading(false);
+    }
+  }, [id, importedLabs, addLabResultMutation, toast]);
   const handleConsolidatedAnalysis = useCallback(async (photoPaths: string[], action: "composition" | "compare" | "evolution") => {
     if (!id || !patient) return;
     setMultiUploadLoading(true);
