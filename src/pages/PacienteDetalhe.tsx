@@ -688,11 +688,12 @@ export default function PacienteDetalhe() {
     setFocalCompareLoading(sessaoId);
     try {
       // Build context from first and last photo for patient data
-      const patientContext = buildPatientContext({ before: focalPhotos[0], after: focalPhotos[focalPhotos.length - 1] });
+      const { context, labData } = buildPatientContext({ before: focalPhotos[0], after: focalPhotos[focalPhotos.length - 1] });
       const { data, error } = await supabase.functions.invoke("evolution-compare", {
         body: {
           imagePaths: focalPhotos.map((p: any) => p.image_path),
-          patientContext: patientContext || undefined,
+          patientContext: context || undefined,
+          labData: labData || undefined,
         },
       });
       if (error) throw error;
