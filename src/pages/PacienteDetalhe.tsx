@@ -1520,7 +1520,7 @@ export default function PacienteDetalhe() {
 
                                     {/* Single focal photo analysis */}
                                     {(() => {
-                                      const singleFocals = focalPhotosAll.filter((p: any) => p.analysis_focus);
+                                      const singleFocals = group.photos.filter((p: any) => p.angle === "outro" && p.analysis_focus);
                                       if (singleFocals.length !== 1) return null;
                                       return singleFocals.map((focalPhoto: any) => (
                                         <div key={focalPhoto.id} className="mt-2 space-y-2">
