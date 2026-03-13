@@ -618,6 +618,29 @@ export default function PacienteDetalhe() {
     }
   };
 
+  const handleFocalCompare = async (sessaoId: string, focalPhotos: any[]) => {
+    if (focalPhotos.length < 2) return;
+    const photo1 = focalPhotos[0];
+    const photo2 = focalPhotos[1];
+    setFocalCompareLoading(sessaoId);
+    try {
+      const patientContext = buildPatientContext({ before: photo1, after: photo2 });
+      const { data, error } = await supabase.functions.invoke("evolution-compare", {
+        body: {
+          beforeImagePath: photo1.image_path,
+          afterImagePath: photo2.image_path,
+          patientContext: patientContext || undefined,
+        },
+      });
+      if (error) throw error;
+      setFocalCompareResult(prev => ({ ...prev, [sessaoId]: data?.analysis || "Não foi possível gerar a análise." }));
+    } catch (err: any) {
+      toast({ title: "Erro na comparação focal", description: err.message || "Tente novamente.", variant: "destructive" });
+    } finally {
+      setFocalCompareLoading(null);
+    }
+  };
+
   const now = new Date();
 
   const patientEncounters = useMemo(() =>
