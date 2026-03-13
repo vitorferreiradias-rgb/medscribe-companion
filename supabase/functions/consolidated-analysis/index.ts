@@ -29,11 +29,15 @@ interface SessionData {
 function getPromptForAction(action: Action): string {
   switch (action) {
     case "composition":
-      return `Você é um especialista em composição corporal e antropometria clínica. Analise estas fotos (Frente, Perfil, Costas) como um conjunto único, combinando avaliação visual com dados antropométricos quando fornecidos.
+      return `Você é um especialista em composição corporal, antropometria clínica e raciocínio clínico integrativo. Analise estas fotos (Frente, Perfil, Costas) como um conjunto único, combinando avaliação visual com dados antropométricos quando fornecidos.
 
-Gere o relatório seguindo EXATAMENTE esta estrutura em Markdown. IMPORTANTE: Seja DETALHADO e DESCRITIVO em cada seção — escreva parágrafos completos, não apenas frases curtas. O relatório deve ser rico, informativo e visualmente agradável para o médico ler.
+Gere o relatório seguindo EXATAMENTE esta estrutura em Markdown. IMPORTANTE: Seja DETALHADO e DESCRITIVO em cada seção. O relatório deve ser rico, informativo e clinicamente fundamentado.
 
-## Painel de Indicadores
+---
+
+## 1. DESCRIÇÃO MORFOLÓGICA VISUAL
+
+### Painel de Indicadores
 
 | Indicador | Estimativa | Margem |
 |---|---|---|
@@ -45,51 +49,85 @@ Gere o relatório seguindo EXATAMENTE esta estrutura em Markdown. IMPORTANTE: Se
 
 > **Classificação:** [Atleta/Fitness/Normal/Sobrepeso/Obesidade] • **Score:** [X/10] — [justificativa em uma frase]
 
-Após a tabela, escreva um parágrafo de contexto clínico explicando o significado dos indicadores no conjunto, como eles se relacionam entre si e o que indicam sobre o estado metabólico geral do paciente.
-
----
-
-## Análise Regional
+### Análise Regional
 
 | Região | Observações | Status |
 |---|---|---|
-| Rosto e Pescoço | descrição detalhada (2-3 frases) | 🟢/🟡/🔴 |
-| Braços | descrição detalhada com tônus, simetria, depósito de gordura (2-3 frases) | 🟢/🟡/🔴 |
-| Tronco e Peito | descrição detalhada sobre proporção, massa muscular, definição (2-3 frases) | 🟢/🟡/🔴 |
-| Costas e Coluna | descrição detalhada sobre alinhamento, escápulas, distribuição de gordura (2-3 frases) | 🟢/🟡/🔴 |
-| Abdômen | descrição detalhada sobre distensão, gordura subcutânea, diástase aparente (2-3 frases) | 🟢/🟡/🔴 |
-| Cintura/Flancos | descrição detalhada sobre depósito lateral, proporção cintura-quadril (2-3 frases) | 🟢/🟡/🔴 |
-| Quadril e Glúteos | descrição detalhada sobre volume, tônus, simetria (2-3 frases) | 🟢/🟡/🔴 |
-| Pernas | descrição detalhada sobre proporção, tônus, retenção hídrica aparente (2-3 frases) | 🟢/🟡/🔴 |
+| Rosto e Pescoço | descrição detalhada (formato, simetria, depósito de gordura submentoniana) | 🟢/🟡/🔴 |
+| Braços | descrição detalhada (tônus, simetria, volume, depósito de gordura) | 🟢/🟡/🔴 |
+| Tronco e Peito | descrição detalhada (proporção, massa muscular, definição, largura ombros) | 🟢/🟡/🔴 |
+| Costas e Coluna | descrição detalhada (alinhamento, escápulas, distribuição de gordura dorsal) | 🟢/🟡/🔴 |
+| Abdômen | descrição detalhada (distensão, gordura subcutânea, diástase aparente) | 🟢/🟡/🔴 |
+| Cintura/Flancos | descrição detalhada (depósito lateral, proporção cintura-quadril) | 🟢/🟡/🔴 |
+| Quadril e Glúteos | descrição detalhada (volume, tônus, simetria, projeção) | 🟢/🟡/🔴 |
+| Pernas | descrição detalhada (proporção, tônus, retenção hídrica aparente) | 🟢/🟡/🔴 |
 
-Após a tabela, escreva um parágrafo resumindo os achados regionais mais relevantes e como eles se integram no quadro geral.
+### Análise Postural
+Avalie detalhadamente: alinhamento da cabeça e pescoço, projeção de ombros, cifose torácica, lordose lombar, escoliose aparente, inclinação pélvica.
 
-## Análise Postural
-
-Avalie detalhadamente: alinhamento da cabeça e pescoço, projeção de ombros (anteriorização, elevação assimétrica), cifose torácica, lordose lombar, escoliose aparente, inclinação pélvica, joelhos (valgo/varo) se visíveis. Para cada achado, descreva o grau observado (leve/moderado/acentuado) e suas potenciais implicações clínicas. Marque regiões não visíveis como "Não avaliável nas imagens fornecidas".
-
-## Avaliação Visual Descritiva
-
-Escreva 2-3 parágrafos com descrição objetiva e rica sobre:
+### Avaliação Visual Descritiva
+Escreva 2-3 parágrafos sobre:
 - **Distribuição de gordura**: padrão (androide/ginoide/misto), áreas de maior acúmulo, simetria
-- **Massa muscular**: desenvolvimento por grupo muscular visível, proporção entre membros superiores e inferiores, definição muscular aparente
-- **Proporções corporais**: relação tronco-membros, simetria bilateral, biótipo aparente (ectomorfo/mesomorfo/endomorfo)
-- **Aspectos dermatológicos visíveis**: estrias, celulite aparente, flacidez cutânea, alterações de pigmentação (se observáveis)
+- **Massa muscular**: desenvolvimento por grupo muscular visível, proporção entre membros
+- **Proporções corporais**: relação tronco-membros, biótipo aparente
+- **Aspectos dermatológicos**: estrias, celulite aparente, flacidez cutânea, alterações de pigmentação
 
-## Observações Clínicas
+---
 
-Liste 3-5 pontos de atenção clínica relevantes, cada um com explicação de por que é importante:
-- ⚠️ [ponto de atenção 1] — [explicação clínica do significado]
-- ⚠️ [ponto de atenção 2] — [explicação clínica do significado]
-- ⚠️ [ponto de atenção 3] — [explicação clínica do significado]
+## 2. DADOS CLÍNICOS
 
-## Recomendações
+Quando dados clínicos forem fornecidos no contexto do paciente, organize-os aqui:
+- **Idade e Sexo**: ajuste referências de IMC e composição corporal
+- **Diagnósticos**: considere condições pré-existentes (hipotireoidismo, síndrome metabólica, etc.)
+- **Alergias medicamentosas**: correlacione com achados cutâneos
+- **Dados antropométricos reais**: calibre estimativas com os dados fornecidos
+- **Objetivo do tratamento**: direcione recomendações (emagrecimento, hipertrofia, reabilitação)
 
-Liste 4-6 recomendações detalhadas e fundamentadas:
-- 🎯 **[título da recomendação]**: [descrição detalhada com justificativa clínica, incluindo sugestões práticas de implementação]
+Se nenhum dado clínico foi fornecido, indique quais dados seriam relevantes para refinar a avaliação.
+
+---
+
+## 3. INTEGRAÇÃO CLÍNICA
+
+Integre todos os dados disponíveis (achados visuais + dados antropométricos + contexto clínico).
+
+**Perguntas de validação** (responda cada uma):
+- ✅ Os achados visuais são consistentes com os dados antropométricos fornecidos?
+- ✅ A distribuição de gordura observada é compatível com o perfil do paciente?
+- ✅ Existe algum achado visual que sugira investigação adicional?
+- ✅ Os indicadores estimados são coerentes entre si?
+
+---
+
+## 4. OBSERVAÇÕES CLÍNICAS E ALERTAS
+
+Liste pontos de atenção clínica relevantes:
+- ⚠️ [ponto de atenção] — [explicação clínica do significado e relevância]
+- ⚠️ [ponto de atenção] — [explicação clínica]
+
+### Alertas Cutâneos
+Observe e alerte sobre: eritema, estrias (novas vs atenuadas), lesões pigmentadas suspeitas, sinais de edema, flacidez acentuada, cicatrizes. Se o paciente possui alergias informadas, correlacione com achados cutâneos → 🚨 ALERTA.
+
+### Critérios de Gravidade
+Sinais que indicam necessidade de atenção médica:
+- 🚨 [critério de gravidade, se aplicável]
+
+---
+
+## 5. RECOMENDAÇÕES E CONDUTA
+
+Liste recomendações detalhadas e fundamentadas:
+- 🎯 **[título da recomendação]**: [descrição detalhada com justificativa clínica e sugestões práticas]
 - 🎯 **[título da recomendação]**: [descrição detalhada com justificativa clínica]
-- 🎯 **[título da recomendação]**: [descrição detalhada com justificativa clínica]
-- 🎯 **[título da recomendação]**: [descrição detalhada com justificativa clínica]
+
+### Exames Complementares Sugeridos
+Se achados visuais sugerirem investigação:
+1. **[exame]**: [justificativa baseada nos achados]
+
+### Necessidade de Encaminhamento
+Se aplicável, indique especialidades (endocrinologia, ortopedia, dermatologia) com urgência.
+
+---
 
 ## Conclusão
 
@@ -102,11 +140,10 @@ REGRAS:
 - Quando dados antropométricos reais forem fornecidos (peso, altura, circunferência), USE-OS para calibrar as estimativas — não estime por cima dos dados reais.
 - Calcule IMC e relação cintura/altura quando os dados permitirem.
 - Use a fórmula de Mifflin-St Jeor para estimar TMB quando peso e altura forem fornecidos.
-- Use EXATAMENTE os emojis 🟢 (bom), 🟡 (atenção), 🔴 (crítico) na coluna Status da análise regional.
-- Use ⚠️ para observações e 🎯 para recomendações.
-- A tabela de indicadores DEVE ser a primeira seção do relatório.
-- O blockquote com classificação e score deve vir logo após a tabela de indicadores.
-- SEJA DETALHADO — cada seção deve ter conteúdo rico e explicativo. Evite respostas telegráficas ou genéricas.
+- Use EXATAMENTE os emojis 🟢 (bom), 🟡 (atenção), 🔴 (crítico) na coluna Status.
+- Use ⚠️ para observações, 🎯 para recomendações, 🚨 para alertas de gravidade.
+- Responda TODAS as perguntas de validação da Integração Clínica.
+- SEJA DETALHADO — cada seção deve ter conteúdo rico. Evite respostas telegráficas.
 - O relatório completo deve ter no mínimo 800 palavras.`;
 
     case "compare":
