@@ -197,6 +197,8 @@ export default function PacienteDetalhe() {
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
   const [analysisModalResult, setAnalysisModalResult] = useState("");
   const [analysisModalType, setAnalysisModalType] = useState<string>("");
+  const [focalCompareLoading, setFocalCompareLoading] = useState<string | null>(null);
+  const [focalCompareResult, setFocalCompareResult] = useState<Record<string, string>>({});
 
   // Inline photo editing (session-based)
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
