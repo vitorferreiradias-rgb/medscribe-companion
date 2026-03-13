@@ -666,11 +666,12 @@ export default function PacienteDetalhe() {
     setSingleAnalysisLoading(photo.id);
     setSingleAnalysisId(photo.id);
     try {
-      const patientContext = buildPatientContext({ before: photo });
+      const { context, labData } = buildPatientContext({ before: photo });
       const { data, error } = await supabase.functions.invoke("evolution-compare", {
         body: {
           beforeImagePath: photo.image_path,
-          patientContext: patientContext || undefined,
+          patientContext: context || undefined,
+          labData: labData || undefined,
         },
       });
       if (error) throw error;
