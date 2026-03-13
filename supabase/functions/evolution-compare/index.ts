@@ -265,6 +265,11 @@ Deno.serve(async (req) => {
     // Select prompt based on analysis type
     const systemPrompt = isFocal ? FOCAL_SYSTEM_PROMPT : BODY_SYSTEM_PROMPT;
 
+    // Build lab data section if available
+    const labSection = labData
+      ? `\n\n---\nDADOS CLÍNICOS E EXAMES COMPLEMENTARES DO PACIENTE:\n${labData}\n\nIMPORTANTE: Considere OBRIGATORIAMENTE estes resultados na sua análise, seguindo a hierarquia de evidência (anatomopatológico > laboratorial > visual). Estes dados têm MAIOR PESO do que a impressão visual das fotos.\n---`
+      : "";
+
     let userContent: any[];
     if (isFocal) {
       // Focal analysis — clinical reasoning framework
@@ -272,7 +277,7 @@ Deno.serve(async (req) => {
       userContent = [
         {
           type: "text",
-          text: `Analise ${photoCount} foto(s) de uma região/lesão focal do paciente. Siga RIGOROSAMENTE os 7 passos do raciocínio clínico integrativo.${photoCount > 1 ? ` As imagens são: ${photoLabels}. Analise cada foto individualmente no Passo 1 e depois integre todas as informações nos passos seguintes.` : ""}${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}`,
+          text: `Analise ${photoCount} foto(s) de uma região/lesão focal do paciente. Siga RIGOROSAMENTE os 7 passos do raciocínio clínico integrativo.${photoCount > 1 ? ` As imagens são: ${photoLabels}. Analise cada foto individualmente no Passo 1 e depois integre todas as informações nos passos seguintes.` : ""}${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}${labSection}`,
         },
         ...signedUrls.map(url => ({ type: "image_url", image_url: { url } })),
       ];
@@ -280,7 +285,7 @@ Deno.serve(async (req) => {
       userContent = [
         {
           type: "text",
-          text: `Analise a foto a seguir do paciente. Gere um relatório completo de avaliação física corporal.${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nAnalise esta imagem:`,
+          text: `Analise a foto a seguir do paciente. Gere um relatório completo de avaliação física corporal.${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}${labSection}\n\nAnalise esta imagem:`,
         },
         { type: "image_url", image_url: { url: signedUrls[0] } },
       ];
@@ -289,7 +294,7 @@ Deno.serve(async (req) => {
       userContent = [
         {
           type: "text",
-          text: `Analise ${photoCount} fotos do paciente. Gere um relatório completo de avaliação física corporal comparativa.${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nAs imagens são: ${photoLabels}.`,
+          text: `Analise ${photoCount} fotos do paciente. Gere um relatório completo de avaliação física corporal comparativa.${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}${labSection}\n\nAs imagens são: ${photoLabels}.`,
         },
         ...signedUrls.map(url => ({ type: "image_url", image_url: { url } })),
       ];
