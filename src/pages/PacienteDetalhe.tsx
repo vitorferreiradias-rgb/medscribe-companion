@@ -499,6 +499,7 @@ export default function PacienteDetalhe() {
   );
 
   // Group photos by sessao_id for timeline display
+  const ANGLE_ORDER: Record<string, number> = { frente: 0, frontal: 0, perfil: 1, lateral_direito: 1, lateral_esquerdo: 2, costas: 3, posterior: 3, outro: 99 };
   const sessionGroups = useMemo(() => {
     const groups: Record<string, typeof evolutionPhotos> = {};
     for (const photo of evolutionPhotos) {
@@ -506,9 +507,12 @@ export default function PacienteDetalhe() {
       if (!groups[key]) groups[key] = [];
       groups[key].push(photo);
     }
-    // Sort groups by earliest date in each group
+    // Sort groups by earliest date, and photos within each group by angle order (F→P→C)
     return Object.entries(groups)
-      .map(([sessaoId, photos]) => ({ sessaoId, photos }))
+      .map(([sessaoId, photos]) => ({
+        sessaoId,
+        photos: [...photos].sort((a, b) => (ANGLE_ORDER[(a as any).angle] ?? 50) - (ANGLE_ORDER[(b as any).angle] ?? 50)),
+      }))
       .sort((a, b) => a.photos[0].date.localeCompare(b.photos[0].date));
   }, [evolutionPhotos]);
 
@@ -1397,13 +1401,15 @@ export default function PacienteDetalhe() {
                                   </div>
                                 </div>
 
-                                {/* Photo grid */}
-                                <div className={cn("grid gap-2 mt-2", group.photos.length >= 3 ? "grid-cols-3" : group.photos.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
+                                {/* Photo grid - always 3 cols for body comp to align across sessions */}
+                                <div className={cn("grid gap-2 mt-2",
+                                  evoSubTab === "corpo" ? "grid-cols-3" : (group.photos.length >= 3 ? "grid-cols-3" : group.photos.length === 2 ? "grid-cols-2" : "grid-cols-1")
+                                )}>
                                   {group.photos.map((photo) => (
                                     <div key={photo.id} className="relative group/photo">
                                       <div className={cn(
                                         "rounded-lg overflow-hidden bg-muted/30 border border-border/30",
-                                        group.photos.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-[3/4]"
+                                        evoSubTab === "corpo" ? "aspect-[3/4]" : (group.photos.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-[3/4]")
                                       )}>
                                         <EvolutionPhotoImage
                                           imagePath={photo.image_path}
