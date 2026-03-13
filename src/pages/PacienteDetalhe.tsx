@@ -878,10 +878,11 @@ export default function PacienteDetalhe() {
 
       {/* ===== TABS ===== */}
       <Tabs defaultValue="resumo" className="w-full">
-        <TabsList className="w-full grid grid-cols-6 h-9">
+        <TabsList className="w-full grid grid-cols-7 h-9">
           <TabsTrigger value="resumo" className="text-xs">Resumo</TabsTrigger>
           <TabsTrigger value="consultas" className="text-xs">Consultas</TabsTrigger>
           <TabsTrigger value="evolucao" className="text-xs">Evolução</TabsTrigger>
+          <TabsTrigger value="exames" className="text-xs">Exames</TabsTrigger>
           <TabsTrigger value="diagnosticos" className="text-xs">Diagnósticos</TabsTrigger>
           <TabsTrigger value="alergias" className="text-xs">Alergias</TabsTrigger>
           <TabsTrigger value="documentos" className="text-xs">Documentos</TabsTrigger>
