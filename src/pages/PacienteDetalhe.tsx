@@ -180,6 +180,7 @@ export default function PacienteDetalhe() {
   const [docType, setDocType] = useState<PatientDocument["type"]>("exame");
 
   // Tab Evolução (Evolution Timeline) - Supabase
+  const [evoSubTab, setEvoSubTab] = useState<"corpo" | "focal">("corpo");
   const [showPhotoForm, setShowPhotoForm] = useState(false);
   const [currentSessaoId, setCurrentSessaoId] = useState(() => crypto.randomUUID());
   const [sessionSaving, setSessionSaving] = useState(false);
