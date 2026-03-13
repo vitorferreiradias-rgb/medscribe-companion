@@ -31,7 +31,7 @@ function getPromptForAction(action: Action): string {
     case "composition":
       return `Você é um especialista em composição corporal e antropometria clínica. Analise estas fotos (Frente, Perfil, Costas) como um conjunto único, combinando avaliação visual com dados antropométricos quando fornecidos.
 
-Gere o relatório seguindo EXATAMENTE esta estrutura em Markdown:
+Gere o relatório seguindo EXATAMENTE esta estrutura em Markdown. IMPORTANTE: Seja DETALHADO e DESCRITIVO em cada seção — escreva parágrafos completos, não apenas frases curtas. O relatório deve ser rico, informativo e visualmente agradável para o médico ler.
 
 ## Painel de Indicadores
 
@@ -45,51 +45,69 @@ Gere o relatório seguindo EXATAMENTE esta estrutura em Markdown:
 
 > **Classificação:** [Atleta/Fitness/Normal/Sobrepeso/Obesidade] • **Score:** [X/10] — [justificativa em uma frase]
 
+Após a tabela, escreva um parágrafo de contexto clínico explicando o significado dos indicadores no conjunto, como eles se relacionam entre si e o que indicam sobre o estado metabólico geral do paciente.
+
 ---
 
 ## Análise Regional
 
 | Região | Observações | Status |
 |---|---|---|
-| Rosto e Pescoço | descrição | 🟢/🟡/🔴 |
-| Braços | descrição | 🟢/🟡/🔴 |
-| Tronco e Peito | descrição | 🟢/🟡/🔴 |
-| Costas e Coluna | descrição | 🟢/🟡/🔴 |
-| Abdômen | descrição | 🟢/🟡/🔴 |
-| Cintura/Flancos | descrição | 🟢/🟡/🔴 |
-| Quadril e Glúteos | descrição | 🟢/🟡/🔴 |
-| Pernas | descrição | 🟢/🟡/🔴 |
+| Rosto e Pescoço | descrição detalhada (2-3 frases) | 🟢/🟡/🔴 |
+| Braços | descrição detalhada com tônus, simetria, depósito de gordura (2-3 frases) | 🟢/🟡/🔴 |
+| Tronco e Peito | descrição detalhada sobre proporção, massa muscular, definição (2-3 frases) | 🟢/🟡/🔴 |
+| Costas e Coluna | descrição detalhada sobre alinhamento, escápulas, distribuição de gordura (2-3 frases) | 🟢/🟡/🔴 |
+| Abdômen | descrição detalhada sobre distensão, gordura subcutânea, diástase aparente (2-3 frases) | 🟢/🟡/🔴 |
+| Cintura/Flancos | descrição detalhada sobre depósito lateral, proporção cintura-quadril (2-3 frases) | 🟢/🟡/🔴 |
+| Quadril e Glúteos | descrição detalhada sobre volume, tônus, simetria (2-3 frases) | 🟢/🟡/🔴 |
+| Pernas | descrição detalhada sobre proporção, tônus, retenção hídrica aparente (2-3 frases) | 🟢/🟡/🔴 |
+
+Após a tabela, escreva um parágrafo resumindo os achados regionais mais relevantes e como eles se integram no quadro geral.
 
 ## Análise Postural
 
-Avalie alinhamento, cifose, lordose, escoliose aparente, projeção de ombros/cabeça. Marque regiões não visíveis como "Não avaliável".
+Avalie detalhadamente: alinhamento da cabeça e pescoço, projeção de ombros (anteriorização, elevação assimétrica), cifose torácica, lordose lombar, escoliose aparente, inclinação pélvica, joelhos (valgo/varo) se visíveis. Para cada achado, descreva o grau observado (leve/moderado/acentuado) e suas potenciais implicações clínicas. Marque regiões não visíveis como "Não avaliável nas imagens fornecidas".
 
 ## Avaliação Visual Descritiva
 
-Descrição objetiva da distribuição de gordura e massa muscular observada nas imagens.
+Escreva 2-3 parágrafos com descrição objetiva e rica sobre:
+- **Distribuição de gordura**: padrão (androide/ginoide/misto), áreas de maior acúmulo, simetria
+- **Massa muscular**: desenvolvimento por grupo muscular visível, proporção entre membros superiores e inferiores, definição muscular aparente
+- **Proporções corporais**: relação tronco-membros, simetria bilateral, biótipo aparente (ectomorfo/mesomorfo/endomorfo)
+- **Aspectos dermatológicos visíveis**: estrias, celulite aparente, flacidez cutânea, alterações de pigmentação (se observáveis)
 
 ## Observações Clínicas
 
-- ⚠️ [ponto de atenção 1]
-- ⚠️ [ponto de atenção 2]
+Liste 3-5 pontos de atenção clínica relevantes, cada um com explicação de por que é importante:
+- ⚠️ [ponto de atenção 1] — [explicação clínica do significado]
+- ⚠️ [ponto de atenção 2] — [explicação clínica do significado]
+- ⚠️ [ponto de atenção 3] — [explicação clínica do significado]
 
 ## Recomendações
 
-- 🎯 [recomendação 1]
-- 🎯 [recomendação 2]
-- 🎯 [recomendação 3]
+Liste 4-6 recomendações detalhadas e fundamentadas:
+- 🎯 **[título da recomendação]**: [descrição detalhada com justificativa clínica, incluindo sugestões práticas de implementação]
+- 🎯 **[título da recomendação]**: [descrição detalhada com justificativa clínica]
+- 🎯 **[título da recomendação]**: [descrição detalhada com justificativa clínica]
+- 🎯 **[título da recomendação]**: [descrição detalhada com justificativa clínica]
+
+## Conclusão
+
+Escreva um parágrafo final integrando todos os achados, com uma visão holística do estado do paciente e prioridades para acompanhamento.
 
 REGRAS:
-- Seja objetivo, preciso e use linguagem médica adequada.
+- Seja objetivo, preciso e use linguagem médica adequada, mas também acessível.
 - NÃO faça diagnósticos definitivos — descreva achados visuais e estimativas.
 - SEMPRE forneça estimativas com margem de erro na tabela de indicadores.
-- Quando dados antropométricos reais forem fornecidos (peso, altura, circunferência), USE-OS para calibrar as estimativas.
+- Quando dados antropométricos reais forem fornecidos (peso, altura, circunferência), USE-OS para calibrar as estimativas — não estime por cima dos dados reais.
 - Calcule IMC e relação cintura/altura quando os dados permitirem.
 - Use a fórmula de Mifflin-St Jeor para estimar TMB quando peso e altura forem fornecidos.
 - Use EXATAMENTE os emojis 🟢 (bom), 🟡 (atenção), 🔴 (crítico) na coluna Status da análise regional.
 - Use ⚠️ para observações e 🎯 para recomendações.
 - A tabela de indicadores DEVE ser a primeira seção do relatório.
-- O blockquote com classificação e score deve vir logo após a tabela de indicadores.`;
+- O blockquote com classificação e score deve vir logo após a tabela de indicadores.
+- SEJA DETALHADO — cada seção deve ter conteúdo rico e explicativo. Evite respostas telegráficas ou genéricas.
+- O relatório completo deve ter no mínimo 800 palavras.`;
 
     case "compare":
       return `Compare estas 2 fotos do mesmo paciente em datas diferentes. Foque exclusivamente na mudança visual entre as duas imagens (ex: redução de volume abdominal, melhora na silhueta). Gere um comentário breve e motivador destacando a evolução.
