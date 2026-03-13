@@ -7,7 +7,7 @@ import {
   Plus, CalendarIcon, Heart, MapPin, Users, Activity, Megaphone,
   AlertTriangle, FileText, Search, Copy, Clock, Stethoscope, FolderOpen,
   Camera, ImageIcon, Eye, ZoomIn, TrendingUp, Weight, StickyNote, Sparkles, Loader2,
-  User, UserRound, ArrowRight, Target, ScanSearch,
+  User, UserRound, ArrowRight, Target, ScanSearch, GitCompareArrows,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useAppData } from "@/hooks/useAppData";
@@ -197,6 +197,8 @@ export default function PacienteDetalhe() {
   const [analysisModalOpen, setAnalysisModalOpen] = useState(false);
   const [analysisModalResult, setAnalysisModalResult] = useState("");
   const [analysisModalType, setAnalysisModalType] = useState<string>("");
+  const [focalCompareLoading, setFocalCompareLoading] = useState<string | null>(null);
+  const [focalCompareResult, setFocalCompareResult] = useState<Record<string, string>>({});
 
   // Inline photo editing (session-based)
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
@@ -613,6 +615,29 @@ export default function PacienteDetalhe() {
       toast({ title: "Erro na análise com IA", description: err.message || "Tente novamente.", variant: "destructive" });
     } finally {
       setSingleAnalysisLoading(null);
+    }
+  };
+
+  const handleFocalCompare = async (sessaoId: string, focalPhotos: any[]) => {
+    if (focalPhotos.length < 2) return;
+    const photo1 = focalPhotos[0];
+    const photo2 = focalPhotos[1];
+    setFocalCompareLoading(sessaoId);
+    try {
+      const patientContext = buildPatientContext({ before: photo1, after: photo2 });
+      const { data, error } = await supabase.functions.invoke("evolution-compare", {
+        body: {
+          beforeImagePath: photo1.image_path,
+          afterImagePath: photo2.image_path,
+          patientContext: patientContext || undefined,
+        },
+      });
+      if (error) throw error;
+      setFocalCompareResult(prev => ({ ...prev, [sessaoId]: data?.analysis || "Não foi possível gerar a análise." }));
+    } catch (err: any) {
+      toast({ title: "Erro na comparação focal", description: err.message || "Tente novamente.", variant: "destructive" });
+    } finally {
+      setFocalCompareLoading(null);
     }
   };
 
@@ -1513,6 +1538,40 @@ export default function PacienteDetalhe() {
                                     )}
                                   </div>
                                 ))}
+
+                                {/* Comparar lesões com IA - when 2+ focal photos */}
+                                {(() => {
+                                  const focalPhotos = group.photos.filter((p: any) => p.angle === "outro" && p.analysis_focus);
+                                  if (focalPhotos.length < 2) return null;
+                                  return (
+                                    <div className="mt-3 space-y-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full gap-2 text-xs border-primary/40 text-primary hover:bg-primary/10"
+                                        onClick={(e) => { e.stopPropagation(); handleFocalCompare(sessaoId, focalPhotos); }}
+                                        disabled={focalCompareLoading === sessaoId}
+                                      >
+                                        {focalCompareLoading === sessaoId ? (
+                                          <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Comparando lesões…</>
+                                        ) : (
+                                          <><GitCompareArrows className="h-3.5 w-3.5" /> Comparar lesões com IA ({focalPhotos.length} fotos)</>
+                                        )}
+                                      </Button>
+                                      {focalCompareResult[sessaoId] && (
+                                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+                                          <div className="flex items-center gap-1.5 mb-2">
+                                            <GitCompareArrows className="h-3.5 w-3.5 text-primary" />
+                                            <span className="text-xs font-semibold text-primary">Análise Comparativa Consolidada</span>
+                                          </div>
+                                          <div className="text-xs prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                                            {focalCompareResult[sessaoId]}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </>
                             )}
                           </div>
