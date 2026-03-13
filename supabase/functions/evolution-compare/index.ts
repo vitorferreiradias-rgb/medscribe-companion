@@ -303,7 +303,7 @@ Sugestões de acompanhamento específicas para a região analisada, considerando
       : [
           {
             type: "text",
-            text: `Analise a evolução do paciente comparando as duas fotos a seguir. ${patientContext && patientContext.includes("FOCO DA ANÁLISE") ? "Gere um relatório no MODO DE ANÁLISE FOCAL conforme o foco indicado." : "Gere um relatório completo de avaliação física corporal comparativa."}${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nA primeira imagem é o ANTES e a segunda é o DEPOIS.`,
+            text: `Analise a evolução do paciente comparando as duas fotos a seguir. ${patientContext && patientContext.includes("FOCO DA ANÁLISE") ? "Gere um relatório no MODO DE ANÁLISE FOCAL COMPARATIVA, consolidando as informações de ambas as fotos em diagnósticos unificados." : "Gere um relatório completo de avaliação física corporal comparativa."}${patientContext ? `\n\nContexto do paciente: ${patientContext}` : ""}\n\nA primeira imagem é a Foto 1 e a segunda é a Foto 2.`,
           },
           {
             type: "image_url",
