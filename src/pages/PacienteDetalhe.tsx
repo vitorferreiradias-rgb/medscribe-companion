@@ -1314,13 +1314,13 @@ export default function PacienteDetalhe() {
                     }}
                   />
                   <div className="space-y-6">
-                    {sessionGroups.map((group, gIdx) => {
+                    {activeGroups.map((group, gIdx) => {
                       const firstPhoto = group.photos[0];
                       const sessaoId = group.sessaoId;
                       const isEditing = editingSessionId === sessaoId;
                       const angleLabelsMap: Record<string,string> = { frente: "Frente", perfil: "Perfil", costas: "Costas", frontal: "Frontal", posterior: "Posterior", lateral_direito: "Lat. Dir.", lateral_esquerdo: "Lat. Esq." };
                       const angleBadgeMap: Record<string,string> = { frente: "F", perfil: "P", costas: "C" };
-                      const prevGroup = gIdx > 0 ? sessionGroups[gIdx - 1] : null;
+                      const prevGroup = gIdx > 0 ? activeGroups[gIdx - 1] : null;
                       const prevFirstPhoto = prevGroup?.photos[0];
 
                       return (
