@@ -219,7 +219,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { beforeImagePath, afterImagePath, patientContext, imagePaths } = await req.json();
+    const { beforeImagePath, afterImagePath, patientContext, imagePaths, labData } = await req.json();
 
     const allPaths: string[] = imagePaths && Array.isArray(imagePaths) && imagePaths.length > 0
       ? imagePaths

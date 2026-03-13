@@ -600,7 +600,8 @@ export default function PacienteDetalhe() {
       try { const d = parseISO(after.date); if (isValid(d)) contextParts.push(`Data da foto DEPOIS: ${format(d, "dd/MM/yyyy")}`); } catch {}
     }
 
-    // Include recent lab results for temporal correlation
+    // Build lab data as separate string for AI prominence
+    let labData = "";
     if (labResults.length > 0) {
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
@@ -608,20 +609,20 @@ export default function PacienteDetalhe() {
         try { return isAfter(parseISO(r.date), oneYearAgo); } catch { return false; }
       });
       if (recentLabs.length > 0) {
-        const labParts = recentLabs.map(r => {
-          let text = `${r.name}: ${r.result}`;
-          if (r.reference_range) text += ` (ref: ${r.reference_range})`;
-          try { text += ` em ${format(parseISO(r.date), "dd/MM/yyyy")}`; } catch {}
-          return text;
-        });
+        const labDataParts: string[] = [];
         const labs = recentLabs.filter(r => r.type === "laboratorial");
         const biopsias = recentLabs.filter(r => r.type === "biopsia");
-        if (labs.length > 0) contextParts.push(`Exames laboratoriais recentes: ${labs.map(r => { let t = `${r.name}: ${r.result}`; if (r.reference_range) t += ` (ref: ${r.reference_range})`; try { t += ` em ${format(parseISO(r.date), "dd/MM/yyyy")}`; } catch {} return t; }).join("; ")}`);
-        if (biopsias.length > 0) contextParts.push(`Biópsias: ${biopsias.map(r => { let t = `${r.name}: ${r.result}`; try { t += ` em ${format(parseISO(r.date), "dd/MM/yyyy")}`; } catch {} return t; }).join("; ")}`);
+        if (biopsias.length > 0) {
+          labDataParts.push(`Biópsias: ${biopsias.map(r => { let t = `${r.name}: ${r.result}`; if (r.notes) t += ` (${r.notes})`; try { t += ` em ${format(parseISO(r.date), "dd/MM/yyyy")}`; } catch {} return t; }).join("; ")}`);
+        }
+        if (labs.length > 0) {
+          labDataParts.push(`Exames laboratoriais: ${labs.map(r => { let t = `${r.name}: ${r.result}`; if (r.reference_range) t += ` (ref: ${r.reference_range})`; try { t += ` em ${format(parseISO(r.date), "dd/MM/yyyy")}`; } catch {} return t; }).join("; ")}`);
+        }
+        labData = labDataParts.join("\n");
       }
     }
 
-    return contextParts.join(". ");
+    return { context: contextParts.join(". "), labData };
   };
 
   const handleAiCompare = async () => {
