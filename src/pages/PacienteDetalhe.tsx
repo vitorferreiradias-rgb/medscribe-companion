@@ -1838,10 +1838,18 @@ export default function PacienteDetalhe() {
             <CardHeader className="pb-3 pt-4 px-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-2"><FlaskConical className="h-4 w-4 text-primary" /> Exames Laboratoriais e Biópsias</CardTitle>
-                {!showLabForm && (
-                  <Button variant="outline" size="sm" onClick={() => setShowLabForm(true)}>
-                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar
-                  </Button>
+                {!showLabForm && !showImportPreview && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setShowLabForm(true)}>
+                      <Plus className="mr-1.5 h-3.5 w-3.5" /> Adicionar
+                    </Button>
+                    <Button variant="outline" size="sm" disabled={importLoading} onClick={() => labFileInputRef.current?.click()}>
+                      {importLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
+                      Importar arquivo
+                    </Button>
+                    <input ref={labFileInputRef} type="file" accept="image/*,.pdf,.txt" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleLabFileImport(f); }} />
+                  </div>
+                )}
                 )}
               </div>
             </CardHeader>
