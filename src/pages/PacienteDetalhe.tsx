@@ -630,12 +630,13 @@ export default function PacienteDetalhe() {
     setAiAnalysisLoading(true);
     setAiAnalysis(null);
     try {
-      const patientContext = buildPatientContext({ before: comparePhotos[0], after: comparePhotos[1] });
+      const { context, labData } = buildPatientContext({ before: comparePhotos[0], after: comparePhotos[1] });
       const { data, error } = await supabase.functions.invoke("evolution-compare", {
         body: {
           beforeImagePath: comparePhotos[0].image_path,
           afterImagePath: comparePhotos[1].image_path,
-          patientContext: patientContext || undefined,
+          patientContext: context || undefined,
+          labData: labData || undefined,
         },
       });
       if (error) throw error;
