@@ -225,7 +225,18 @@ export default function PacienteDetalhe() {
   const [replacingPhotoId, setReplacingPhotoId] = useState<string | null>(null);
   const [replacingPhotoPath, setReplacingPhotoPath] = useState<string | null>(null);
   const { refetch: refetchAvaliacoes } = useAvaliacoesCorporais(id);
+  const { data: labResults = [], refetch: refetchLabResults } = usePatientLabResults(id);
+  const addLabResultMutation = useAddPatientLabResult();
+  const deleteLabResultMutation = useDeletePatientLabResult();
 
+  // Lab results form state
+  const [showLabForm, setShowLabForm] = useState(false);
+  const [labName, setLabName] = useState("");
+  const [labDate, setLabDate] = useState("");
+  const [labType, setLabType] = useState<"laboratorial" | "biopsia">("laboratorial");
+  const [labResult, setLabResult] = useState("");
+  const [labReference, setLabReference] = useState("");
+  const [labNotes, setLabNotes] = useState("");
   const handleConsolidatedAnalysis = useCallback(async (photoPaths: string[], action: "composition" | "compare" | "evolution") => {
     if (!id || !patient) return;
     setMultiUploadLoading(true);
