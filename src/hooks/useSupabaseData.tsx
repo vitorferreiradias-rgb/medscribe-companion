@@ -585,6 +585,90 @@ export function useEvolutionPhotoUrl(imagePath: string | undefined) {
 }
 
 // =============================================
+// PATIENT LAB RESULTS
+// =============================================
+export function usePatientLabResults(patientId: string | undefined) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["patient_lab_results", patientId],
+    queryFn: async () => {
+      if (!patientId) return [];
+      const { data, error } = await supabase
+        .from("patient_lab_results" as any)
+        .select("*")
+        .eq("patient_id", patientId)
+        .order("date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<{
+        id: string;
+        patient_id: string;
+        date: string;
+        type: string;
+        name: string;
+        result: string;
+        reference_range: string | null;
+        notes: string | null;
+        created_at: string;
+      }>;
+    },
+    enabled: !!user && !!patientId,
+  });
+}
+
+export function useAddPatientLabResult() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (result: {
+      patient_id: string;
+      date: string;
+      type: string;
+      name: string;
+      result: string;
+      reference_range?: string;
+      notes?: string;
+    }) => {
+      const { data, error } = await supabase
+        .from("patient_lab_results" as any)
+        .insert(result as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["patient_lab_results", variables.patient_id] });
+      toast({ title: "Exame adicionado com sucesso." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro ao adicionar exame", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
+export function useDeletePatientLabResult() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async ({ id, patientId }: { id: string; patientId: string }) => {
+      const { error } = await supabase
+        .from("patient_lab_results" as any)
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      return patientId;
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["patient_lab_results", variables.patientId] });
+      toast({ title: "Exame removido." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erro ao remover exame", description: err.message, variant: "destructive" });
+    },
+  });
+}
+
+// =============================================
 // AVALIACOES CORPORAIS
 // =============================================
 export function useAvaliacoesCorporais(patientId: string | undefined) {
