@@ -499,6 +499,7 @@ export default function PacienteDetalhe() {
   );
 
   // Group photos by sessao_id for timeline display
+  const ANGLE_ORDER: Record<string, number> = { frente: 0, frontal: 0, perfil: 1, lateral_direito: 1, lateral_esquerdo: 2, costas: 3, posterior: 3, outro: 99 };
   const sessionGroups = useMemo(() => {
     const groups: Record<string, typeof evolutionPhotos> = {};
     for (const photo of evolutionPhotos) {
@@ -506,9 +507,12 @@ export default function PacienteDetalhe() {
       if (!groups[key]) groups[key] = [];
       groups[key].push(photo);
     }
-    // Sort groups by earliest date in each group
+    // Sort groups by earliest date, and photos within each group by angle order (F→P→C)
     return Object.entries(groups)
-      .map(([sessaoId, photos]) => ({ sessaoId, photos }))
+      .map(([sessaoId, photos]) => ({
+        sessaoId,
+        photos: [...photos].sort((a, b) => (ANGLE_ORDER[(a as any).angle] ?? 50) - (ANGLE_ORDER[(b as any).angle] ?? 50)),
+      }))
       .sort((a, b) => a.photos[0].date.localeCompare(b.photos[0].date));
   }, [evolutionPhotos]);
 
