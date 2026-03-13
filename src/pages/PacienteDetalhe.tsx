@@ -1368,130 +1368,96 @@ export default function PacienteDetalhe() {
                                 </div>
                               </div>
                             ) : (
-                              (() => {
-                                const bodyPhotos = group.photos.filter((p: any) => p.angle !== "outro");
-                                const focalPhotosAll = group.photos.filter((p: any) => p.angle === "outro");
-                                const hasBody = bodyPhotos.length > 0;
-                                const hasFocal = focalPhotosAll.length > 0;
-
-                                const renderPhotoGrid = (photos: typeof group.photos) => (
-                                  <div className={cn("grid gap-2", photos.length >= 3 ? "grid-cols-3" : photos.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
-                                    {photos.map((photo) => (
-                                      <div key={photo.id} className="relative group/photo">
-                                        <div className={cn(
-                                          "rounded-lg overflow-hidden bg-muted/30 border border-border/30",
-                                          photos.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-[3/4]"
-                                        )}>
-                                          <EvolutionPhotoImage
-                                            imagePath={photo.image_path}
-                                            alt={photo.label}
-                                            onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
-                                          />
-                                          {replaceEvolutionPhotoMutation.isPending && replacingPhotoId === photo.id && (
-                                            <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
-                                              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                                            </div>
-                                          )}
-                                        </div>
-                                        {(photo as any).angle && (photo as any).angle !== "outro" && (
-                                          <Badge variant="outline" className="absolute top-1 left-1 text-[10px] bg-background/80 backdrop-blur-sm">
-                                            {angleBadgeMap[(photo as any).angle] || (photo as any).angle}
-                                          </Badge>
-                                        )}
-                                        {(photo as any).angle === "outro" && (photo as any).analysis_focus && (
-                                          <Badge variant="outline" className="absolute top-1 left-1 max-w-[calc(100%-2.5rem)] text-[10px] bg-background/80 backdrop-blur-sm gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
-                                            <ScanSearch className="h-2.5 w-2.5 shrink-0" />
-                                            <span className="truncate">{(photo as any).analysis_focus}</span>
-                                          </Badge>
-                                        )}
-                                        <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover/photo:opacity-100 transition-opacity">
-                                          <Button
-                                            variant="secondary"
-                                            size="icon"
-                                            className="h-6 w-6 bg-background/80 backdrop-blur-sm"
-                                            title="Trocar foto"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setReplacingPhotoId(photo.id);
-                                              setReplacingPhotoPath(photo.image_path);
-                                              replaceFileInputRef.current?.click();
-                                            }}
-                                          >
-                                            <Camera className="h-3 w-3" />
-                                          </Button>
-                                          <Button
-                                            variant="secondary"
-                                            size="icon"
-                                            className="h-6 w-6 bg-background/80 backdrop-blur-sm hover:bg-destructive/20"
-                                            title="Excluir foto"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleRemoveEvolutionPhoto(photo.id, photo.image_path);
-                                            }}
-                                          >
-                                            <Trash2 className="h-3 w-3 text-destructive" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    ))}
+                              <>
+                                {/* Session header */}
+                                <div className="flex items-start justify-between mb-2">
+                                  <div>
+                                    <p className="text-sm font-semibold">{firstPhoto.label}</p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {format(parseISO(firstPhoto.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                                      {prevFirstPhoto && (() => {
+                                        const days = Math.round((parseISO(firstPhoto.date).getTime() - parseISO(prevFirstPhoto.date).getTime()) / 86400000);
+                                        return days > 0 ? <span className="ml-1.5 text-primary/70">({days}d desde anterior)</span> : null;
+                                      })()}
+                                      {group.photos.length > 1 && (
+                                        <span className="ml-1.5">• {group.photos.length} fotos</span>
+                                      )}
+                                    </p>
                                   </div>
-                                );
+                                  <div className="flex items-center gap-1">
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); startEditPhoto(firstPhoto); }} title="Editar sessão">
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
+                                      e.stopPropagation();
+                                      group.photos.forEach(p => handleRemoveEvolutionPhoto(p.id, p.image_path));
+                                    }} title="Excluir sessão">
+                                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                    </Button>
+                                  </div>
+                                </div>
 
-                                return (
-                                  <>
-                                    {/* Session header */}
-                                    <div className="flex items-start justify-between mb-2">
-                                      <div>
-                                        <p className="text-sm font-semibold">{firstPhoto.label}</p>
-                                        <p className="text-xs text-muted-foreground">
-                                          {format(parseISO(firstPhoto.date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                                          {prevFirstPhoto && (() => {
-                                            const days = Math.round((parseISO(firstPhoto.date).getTime() - parseISO(prevFirstPhoto.date).getTime()) / 86400000);
-                                            return days > 0 ? <span className="ml-1.5 text-primary/70">({days}d desde anterior)</span> : null;
-                                          })()}
-                                          {group.photos.length > 1 && (
-                                            <span className="ml-1.5">• {group.photos.length} fotos</span>
-                                          )}
-                                        </p>
+                                {/* Photo grid */}
+                                <div className={cn("grid gap-2 mt-2", group.photos.length >= 3 ? "grid-cols-3" : group.photos.length === 2 ? "grid-cols-2" : "grid-cols-1")}>
+                                  {group.photos.map((photo) => (
+                                    <div key={photo.id} className="relative group/photo">
+                                      <div className={cn(
+                                        "rounded-lg overflow-hidden bg-muted/30 border border-border/30",
+                                        group.photos.length === 1 ? "aspect-auto max-h-[300px]" : "aspect-[3/4]"
+                                      )}>
+                                        <EvolutionPhotoImage
+                                          imagePath={photo.image_path}
+                                          alt={photo.label}
+                                          onClick={() => setZoomPhotoId(zoomPhotoId === photo.id ? null : photo.id)}
+                                        />
+                                        {replaceEvolutionPhotoMutation.isPending && replacingPhotoId === photo.id && (
+                                          <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center">
+                                            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                                          </div>
+                                        )}
                                       </div>
-                                      <div className="flex items-center gap-1">
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); startEditPhoto(firstPhoto); }} title="Editar sessão">
-                                          <Pencil className="h-3.5 w-3.5" />
+                                      {(photo as any).angle && (photo as any).angle !== "outro" && (
+                                        <Badge variant="outline" className="absolute top-1 left-1 text-[10px] bg-background/80 backdrop-blur-sm">
+                                          {angleBadgeMap[(photo as any).angle] || (photo as any).angle}
+                                        </Badge>
+                                      )}
+                                      {(photo as any).angle === "outro" && (photo as any).analysis_focus && (
+                                        <Badge variant="outline" className="absolute top-1 left-1 max-w-[calc(100%-2.5rem)] text-[10px] bg-background/80 backdrop-blur-sm gap-1 border-amber-500/50 text-amber-700 dark:text-amber-400">
+                                          <ScanSearch className="h-2.5 w-2.5 shrink-0" />
+                                          <span className="truncate">{(photo as any).analysis_focus}</span>
+                                        </Badge>
+                                      )}
+                                      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover/photo:opacity-100 transition-opacity">
+                                        <Button
+                                          variant="secondary"
+                                          size="icon"
+                                          className="h-6 w-6 bg-background/80 backdrop-blur-sm"
+                                          title="Trocar foto"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setReplacingPhotoId(photo.id);
+                                            setReplacingPhotoPath(photo.image_path);
+                                            replaceFileInputRef.current?.click();
+                                          }}
+                                        >
+                                          <Camera className="h-3 w-3" />
                                         </Button>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
-                                          e.stopPropagation();
-                                          group.photos.forEach(p => handleRemoveEvolutionPhoto(p.id, p.image_path));
-                                        }} title="Excluir sessão">
-                                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                        <Button
+                                          variant="secondary"
+                                          size="icon"
+                                          className="h-6 w-6 bg-background/80 backdrop-blur-sm hover:bg-destructive/20"
+                                          title="Excluir foto"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRemoveEvolutionPhoto(photo.id, photo.image_path);
+                                          }}
+                                        >
+                                          <Trash2 className="h-3 w-3 text-destructive" />
                                         </Button>
                                       </div>
                                     </div>
-
-                                    {/* Body Composition Section (F/P/C) */}
-                                    {hasBody && (
-                                      <div className="mt-2">
-                                        {hasFocal && (
-                                          <div className="flex items-center gap-1.5 mb-2">
-                                            <Camera className="h-3 w-3 text-primary" />
-                                            <span className="text-[11px] font-semibold text-primary uppercase tracking-wide">Composição Corporal</span>
-                                            <Badge variant="outline" className="text-[10px] py-0 h-4">{bodyPhotos.length}</Badge>
-                                          </div>
-                                        )}
-                                        {renderPhotoGrid(bodyPhotos)}
-                                      </div>
-                                    )}
-
-                                    {/* Focal Analysis Section (Outro) */}
-                                    {hasFocal && (
-                                      <div className={cn("mt-3", hasBody && "pt-3 border-t border-amber-500/20")}>
-                                        <div className="flex items-center gap-1.5 mb-2">
-                                          <ScanSearch className="h-3 w-3 text-amber-600 dark:text-amber-400" />
-                                          <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">Análise Focal</span>
-                                          <Badge variant="outline" className="text-[10px] py-0 h-4 border-amber-500/40 text-amber-700 dark:text-amber-400">{focalPhotosAll.length}</Badge>
-                                        </div>
-                                        {renderPhotoGrid(focalPhotosAll)}
-                                      </div>
-                                    )}
+                                  ))}
+                                </div>
 
                                     {group.photos.some(p => zoomPhotoId === p.id) && (
                                       <div className="mt-2 rounded-lg overflow-hidden bg-muted/30 border border-border/30">
