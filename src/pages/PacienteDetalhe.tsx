@@ -245,18 +245,37 @@ export default function PacienteDetalhe() {
   const [showImportPreview, setShowImportPreview] = useState(false);
   const labFileInputRef = useRef<HTMLInputElement>(null);
 
+  const resizeImageForAI = useCallback(async (file: File, maxDim = 2048, quality = 0.8): Promise<{ base64: string; mimeType: string }> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          const scale = maxDim / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve({ base64: dataUrl.split(",")[1], mimeType: "image/jpeg" });
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  }, []);
+
   const handleLabFileImport = useCallback(async (file: File) => {
     setImportLoading(true);
     try {
       const isImage = file.type.startsWith("image/");
       let body: any = {};
       if (isImage) {
-        const base64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string).split(",")[1]);
-          reader.readAsDataURL(file);
-        });
-        body = { imageBase64: base64, mimeType: file.type };
+        const { base64, mimeType } = await resizeImageForAI(file);
+        body = { imageBase64: base64, mimeType };
       } else {
         const text = await file.text();
         body = { textContent: text };
