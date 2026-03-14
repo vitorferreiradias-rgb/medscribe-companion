@@ -245,25 +245,26 @@ export default function PacienteDetalhe() {
   const [showImportPreview, setShowImportPreview] = useState(false);
   const labFileInputRef = useRef<HTMLInputElement>(null);
 
-  const resizeImageForAI = useCallback(async (file: File, maxDim = 2048, quality = 0.8): Promise<{ base64: string; mimeType: string }> => {
+  const resizeImageForAI = useCallback(async (file: File, maxDim = 1200, quality = 0.7): Promise<{ base64: string; mimeType: string }> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
         let { width, height } = img;
-        if (width > maxDim || height > maxDim) {
-          const scale = maxDim / Math.max(width, height);
-          width = Math.round(width * scale);
-          height = Math.round(height * scale);
-        }
+        const scale = Math.min(1, maxDim / Math.max(width, height));
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d")!;
         ctx.drawImage(img, 0, 0, width, height);
         const dataUrl = canvas.toDataURL("image/jpeg", quality);
-        resolve({ base64: dataUrl.split(",")[1], mimeType: "image/jpeg" });
+        const base64 = dataUrl.split(",")[1];
+        console.log(`Image resized: ${img.naturalWidth}x${img.naturalHeight} → ${width}x${height}, base64 length: ${base64.length}`);
+        URL.revokeObjectURL(img.src);
+        resolve({ base64, mimeType: "image/jpeg" });
       };
-      img.onerror = reject;
+      img.onerror = (e) => { URL.revokeObjectURL(img.src); reject(e); };
       img.src = URL.createObjectURL(file);
     });
   }, []);
